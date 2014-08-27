@@ -1,0 +1,5 @@
+# To build after a git checkout, run the following:
+
+    autoreconf -i
+    ./configure
+    make
