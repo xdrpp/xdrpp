@@ -8,7 +8,6 @@
 #define _XDRC_H_HEADER_INCLUDED_ 1
 
 #include <cstdint>
-#include <cstring>
 #include <stdexcept>
 #include <string>
 
@@ -27,146 +26,50 @@ constexpr bool is_big_endian = true;
 constexpr bool is_big_endian = false;
 #endif // !WORDS_BIGENDIAN
 
-template<std::uint32_t N = 0xffffffff> class xstring : private std::string {
-  static void range_check(size_t n) {
-    if (n > max_size())
-      throw std::out_of_range("xstring overflow");
-  }
-
-  static void assign_check(const std::string &s) { range_check(s.size()); }
-  template<std::uint32_t M> static void assign_check(const xstring<M> &x) {
-    if (M > N)
-      assign_check(x.str());
-  }
-  static void assign_check(const std::initializer_list<char> &il) {
-    range_check(il.size());
-  }
-
-  void append_check(size_t n) const {
-    if (n > max_size() - size())
-      throw std::out_of_range("xstring overflow");
-  }
-
-public:
+//! A string with a maximum length (returned by xstring::max_size()).
+//! Note that this intentionally isn't bullet-proof, but if you don't
+//! upcast it to std::string, it tries to catch most overflow errors
+//! and throw std::out_of_range.
+template<std::uint32_t N = 0xffffffff> struct xstring : std::string {
   using string = std::string;
-  const string &str() const { return *this; }
 
-  using string::npos;
-  using string::begin;
-  using string::end;
-  using string::rbegin;
-  using string::rend;
-  using string::cbegin;
-  using string::cend;
-  using string::crbegin;
-  using string::crend;
-  using string::size;
-  using string::length;
+  //! Return the maximum size allowed by the type.
   static constexpr std::size_t max_size() { return N; }
-  void resize(size_t n) { range_check(n); string::resize(n); }
-  void resize(size_t n, char c) { range_check(n); string::resize(n, c); }
-  using string::capacity;
-  void reserve(size_t n = 0) { range_check(n); string::reserve(n); }
-  using string::clear;
-  using string::empty;
-  using string::shrink_to_fit;
-  using string::operator[];
-  using string::at;
-  using string::back;
-  using string::front;
 
-  xstring &operator+=(char c) {
-    append_check(1);
-    string::operator+=(c);
-    return *this;
-  }
-  template<typename S> xstring &operator+=(const S&s) { return append(s); }
-
-  xstring &append(const string &s) {
-    append_check(s.size());
-    return string::append(s);
-    return *this;
-  }
-  xstring &append(const string &s, size_t pos, size_t len) {
-    append_check(len);
-    string::append(s, pos, len);
-    return *this;
-  }
-  xstring &append(const char *s) { return append(s, std::strlen(s)); }
-  xstring &append(const char *s, size_t len) {
-    append_check(len);
-    string::append(s, len);
-    return *this;
-  }
-  string &append (size_t n, char c) {
-    append_check(n);
-    string::append(n, c);
-    return *this;
-  }
-  template <class I> xstring &append (I first, I last) {
-    append_check(last - first);
-    string::append(first, last);
-    return *this;
-  }
-  xstring &append(std::initializer_list<char> il) {
-    append_check(il.size());
-    string::append(il);
-    return *this;
+  //! Check that the string length is not greater than the maximum
+  //! size.  \throws std::out_of_range and clears the contents of the
+  //! string if it is too long.
+  void validate() const {
+    if (size() > max_size()) {
+      const_cast<string *>(this)->clear();
+      throw std::out_of_range("xstring overflow");
+    }
   }
 
-  void push_back(char c) { append_check(1); string::push_back(1); }
+  xstring() = default;
+  xstring(const xstring &) = default;
+  xstring(xstring &&) = default;
+  xstring &operator=(const xstring &) = default;
+  xstring &operator=(xstring &&) = default;
 
-  template<typename T> xstring &assign(T &&t) {
-    assign_check(t);
-    string::assign(std::forward<T>(t));
-    return *this;
-  }
-  xstring &assign(const string &s, size_t pos, size_t len) {
-    range_check(len);
-    string::assign(s, pos, len);
-    return *this;
-  }
-  xstring &assign(const char *s) { return assign(s, std::strlen(s)); }
-  xstring &assign(const char *s, size_t len) {
-    range_check(len);
-    string::assign(s, len);
-    return *this;
-  }
-  string &assign (size_t n, char c) {
-    range_check(n);
-    string::assign(n, c);
-    return *this;
-  }
-  template <class I> xstring &assign (I first, I last) {
-    range_check(last - first);
-    string::assign(first, last);
-    return *this;
-  }
-  // XXX insert
-  using string::erase;
-  // XXX replace
-  void swap(string &s) { assign_check(s); string::swap(s); }
-  void swap(xstring &s) { string::swap(s); }
-  using string::pop_back;
-  using string::c_str;
-  using string::data;
-  char *data() { return &(*this)[0]; } // protobufs does this, so probably ok
-  using string::copy;
-  using string::find;
-  using string::rfind;
-  using string::find_first_of;
-  using string::find_last_of;
-  using string::find_first_not_of;
-  using string::find_last_not_of;
-  using string::substr;
+  template<typename...Args> xstring(Args&&...args)
+    : string(std::forward<Args>(args)...) { validate(); }
 
-  using string::compare;
-  template<std::uint32_t M> int compare(const xstring<M> &s) {
-    return string::compare(s);
+#define ASSIGN_LIKE(method)					\
+  template<typename...Args> xstring &method(Args&&...args) {	\
+    string::method(std::forward<Args>(args)...);		\
+    validate();							\
+    return *this;						\
   }
+  ASSIGN_LIKE(operator+=)
+  ASSIGN_LIKE(append)
+  ASSIGN_LIKE(push_back)
+  ASSIGN_LIKE(assign)
+  ASSIGN_LIKE(insert)
+  ASSIGN_LIKE(replace)
+  ASSIGN_LIKE(swap)
+#undef ASSIGN_LIKE
 };
-
-
 
 }
 
