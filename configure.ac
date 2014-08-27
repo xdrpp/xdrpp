@@ -7,6 +7,8 @@ AM_INIT_AUTOMAKE([-Wall subdir-objects])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_PROG_CPP
+AC_DEFINE_UNQUOTED([CPP], "$CPP", [Shell command for C preprocessor])
 AM_PROG_LEX
 AC_PROG_YACC
 AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r xlC])
@@ -15,8 +17,9 @@ CXXFLAGS="$CXXFLAGS -Wall"
 dnl AC_USE_SYSTEM_EXTENSIONS
 AC_LANG(C++)
 # -pthread Seems to be required by g++ -stc=c++11
-AX_APPEND_COMPILE_FLAGS([-pthread])
+dnl AX_APPEND_COMPILE_FLAGS([-pthread])
 
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 

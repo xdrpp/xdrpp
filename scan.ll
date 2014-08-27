@@ -1,9 +1,10 @@
 /* -*-fundamental-*- */
 
 %{
-#define YYSTYPE YYSTYPE
 #include "xdrc.h"
 #include "parse.hh"
+#define YY_NO_INPUT
+#define register
 
 string filename = "(stdin)";
 int lineno;
