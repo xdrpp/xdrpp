@@ -5,9 +5,7 @@
 
 bin_PROGRAMS = xdrc
 
-xdrc_SOURCES = xdrc.cc scan.ll parse.yy union.h
-#xdrc_SOURCES = genheader.C gencfile.C genpython.C xdrc.cc genpyc.C	\
-parse.yy scan.ll rpcc.h xdrc.h
+xdrc_SOURCES = xdrc.cc gen_hh.cc scan.ll parse.yy union.h xdrc_internal.h
 BUILT_SOURCES = parse.cc parse.hh scan.cc
 AM_YFLAGS = -d
 

@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <config.h>
-#include "xdrc.h"
+#include "xdrc_internal.h"
 
 using std::cout;
 using std::cerr;
@@ -13,6 +13,8 @@ using std::endl;
 
 extern FILE *yyin;
 std::set<string> ids;
+string input_file;
+string output_file;
 
 rpc_program *
 get_prog(bool creat)
@@ -61,11 +63,6 @@ static const struct option xdrc_options[] = {
 };
 
 void
-gen_hh(std::ostream &)
-{
-}
-
-void
 gen_cc(std::ostream &)
 {
 }
@@ -74,7 +71,6 @@ int
 main(int argc, char **argv)
 {
   string cpp_command {CPP_COMMAND};
-  string outfile;
   void (*gen)(std::ostream &) = nullptr;
 
   int opt;
@@ -86,9 +82,9 @@ main(int argc, char **argv)
       cpp_command += optarg;
       break;
     case 'o':
-      if (!outfile.empty())
+      if (!output_file.empty())
 	usage();
-      outfile = optarg;
+      output_file = optarg;
       break;
     case OPT_VERSION:
       cout << PACKAGE_STRING << endl;
@@ -122,6 +118,7 @@ main(int argc, char **argv)
   }
   cpp_command += " ";
   cpp_command += argv[optind];
+  input_file = argv[optind];
   if (!(yyin = popen(cpp_command.c_str(), "r"))) {
     cerr << "xdrc: command failed: " << cpp_command << endl;
     exit(1);
@@ -133,14 +130,14 @@ main(int argc, char **argv)
   if (pclose(yyin))
     exit(1);
 
-  if (outfile.empty())
+  if (output_file.empty())
     gen(cout);
   else {
-    std::ofstream out(outfile);
+    std::ofstream out(output_file);
     if (out.is_open())
       gen(out);
     else {
-      perror(outfile.c_str());
+      perror(output_file.c_str());
       exit(1);
     }
   }   

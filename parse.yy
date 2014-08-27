@@ -1,6 +1,6 @@
 
 %{
-#include "xdrc.h"
+#include "xdrc_internal.h"
 #define YYSTYPE YYSTYPE
 
 static int proc_compare(const void *, const void *);
@@ -9,8 +9,8 @@ static string getnewid(string, bool repeats_bad);
 static string getid(string);
 %}
 
-%token <string_> T_ID
-%token <string_> T_NUM
+%token <str> T_ID
+%token <str> T_NUM
 
 %token T_CONST
 %token T_STRUCT
@@ -32,10 +32,10 @@ static string getid(string);
 %token T_CASE
 %token T_DEFAULT
 
-%token <string_> T_OPAQUE
-%token <string_> T_STRING
+%token <str> T_OPAQUE
+%token <str> T_STRING
 
-%type <string_> id newid type_or_void type base_type value nsid
+%type <str> id newid type_or_void type base_type value nsid
 %type <decl> declaration
 %type <cnst> enum_cnstag
 %type <num> number

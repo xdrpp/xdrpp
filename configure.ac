@@ -19,15 +19,15 @@ else
 fi
 AC_DEFINE_UNQUOTED([CPP_COMMAND], "$CPP", [Shell command for C preprocessor])
 
+test "${WFLAGS+set}" || WFLAGS="-Wall"
 AM_PROG_LEX
 AC_PROG_YACC
 AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r xlC])
 AX_CXX_COMPILE_STDCXX_11(noext,mandatory)
-CXXFLAGS="$CXXFLAGS -Wall"
-dnl AC_USE_SYSTEM_EXTENSIONS
+test -z "$WFLAGS" || CXXFLAGS="$CXXFLAGS $WFLAGS"
 AC_LANG(C++)
-# -pthread Seems to be required by g++ -stc=c++11
-dnl AX_APPEND_COMPILE_FLAGS([-pthread])
+
+dnl AC_C_BIGENDIAN
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])

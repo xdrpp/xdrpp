@@ -1,7 +1,7 @@
 /* -*-fundamental-*- */
 
 %{
-#include "xdrc.h"
+#include "xdrc_internal.h"
 #include "parse.hh"
 #define YY_NO_INPUT
 #define register
@@ -50,15 +50,15 @@ int		return T_INT;
 hyper		return T_HYPER;
 double		return T_DOUBLE;
 quadruple	return T_QUADRUPLE;
-void		{ yylval.string_ = yytext; return T_VOID; }
+void		{ yylval.str = yytext; return T_VOID; }
 
 version		return T_VERSION;
 switch		return T_SWITCH;
 case		return T_CASE;
 default		return T_DEFAULT;
 
-opaque		{ yylval.string_ = yytext; return T_OPAQUE; }
-string		{ yylval.string_ = yytext; return T_STRING; }
+opaque		{ yylval.str = yytext; return T_OPAQUE; }
+string		{ yylval.str = yytext; return T_STRING; }
 
 array		|
 bytes		|
@@ -72,9 +72,9 @@ setpos		|
 sizeof		|
 vector		{ yyerror(msg_yytext("illegal use of reserved word")); }
 
-{ID}		{ yylval.string_ = yytext; return T_ID; }
+{ID}		{ yylval.str = yytext; return T_ID; }
 [+-]?[0-9]+	|
-[+-]?0x[0-9a-fA-F]+	{ yylval.string_ = yytext; return T_NUM; }
+[+-]?0x[0-9a-fA-F]+	{ yylval.str = yytext; return T_NUM; }
 
 [=;{}<>\[\]*,:()] return yytext[0];
 

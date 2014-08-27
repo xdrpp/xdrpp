@@ -1,6 +1,6 @@
 // -*-c++-*-
-/* $Id$ */
 
+#include <iosfwd>
 #include <vector>
 #include <set>
 #include <string>
@@ -146,7 +146,7 @@ struct YYSTYPE {
   uint32_t num;
   struct rpc_decl decl;
   struct rpc_const cnst;
-  string string_;
+  string str;
 };
 extern YYSTYPE yylval;
 
@@ -157,3 +157,7 @@ using strlist_t = vec<string>;
 extern strlist_t litq;
 
 rpc_program *get_prog (bool creat);
+void gen_hh(std::ostream &os);
+
+extern string input_file;
+extern string output_file;
