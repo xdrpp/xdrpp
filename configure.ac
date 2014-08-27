@@ -8,7 +8,17 @@ AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_PROG_CPP
-AC_DEFINE_UNQUOTED([CPP], "$CPP", [Shell command for C preprocessor])
+# gcc does this weird thing where it interprets everything (including
+# .x files) as a linker script without the -xc option.
+AC_MSG_CHECKING([if C preprocessor can be invoked as $CPP -xc])
+if $CPP -xc /dev/null > /dev/null 2>&1; then
+   CPP="$CPP -xc"
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
+fi
+AC_DEFINE_UNQUOTED([CPP_COMMAND], "$CPP", [Shell command for C preprocessor])
+
 AM_PROG_LEX
 AC_PROG_YACC
 AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r xlC])
