@@ -1,4 +1,6 @@
 
+#include "xdrc.h"
+
 #include <cassert>
 #include <iostream>
 #include <fstream>
