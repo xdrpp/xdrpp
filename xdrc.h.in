@@ -1,0 +1,19 @@
+// -*- C++ -*-
+// Warning: Make sure to edit xdrc.h.in, not xdrc.h.
+
+namespace xdrc {
+
+#ifndef WORDS_BIGENDIAN
+// Set default from build machine, but allow this to be overridden (by
+// defining WORDS_BIGENDIAN to 0 or 1) in case of cross-compilation.
+#define WORDS_BIGENDIAN @IS_BIG_ENDIAN@
+#endif // !WORDS_BIGENDIAN
+
+//! True on big endian machines, false on little endian machines.
+#if WORDS_BIGENDIAN
+constexpr bool is_big_endian = true;
+#else // !WORDS_BIGENDIAN
+constexpr bool is_big_endian = false;
+#endif // !WORDS_BIGENDIAN
+
+}

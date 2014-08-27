@@ -9,6 +9,8 @@ xdrc_SOURCES = xdrc.cc gen_hh.cc scan.ll parse.yy union.h xdrc_internal.h
 BUILT_SOURCES = parse.cc parse.hh scan.cc
 AM_YFLAGS = -d
 
+nodist_include_HEADERS = xdrc.h
+
 CLEANFILES = *~ .gitignore~
 
 distclean-local:
@@ -18,5 +20,5 @@ maintainer-clean-local:
 	+@echo rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 	rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 
-EXTRA_DIST = .gitignore
+EXTRA_DIST = .gitignore xdrc.h.in
 MAINTAINERCLEANFILES = parse.hh parse.cc scan.cc
