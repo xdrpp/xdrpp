@@ -1,5 +1,6 @@
 // -*-c++-*-
 
+#include <cassert>
 #include <iosfwd>
 #include <functional>
 #include <vector>
@@ -178,13 +179,17 @@ struct omanip : std::function<void(std::ostream&)> {
 struct indenter : omanip {
   int level_{0};
   void do_indent(ostream &os) { os << std::endl << std::string(level_, ' '); }
-  void do_open(ostream &os) { level_ += 2; do_indent(os); }
-  void do_close(ostream &os) { level_ -= 2; do_indent(os); }
+  void do_open(ostream &os) { ++(*this); do_indent(os); }
+  void do_close(ostream &os) { --(*this); do_indent(os); }
+  void do_outdent(ostream &os) {
+    os << std::endl << std::string(level_ > 2 ? level_ - 2 : 0, ' ');
+  }
 
   indenter() : omanip(this, &indenter::do_indent) {}
   omanip open = omanip(this, &indenter::do_open);
   omanip close = omanip(this, &indenter::do_close);
+  omanip outdent = omanip(this, &indenter::do_outdent);
   void operator++() { level_ += 2; }
-  void operator--() { level_ -= 2; }
+  void operator--() { level_ -= 2; assert (level_ >= 0); }
 };
 

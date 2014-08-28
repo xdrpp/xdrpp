@@ -90,14 +90,14 @@ template<typename T> using result_type_or_void =
 
 struct case_constructor {
   constexpr case_constructor() {}
-  template<typename T> void operator()(const char *, T &t) {
+  template<typename T> void operator()(T &t) {
     new (static_cast<void *>(std::addressof(t))) T;
   }
 };
 
 struct case_destroyer {
   constexpr case_destroyer() {}
-  template<typename T> void operator()(const char *, T &t) { t->~T(); }
+  template<typename T> void operator()(T &t) { t->~T(); }
 };
 
 }

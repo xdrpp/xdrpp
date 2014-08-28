@@ -134,19 +134,46 @@ gen(std::ostream &os, const rpc_union &u)
   for (rpc_utag t : u.cases)
     if (t.tagvalid && t.tag.type != "void")
       os << nl << decl_type(t.tag) << ' ' << t.tag.id << "_;";
-  os << nl.close << "};" << endl
-     << nl << "template<typename __F>"
-     << nl << "xdr::result_type_or_void<__F> __apply_to_selected(__F &__f) {"
+  os << nl.close << "};" << endl;
+
+  os << nl.outdent << "public:"
+     << nl << "const char *_name_of_selected() const {"
      << nl.open << "switch (" << u.tagid << "_) {";
   for (rpc_utag t : u.cases) {
     os << nl << map_case(t.swval);
-    if (t.tagvalid)
-      os << nl << "  return __f(\"" << t.tag.id << "\", " << t.tag.id << "_);";
+    if (t.tagvalid) {
+      if (t.tag.id.empty())
+	os << nl << "  return nullptr;";
+      else
+	os << nl << "  return \"" << t.tag.id << "\";";
+    }
   }
   os << nl << "}"
-     << nl.close << "}" << endl
-     << nl.close << "public:";
-  ++nl;
+     << nl.close << "}" << endl;
+
+  os << nl << "template<typename F>"
+     << nl << "xdr::result_type_or_void<F> _apply_to_selected(F &_f) {"
+     << nl.open << "switch (" << u.tagid << "_) {";
+  for (rpc_utag t : u.cases) {
+    os << nl << map_case(t.swval);
+    if (t.tagvalid) {
+      if (t.tag.type == "void")
+	os << nl << "  return _f();";
+      else
+	os << nl << "  return _f(" << t.tag.id << "_);";
+    }
+  }
+  os << nl << "}"
+     << nl.close << "}" << endl;
+
+  os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
+     << u.tagid << "_; }";
+  os << nl << "void set_" << u.tagid << "(" << u.tagtype << " _t) {"
+     << nl.open << "_apply_to_selected(case_destroyer{});"
+     << nl << u.tagid << "_ = t;"
+     << nl << "_apply_to_selected(case_constructor{});"
+     << nl.close << "}" << endl;
+
   os << nl.close << "}";
   if (!u.id.empty())
     os << ';';
