@@ -184,20 +184,25 @@ gen(std::ostream &os, const rpc_union &u)
     os << nl << "return nullptr;";
   os << nl.close << "}" << endl;
 
-  os << nl << "template<typename F>"
-     << nl << "xdr::result_type_or_void<F> _apply_to_selected(F &_f) {"
-     << nl.open << pswitch(u);
-  for (rpc_utag t : u.cases) {
-    os << nl << map_case(t.swval);
-    if (t.tagvalid) {
-      if (t.tag.type == "void")
-	os << nl << "  return _f();";
-      else
-	os << nl << "  return _f(" << t.tag.id << "_);";
+  // _apply_to_selected
+  for (auto constkw : {"", "const "}) {
+    os << nl << "template<typename F>"
+       << nl << "xdr::result_type_or_void<F> _apply_to_selected(F &_f) "
+       << constkw << "{"
+       << nl.open << pswitch(u);
+    for (rpc_utag t : u.cases) {
+      os << nl << map_case(t.swval);
+      if (t.tagvalid) {
+	if (t.tag.type == "void")
+	  os << nl << "  return _f();";
+	else
+	  os << nl << "  return _f(" << t.tag.id << "_);";
+      }
     }
+    os << nl << "}"
+       << nl.close << "}";
   }
-  os << nl << "}"
-     << nl.close << "}" << endl;
+  os << endl;
 
   // Constructor
   os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
