@@ -5,6 +5,33 @@
 
 using std::endl;
 
+std::unordered_map<string, string> xdr_type_map = {
+  {"unsigned", "std::uint32_t"},
+  {"int", "std::int32_t"},
+  {"unsigned hyper", "std::uint62_t"},
+  {"hyper", "std::int64_t"},
+};
+
+string
+map_type(const string &s)
+{
+  auto t = xdr_type_map.find(s);
+  if (t == xdr_type_map.end())
+    return s;
+  return t->second;
+}
+
+string
+map_case(const string &s)
+{
+  if (s == "TRUE")
+    return "true";
+  else if (s == "FALSE")
+    return "false";
+  else
+    return s;
+}
+
 namespace {
 
 string
@@ -37,8 +64,8 @@ guard_token()
 string
 decl_type(const rpc_decl &d)
 {
-  string type = d.type;
-  if (d.type == "string" || d.type == "opaque") {
+  string type = map_type(d.type);
+  if (type == "string" || type == "opaque") {
     switch (d.qual) {
     case rpc_decl::ARRAY:
       return string("std::array<char,") + d.bound + ">";
@@ -50,14 +77,14 @@ decl_type(const rpc_decl &d)
   }
 
   switch (d.qual) {
-  case rpc_decl::SCALAR:
-    return d.type;
   case rpc_decl::PTR:
-    return string("std::unique_ptr<") + d.type + ">";
+    return string("std::unique_ptr<") + type + ">";
   case rpc_decl::ARRAY:
-    return string("std::array<") + d.type + "," + d.bound + ">";
+    return string("std::array<") + type + "," + d.bound + ">";
   case rpc_decl::VEC:
-    return string("std::vector<") + d.type + ">";
+    return string("std::vector<") + type + ">";
+  default:
+    return type;
   }
 }
 

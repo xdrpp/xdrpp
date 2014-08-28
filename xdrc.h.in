@@ -26,17 +26,17 @@ constexpr bool is_big_endian = true;
 constexpr bool is_big_endian = false;
 #endif // !WORDS_BIGENDIAN
 
-constexpr std::uint32_t XDR_INFINITY = 0xffffffff;
+constexpr std::uint32_t XDR_MAX_LEN = 0xffffffff;
 
 //! A string with a maximum length (returned by xstring::max_size()).
 //! Note that this intentionally isn't bullet-proof, but if you don't
-//! upcast it to std::string, it tries to catch most overflow errors
+//! upcast it to std::string it tries to catch most overflow errors
 //! and throw std::out_of_range.
-template<std::uint32_t N = XDR_INFINITY> struct xstring : std::string {
+template<std::uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   using string = std::string;
 
   //! Return the maximum size allowed by the type.
-  static constexpr std::size_t max_size() { return N; }
+  static constexpr std::uint32_t max_size() { return N; }
 
   //! Check that the string length is not greater than the maximum
   //! size.  \throws std::out_of_range and clears the contents of the
@@ -57,12 +57,16 @@ template<std::uint32_t N = XDR_INFINITY> struct xstring : std::string {
   template<typename...Args> xstring(Args&&...args)
     : string(std::forward<Args>(args)...) { validate(); }
 
+  using string::data;
+  char *data() { return &(*this)[0]; } // protobufs does this, so probably ok
+
 #define ASSIGN_LIKE(method)					\
   template<typename...Args> xstring &method(Args&&...args) {	\
     string::method(std::forward<Args>(args)...);		\
     validate();							\
     return *this;						\
   }
+  ASSIGN_LIKE(operator=)
   ASSIGN_LIKE(operator+=)
   ASSIGN_LIKE(append)
   ASSIGN_LIKE(push_back)

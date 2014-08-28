@@ -3,6 +3,7 @@
 #include "xdrc_internal.h"
 #define YYSTYPE YYSTYPE
 
+const string xdr_unbounded = "XDR_MAX_LEN";
 static int proc_compare(const void *, const void *);
 static int vers_compare(const void *, const void *);
 static string getnewid(string, bool repeats_bad);
@@ -238,7 +239,7 @@ declaration: type T_ID ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::SCALAR; }
 	| T_STRING T_ID ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "XDR_INFINITY";
+	   $$.bound = xdr_unbounded;
 	   yywarn ("strings require variable-length array declarations");
 	 }
 	| type '*' T_ID ';'
@@ -257,13 +258,13 @@ declaration: type T_ID ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC; $$.bound = $4; }
 	| type T_ID '<' '>' ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "XDR_INFINITY"; }
+	   $$.bound = xdr_unbounded; }
 	| T_STRING T_ID '<' '>' ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "XDR_INFINITY"; }
+	   $$.bound = xdr_unbounded; }
 	| T_OPAQUE T_ID '<' '>' ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "XDR_INFINITY"; }
+	   $$.bound = xdr_unbounded; }
 	;
 
 type_or_void: type | T_VOID { $$ = "void"; }
@@ -272,11 +273,11 @@ type_or_void: type | T_VOID { $$ = "void"; }
 type: base_type | id
 	;
 
-base_type: T_UNSIGNED { $$ = "u_int32_t"; }
-	| T_INT { $$ = "int32_t"; }
-	| T_UNSIGNED T_INT { $$ = "u_int32_t"; }
-	| T_HYPER { $$ = "int64_t"; }
-	| T_UNSIGNED T_HYPER { $$ = "u_int64_t"; }
+base_type: T_UNSIGNED { $$ = "unsigned"; }
+	| T_INT { $$ = "int"; }
+	| T_UNSIGNED T_INT { $$ = "unsigned"; }
+	| T_HYPER { $$ = "hyper"; }
+	| T_UNSIGNED T_HYPER { $$ = "unsigned hyper"; }
 	| T_DOUBLE { $$ = "double"; }
 	| T_QUADRUPLE { $$ = "quadruple"; }
 	;
