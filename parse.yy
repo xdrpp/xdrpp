@@ -7,10 +7,10 @@ string xdr_unbounded = "xdr::XDR_MAX_LEN";
 static int proc_compare(const void *, const void *);
 static int vers_compare(const void *, const void *);
 static string getnewid(string, bool repeats_bad);
-static string getid(string);
 %}
 
 %token <str> T_ID
+%token <str> T_QID
 %token <str> T_NUM
 
 %token T_CONST
@@ -38,7 +38,7 @@ static string getid(string);
 %token <str> T_OPAQUE
 %token <str> T_STRING
 
-%type <str> id newid type_or_void type base_type value nsid
+%type <str> id qid newid type_or_void type base_type value nsid
 %type <decl> declaration
 %type <cnst> enum_cnstag
 %type <num> number
@@ -278,7 +278,7 @@ declaration: type T_ID ';'
 type_or_void: type | T_VOID { $$ = "void"; }
 	;
 
-type: base_type | id
+type: base_type | qid
 	;
 
 base_type: T_UNSIGNED { $$ = "unsigned"; }
@@ -304,7 +304,10 @@ newid: T_ID { $$ = getnewid ($1, true); }
 nsid: T_ID { $$ = getnewid ($1, false); } 
         ;
 
-id: T_ID { $$ = getid ($1); }
+id: T_ID
+	;
+
+qid: T_ID | T_QID
 	;
 
 %%
@@ -347,11 +350,5 @@ getnewid(string id, bool repeats_bad)
     ids.insert(id);
   }
   // Possible place to add namespace scope::
-  return id;
-}
-
-static string
-getid(string id)
-{
   return id;
 }

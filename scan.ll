@@ -21,6 +21,7 @@ msg_yytext(const char *msg)
 %option noyywrap
 
 ID	[a-zA-Z_][a-zA-Z_0-9]*
+QID	(::)?[a-zA-Z_][a-zA-Z_0-9]*(::[a-zA-Z_][a-zA-Z_0-9]*)*
 WSPACE	[ \t]
 
 %x GFILE GNL
@@ -68,6 +69,7 @@ inline		|
 sizeof		{ yyerror(msg_yytext("illegal use of reserved word")); }
 
 {ID}		{ yylval.str = yytext; return T_ID; }
+{QID}		{ yylval.str = yytext; return T_QID; }
 [+-]?[0-9]+	|
 [+-]?0x[0-9a-fA-F]+	{ yylval.str = yytext; return T_NUM; }
 
