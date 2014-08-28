@@ -142,7 +142,8 @@ void
 gen(std::ostream &os, const rpc_union &u)
 {
   os << "class " << u.id << " {"
-     << nl.open << map_type(u.tagtype) << ' ' << u.tagid << "_;"
+    //<< nl.open << map_type(u.tagtype) << ' ' << u.tagid << "_;"
+     << nl.open << "std::uint32_t " << u.tagid << "_;"
      << nl << "union {";
   ++nl;
   for (rpc_utag t : u.cases)
@@ -151,6 +152,8 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl.close << "};" << endl;
 
   os << nl.outdent << "public:";
+  os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
+    " \"union discriminant must be 4 bytes\");";
   if (u.hasdefault)
     os << nl << "static constexpr bool _tag_is_valid("
        << u.tagtype << ") { return true; }" << endl;
@@ -196,8 +199,16 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "}"
      << nl.close << "}" << endl;
 
+  // Constructor
+  os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
+     << map_type(u.tagtype) << "{}) : " << u.tagid << "_(_t) {"
+     << nl.open << "_apply_to_selected(xdr::case_constructor);"
+     << nl.close << "}"
+     << nl << "~" << u.id << "() { _apply_to_selected(xdr::case_destroyer); }";
+
+  // Tag getter/setter
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
-     << u.tagid << "_; }";
+     << map_type(u.tagtype) << "(" << u.tagid << "_); }";
   os << nl << "void set_" << u.tagid << "(" << u.tagtype << " _t) {"
      << nl.open << "_apply_to_selected(xdr::case_destroyer);"
      << nl << u.tagid << "_ = _t;"
