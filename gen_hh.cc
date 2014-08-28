@@ -215,9 +215,11 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
   os << nl << "void set_" << u.tagid << "(" << u.tagtype << " _t) {"
+     << nl.open << "if (_t != " << u.tagid << "_) {"
      << nl.open << "_apply_to_selected(xdr::case_destroyer);"
      << nl << u.tagid << "_ = _t;"
      << nl << "_apply_to_selected(xdr::case_constructor);"
+     << nl.close << "}"
      << nl.close << "}" << endl;
 
   os << nl.close << "}";
