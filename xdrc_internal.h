@@ -51,18 +51,18 @@ struct rpc_enum {
   vec<rpc_const> tags;
 };
 
-struct rpc_utag {
-  rpc_decl tag;
-  string swval;
-  bool tagvalid;
+struct rpc_ufield {
+  vec<string> cases;
+  rpc_decl field;
+  bool hasdefault{false};
 };
 
 struct rpc_union {
   string id;
   string tagtype;
   string tagid;
+  vec<rpc_ufield> fields;
   bool hasdefault{false};
-  vec<rpc_utag> cases;
 };
 
 struct rpc_proc {

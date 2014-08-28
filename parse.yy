@@ -3,7 +3,8 @@
 #include "xdrc_internal.h"
 #define YYSTYPE YYSTYPE
 
-string xdr_unbounded = "xdr::XDR_MAX_LEN";
+  //string xdr_unbounded = "xdr::XDR_MAX_LEN";
+string xdr_unbounded = "";
 static int proc_compare(const void *, const void *);
 static int vers_compare(const void *, const void *);
 static string getnewid(string, bool repeats_bad);
@@ -112,8 +113,9 @@ def_union: T_UNION newid T_SWITCH '(' type T_ID ')' '{'
 	  s->sunion->id = $2;
 	  s->sunion->tagtype = $5;
 	  s->sunion->tagid = $6;
+	  s->sunion->fields.push_back();
 	}
-	union_taglist '}' ';'
+	union_fieldlist '}' ';'
 	;
 
 def_program: T_PROGRAM newid '{'
@@ -177,52 +179,54 @@ proc_decl: type_or_void newid '(' type_or_void ')' '=' number ';'
 	}
 	;
 
-union_taglist: union_tag | union_taglist union_tag
-	;
-
-union_tag: union_caselist union_decl
-	;
-
 union_caselist: union_case | union_caselist union_case
 	;
 
 union_case: T_CASE value ':'
 	{
-	  rpc_sym *s = &symlist.back ();
-	  rpc_utag *ut = &s->sunion->cases.push_back ();
-	  ut->tagvalid = false;
-	  ut->swval = $2;
+	  rpc_union &u = *symlist.back().sunion;
+	  rpc_ufield &uf = u.fields.back();
+	  uf.cases.push_back($2);
 	}
 	| T_DEFAULT ':'
 	{
-	  rpc_sym *s = &symlist.back ();
-	  if (s->sunion->hasdefault) {
+	  rpc_union &u = *symlist.back().sunion;
+	  rpc_ufield &uf = u.fields.back();
+	  if (u.hasdefault) {
 	    yyerror("duplicate default statement");
 	    YYERROR;
 	  }
-	  else
-	    s->sunion->hasdefault = true;
-	  rpc_utag *ut = &s->sunion->cases.push_back ();
-	  ut->tagvalid = false;
+	  uf.cases.push_back("");
+	  u.hasdefault = uf.hasdefault = true;
 	}
 	;
 
 union_decl: declaration
 	{
-	  rpc_sym *s = &symlist.back ();
-	  rpc_utag *ut = &s->sunion->cases.back ();
-	  ut->tagvalid = true;
-	  ut->tag = $1;
+	  rpc_union &u = *symlist.back().sunion;
+	  rpc_ufield &uf = u.fields.back();
+	  uf.field = $1;
 	}
 	| T_VOID ';'
 	{
-	  rpc_sym *s = &symlist.back ();
-	  rpc_utag *ut = &s->sunion->cases.back ();
-	  ut->tagvalid = true;
-	  ut->tag.type = "void";
-	  ut->tag.qual = rpc_decl::SCALAR;
+	  rpc_union &u = *symlist.back().sunion;
+	  rpc_decl &ud = u.fields.back().field;
+	  ud.type = "void";
+	  ud.qual = rpc_decl::SCALAR;
 	}
 	;
+
+union_field: union_caselist union_decl
+	;
+
+union_fieldlist: union_field
+        | union_fieldlist
+        {
+	  rpc_union &u = *symlist.back().sunion;
+	  u.fields.push_back();
+	}
+        union_field
+        ;
 
 struct_decllist: struct_decl | struct_decllist struct_decl
 	;

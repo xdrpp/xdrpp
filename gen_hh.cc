@@ -30,7 +30,12 @@ map_case(const string &s)
     return "case true:";
   if (s == "FALSE")
     return "case false:";
-  return string("case ") + s + ':';
+  if (s[0] == '-')
+    // Stuff should get implicitly converted to unsigned anyway, but
+    // this avoids clang++ warnings.
+    return string("case std::uint32_t(") + s + "):";
+  else
+    return string("case ") + s + ":";
 }
 
 namespace {
@@ -146,38 +151,39 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.open << "std::uint32_t " << u.tagid << "_;"
      << nl << "union {";
   ++nl;
-  for (rpc_utag t : u.cases)
-    if (t.tagvalid && t.tag.type != "void")
-      os << nl << decl_type(t.tag) << ' ' << t.tag.id << "_;";
+  for (rpc_ufield f : u.fields)
+    if (f.field.type != "void")
+      os << nl << decl_type(f.field) << ' ' << f.field.id << "_;";
   os << nl.close << "};" << endl;
 
   os << nl.outdent << "public:";
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
     " \"union discriminant must be 4 bytes\");";
+
   if (u.hasdefault)
     os << nl << "static constexpr bool _tag_is_valid("
-       << u.tagtype << ") { return true; }" << endl;
+       << u.tagtype << ") { return true; }";
   else {
     os << nl << "static bool _tag_is_valid(" << u.tagtype << " t) {";
     os << nl.open << pswitch(u, "t");
-    for (rpc_utag t : u.cases)
-      os << nl << map_case(t.swval);
+    for (rpc_ufield f : u.fields)
+      for (string name : f.cases)
+	os << nl << map_case(name);
     os << nl << "  return true;"
        << nl << "}"
        << nl << "return false;"
-       << nl.close << "}" << endl;
+       << nl.close << "}";
   }
 
-  os << nl << "const char *_name_of_selected() const {"
-     << nl.open << pswitch(u);
-  for (rpc_utag t : u.cases) {
-    os << nl << map_case(t.swval);
-    if (t.tagvalid) {
-      if (t.tag.id.empty())
-	os << nl << "  return nullptr;";
-      else
-	os << nl << "  return \"" << t.tag.id << "\";";
-    }
+  os << nl << "static const char *_name_of_field(std::uint32_t t) {"
+     << nl.open << "switch (t) {";
+  for (rpc_ufield f : u.fields) {
+    for (string c : f.cases)
+      os << nl << map_case(c);
+    if (f.field.type == "void")
+      os << nl << "  return nullptr;";
+    else
+      os << nl << "  return \"" << f.field.id << "\";";
   }
   os << nl << "}";
   if (!u.hasdefault)
@@ -190,14 +196,13 @@ gen(std::ostream &os, const rpc_union &u)
        << nl << "xdr::result_type_or_void<F> _apply_to_selected(F &_f) "
        << constkw << "{"
        << nl.open << pswitch(u);
-    for (rpc_utag t : u.cases) {
-      os << nl << map_case(t.swval);
-      if (t.tagvalid) {
-	if (t.tag.type == "void")
-	  os << nl << "  return _f();";
-	else
-	  os << nl << "  return _f(" << t.tag.id << "_);";
-      }
+    for (rpc_ufield f : u.fields) {
+      for (string c : f.cases)
+	os << nl << map_case(c);
+      if (f.field.type == "void")
+	os << nl << "  return _f();";
+      else
+	os << nl << "  return _f(" << f.field.id << "_);";
     }
     os << nl << "}"
        << nl.close << "}";
@@ -209,18 +214,55 @@ gen(std::ostream &os, const rpc_union &u)
      << map_type(u.tagtype) << "{}) : " << u.tagid << "_(_t) {"
      << nl.open << "_apply_to_selected(xdr::case_constructor);"
      << nl.close << "}"
-     << nl << "~" << u.id << "() { _apply_to_selected(xdr::case_destroyer); }";
+     << nl << "~" << u.id << "() { _apply_to_selected(xdr::case_destroyer); }"
+     << endl;
 
   // Tag getter/setter
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
   os << nl << "void set_" << u.tagid << "(" << u.tagtype << " _t) {"
-     << nl.open << "if (_t != " << u.tagid << "_) {"
+     << nl.open << "if (std::uint32_t(_t) != " << u.tagid << "_) {"
      << nl.open << "_apply_to_selected(xdr::case_destroyer);"
      << nl << u.tagid << "_ = _t;"
      << nl << "_apply_to_selected(xdr::case_constructor);"
      << nl.close << "}"
      << nl.close << "}" << endl;
+
+  // Field accessors
+  for (auto f = u.fields.cbegin(); f != u.fields.cend(); f++) {
+    if (f->field.type == "void")
+      continue;
+    os << nl << decl_type(f->field) << " *_" << f->field.id << "() {";
+    ++nl;
+    if (f->hasdefault) {
+      if (u.fields.size() == 1)
+	os << nl << "return &" << f->field.id << "_;";
+      else {
+	os << nl << pswitch(u);
+	for (auto ff = u.fields.cbegin(); ff != u.fields.cend(); ff++) {
+	  if (ff == f)
+	    continue;
+	  for (string c : ff->cases)
+	    os << nl << map_case(c);
+	}
+	os << nl << "  return nullptr;"
+	   << nl << "default:"
+	   << nl << "  return &" << f->field.id << "_;"
+	   << nl << "}";
+      }
+      os << nl.close << "}";
+    }
+    else {
+      os << nl << pswitch(u);
+      for (string c : f->cases)
+	os << nl << map_case(c);
+      os << nl << "  return &" << f->field.id << "_;"
+	 << nl << "default:"
+	 << nl << "  return nullptr;"
+	 << nl << "}";
+    }
+    os << nl.close << "}";
+  }
 
   os << nl.close << "}";
   if (!u.id.empty())
