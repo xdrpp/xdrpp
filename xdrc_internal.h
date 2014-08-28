@@ -1,6 +1,7 @@
 // -*-c++-*-
 
 #include <iosfwd>
+#include <functional>
 #include <vector>
 #include <set>
 #include <string>
@@ -161,3 +162,27 @@ void gen_hh(std::ostream &os);
 
 extern string input_file;
 extern string output_file;
+
+struct omanip : std::function<void(std::ostream&)> {
+  using ostream = std::ostream;
+  using fn_t = std::function<void(ostream&)>;
+  using fn_t::function;
+  template<typename T> omanip(T *t, void(T::*fn)(ostream &))
+    : fn_t([t,fn](ostream &os) { (t->*fn)(os); }) {}
+  friend ostream &operator<<(ostream &os, omanip &m) {
+    m(os);
+    return os;
+  }
+};
+
+struct indenter : omanip {
+  int level_{0};
+  void do_indent(ostream &os) { os << std::endl << std::string(level_, ' '); }
+  void do_open(ostream &os) { level_ += 2; do_indent(os); }
+  void do_close(ostream &os) { level_ -= 2; do_indent(os); }
+
+  indenter() : omanip(this, &indenter::do_indent) {}
+  omanip open = omanip(this, &indenter::do_open);
+  omanip close = omanip(this, &indenter::do_close);
+};
+
