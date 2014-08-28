@@ -238,7 +238,7 @@ declaration: type T_ID ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::SCALAR; }
 	| T_STRING T_ID ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "RPC_INFINITY";
+	   $$.bound = "XDR_INFINITY";
 	   yywarn ("strings require variable-length array declarations");
 	 }
 	| type '*' T_ID ';'
@@ -257,13 +257,13 @@ declaration: type T_ID ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC; $$.bound = $4; }
 	| type T_ID '<' '>' ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "RPC_INFINITY"; }
+	   $$.bound = "XDR_INFINITY"; }
 	| T_STRING T_ID '<' '>' ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "RPC_INFINITY"; }
+	   $$.bound = "XDR_INFINITY"; }
 	| T_OPAQUE T_ID '<' '>' ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
-	   $$.bound = "RPC_INFINITY"; }
+	   $$.bound = "XDR_INFINITY"; }
 	;
 
 type_or_void: type | T_VOID { $$ = "void"; }

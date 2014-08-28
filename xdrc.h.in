@@ -26,11 +26,13 @@ constexpr bool is_big_endian = true;
 constexpr bool is_big_endian = false;
 #endif // !WORDS_BIGENDIAN
 
+constexpr std::uint32_t XDR_INFINITY = 0xffffffff;
+
 //! A string with a maximum length (returned by xstring::max_size()).
 //! Note that this intentionally isn't bullet-proof, but if you don't
 //! upcast it to std::string, it tries to catch most overflow errors
 //! and throw std::out_of_range.
-template<std::uint32_t N = 0xffffffff> struct xstring : std::string {
+template<std::uint32_t N = XDR_INFINITY> struct xstring : std::string {
   using string = std::string;
 
   //! Return the maximum size allowed by the type.
