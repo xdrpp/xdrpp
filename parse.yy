@@ -21,9 +21,11 @@ static string getid(string);
 %token T_PROGRAM
 %token T_NAMESPACE
 
+%token T_BOOL
 %token T_UNSIGNED
 %token T_INT
 %token T_HYPER
+%token T_FLOAT
 %token T_DOUBLE
 %token T_QUADRUPLE
 %token T_VOID
@@ -278,8 +280,10 @@ base_type: T_UNSIGNED { $$ = "unsigned"; }
 	| T_UNSIGNED T_INT { $$ = "unsigned"; }
 	| T_HYPER { $$ = "hyper"; }
 	| T_UNSIGNED T_HYPER { $$ = "unsigned hyper"; }
+	| T_FLOAT { $$ = "float"; }
 	| T_DOUBLE { $$ = "double"; }
 	| T_QUADRUPLE { $$ = "quadruple"; }
+	| T_BOOL { $$ = "bool"; }
 	;
 
 value: id | T_NUM

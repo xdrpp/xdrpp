@@ -24,15 +24,18 @@ map_type(const string &s)
 string
 map_case(const string &s)
 {
+  if (s.empty())
+    return "default:";
   if (s == "TRUE")
-    return "true";
-  else if (s == "FALSE")
-    return "false";
-  else
-    return s;
+    return "case true:";
+  if (s == "FALSE")
+    return "case false:";
+  return string("case ") + s + ':';
 }
 
 namespace {
+
+indenter nl;
 
 string
 guard_token()
@@ -88,25 +91,65 @@ decl_type(const rpc_decl &d)
   }
 }
 
-void
-gen_union(std::ostream &os, const rpc_union &u)
+inline string
+id_space(const string &s)
 {
-  // XXX - need to translate int to std::int32_t, etc.
-  os << "class " << u.id << " {" << endl
-     << "  " << u.tagtype << ' ' << u.tagid << "_;" << endl
-     << "  union {" << endl;
-  for (rpc_utag t : u.cases)
-    if (t.tag.type != "void")
-      os << "    " << decl_type(t.tag) << ' ' << t.tag.id << "_;" << endl;
-  os << "  };" << endl << endl
-     << "  template<typename F> auto __apply_to_selected(F &f) {" << endl
-     << "    switch (" << u.id << ") {" << endl
-     << "    }" << endl
-     << "  }" << endl
-     << endl
-     << "public:" << endl;
+  return s.empty() ? s : s + ' ';
+}
 
-  os << "};" << endl;
+void
+gen(std::ostream &os, const rpc_struct &s)
+{
+  os << "struct " << id_space(s.id) << '{';
+  ++nl;
+  for(auto d : s.decls)
+    os << nl << decl_type(d) << ' ' << d.id << ';';
+  os << nl.close << "}";
+  if (!s.id.empty())
+    os << ';';
+}
+
+void
+gen(std::ostream &os, const rpc_enum &e)
+{
+  os << "enum " << id_space(e.id) << ": std::uint32_t {";
+  ++nl;
+  for (rpc_const c : e.tags)
+    if (c.val.empty())
+      os << nl << c.id << ',';
+    else
+      os << nl << c.id << " = " << c.val << ',';
+  os << nl.close << "}";
+  if (!e.id.empty())
+    os << ';';
+}
+
+void
+gen(std::ostream &os, const rpc_union &u)
+{
+  os << "class " << u.id << " {"
+     << nl.open << map_type(u.tagtype) << ' ' << u.tagid << "_;"
+     << nl << "union {";
+  ++nl;
+  for (rpc_utag t : u.cases)
+    if (t.tagvalid && t.tag.type != "void")
+      os << nl << decl_type(t.tag) << ' ' << t.tag.id << "_;";
+  os << nl.close << "};" << endl
+     << nl << "template<typename __F>"
+     << nl << "xdr::result_type_or_void<__F> __apply_to_selected(__F &__f) {"
+     << nl.open << "switch (" << u.tagid << "_) {";
+  for (rpc_utag t : u.cases) {
+    os << nl << map_case(t.swval);
+    if (t.tagvalid)
+      os << nl << "  return __f(\"" << t.tag.id << "\", " << t.tag.id << "_);";
+  }
+  os << nl << "}"
+     << nl.close << "}" << endl
+     << nl.close << "public:";
+  ++nl;
+  os << nl.close << "}";
+  if (!u.id.empty())
+    os << ';';
 }
 
 }
@@ -114,13 +157,13 @@ gen_union(std::ostream &os, const rpc_union &u)
 void
 gen_hh(std::ostream &os)
 {
-  os << "// -*-C++-*-" << endl
-     << "// Automatically generated from " << input_file << '.' << endl
-     << endl;
+  os << "// -*-C++-*-"
+     << nl << "// Automatically generated from " << input_file << '.' << endl;
 
   string gtok = guard_token();
-  os << "#ifndef " << gtok << endl
-     << "#define " << gtok << " 1" << endl;
+  os << nl << "#ifndef " << gtok
+     << nl << "#define " << gtok << " 1" << endl
+     << nl << "#include <xdrc.h>";
 
   int last_type = -1;
 
@@ -130,51 +173,44 @@ gen_hh(std::ostream &os)
     case rpc_sym::TYPEDEF:
     case rpc_sym::LITERAL:
       if (s.type != last_type)
+      // cascade
     default:
 	os << endl;
     }
+    os << nl;
     switch(s.type) {
     case rpc_sym::CONST:
       os << "constexpr std::uint32_t " << s.sconst->id << " = "
-	 << s.sconst->val << ';' << endl;
+	 << s.sconst->val << ';';
       break;
     case rpc_sym::STRUCT:
-      os << "struct " << s.sstruct->id << " {" << endl;
-      for(auto d : s.sstruct->decls)
-	os << "  " << decl_type(d) << ' ' << d.id << ';' << endl;
-      os << "};" << endl;
+      gen(os, *s.sstruct);
       break;
     case rpc_sym::UNION:
-      gen_union(os, *s.sunion);
+      gen(os, *s.sunion);
       break;
     case rpc_sym::ENUM:
-      os << "enum class " << s.senum->id << " : std::uint32_t {" << endl;
-      for (rpc_const c : s.senum->tags)
-	if (c.val.empty())
-	  os << "  " << c.id << ',' << endl;
-	else
-	  os << "  " << c.id << " = " << c.val << ',' << endl;
-      os << "};" << endl;
+      gen(os, *s.senum);
       break;
     case rpc_sym::TYPEDEF:
       os << "using " << s.stypedef->id << " = "
-	 << decl_type(*s.stypedef) << ';' << endl;
+	 << decl_type(*s.stypedef) << ';';
       break;
     case rpc_sym::PROGRAM:
       /* need some action */
       break;
     case rpc_sym::LITERAL:
-      os << *s.sliteral << endl;
+      os << *s.sliteral << nl;
       break;
     case rpc_sym::NAMESPACE:
       break;
     default:
-      std::cerr << "unknown type " << s.type << endl;
+      std::cerr << "unknown type " << s.type << nl;
       break;
     }
     last_type = s.type;
   }
 
-  os << endl << "#endif /* !" << gtok << " */" << endl;
+  os << endl << nl << "#endif /* !" << gtok << " */" << nl;
 }
 

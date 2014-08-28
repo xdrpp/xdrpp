@@ -45,9 +45,11 @@ typedef		return T_TYPEDEF;
 program		return T_PROGRAM;
 namespace       return T_NAMESPACE;
 
+bool		return T_BOOL;
 unsigned	return T_UNSIGNED;
 int		return T_INT;
 hyper		return T_HYPER;
+float		return T_FLOAT;
 double		return T_DOUBLE;
 quadruple	return T_QUADRUPLE;
 void		{ yylval.str = yytext; return T_VOID; }
@@ -60,17 +62,10 @@ default		return T_DEFAULT;
 opaque		{ yylval.str = yytext; return T_OPAQUE; }
 string		{ yylval.str = yytext; return T_STRING; }
 
-array		|
-bytes		|
-destroy		|
-free		|
-getpos		|
+char		|
+short		|
 inline		|
-pointer		|
-reference	|
-setpos		|
-sizeof		|
-vector		{ yyerror(msg_yytext("illegal use of reserved word")); }
+sizeof		{ yyerror(msg_yytext("illegal use of reserved word")); }
 
 {ID}		{ yylval.str = yytext; return T_ID; }
 [+-]?[0-9]+	|

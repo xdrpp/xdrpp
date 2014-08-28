@@ -184,5 +184,7 @@ struct indenter : omanip {
   indenter() : omanip(this, &indenter::do_indent) {}
   omanip open = omanip(this, &indenter::do_open);
   omanip close = omanip(this, &indenter::do_close);
+  void operator++() { level_ += 2; }
+  void operator--() { level_ -= 2; }
 };
 
