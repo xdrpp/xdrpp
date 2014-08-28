@@ -7,9 +7,12 @@
 #ifndef _XDRC_H_HEADER_INCLUDED_
 #define _XDRC_H_HEADER_INCLUDED_ 1
 
+#include <array>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace xdr {
 
@@ -88,17 +91,21 @@ struct _result_type_or_void_helper {
 template<typename T> using result_type_or_void =
   decltype(_result_type_or_void_helper::sfinae(static_cast<T*>(0)));
 
-struct case_constructor {
-  constexpr case_constructor() {}
-  template<typename T> void operator()(T &t) {
-    new (static_cast<void *>(std::addressof(t))) T;
+struct case_constructor_t {
+  constexpr case_constructor_t() {}
+  template<typename T> void operator()(T &t) const {
+    new (static_cast<void *>(std::addressof(t))) T{};
   }
+  void operator()() const {}
 };
+constexpr case_constructor_t case_constructor;
 
-struct case_destroyer {
-  constexpr case_destroyer() {}
-  template<typename T> void operator()(T &t) { t->~T(); }
+struct case_destroyer_t {
+  constexpr case_destroyer_t() {}
+  template<typename T> void operator()(T &t) const { t.~T(); }
+  void operator()() const {}
 };
+constexpr case_destroyer_t case_destroyer;
 
 }
 

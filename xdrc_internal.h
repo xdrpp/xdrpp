@@ -61,6 +61,7 @@ struct rpc_union {
   string id;
   string tagtype;
   string tagid;
+  bool hasdefault{false};
   vec<rpc_utag> cases;
 };
 

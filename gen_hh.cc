@@ -8,7 +8,7 @@ using std::endl;
 std::unordered_map<string, string> xdr_type_map = {
   {"unsigned", "std::uint32_t"},
   {"int", "std::int32_t"},
-  {"unsigned hyper", "std::uint62_t"},
+  {"unsigned hyper", "std::uint64_t"},
   {"hyper", "std::int64_t"},
 };
 
@@ -124,6 +124,20 @@ gen(std::ostream &os, const rpc_enum &e)
     os << ';';
 }
 
+string
+pswitch(const rpc_union &u, string id = string())
+{
+  if (id.empty())
+    id = u.tagid + '_';
+  string ret = "switch (";
+  if (u.tagtype == "bool")
+    ret += "std::uint32_t{" + id + "}";
+  else
+    ret += id;
+  ret += ") {";
+  return ret;
+}
+
 void
 gen(std::ostream &os, const rpc_union &u)
 {
@@ -136,9 +150,23 @@ gen(std::ostream &os, const rpc_union &u)
       os << nl << decl_type(t.tag) << ' ' << t.tag.id << "_;";
   os << nl.close << "};" << endl;
 
-  os << nl.outdent << "public:"
-     << nl << "const char *_name_of_selected() const {"
-     << nl.open << "switch (" << u.tagid << "_) {";
+  os << nl.outdent << "public:";
+  if (u.hasdefault)
+    os << nl << "static constexpr bool _tag_is_valid("
+       << u.tagtype << ") { return true; }" << endl;
+  else {
+    os << nl << "static bool _tag_is_valid(" << u.tagtype << " t) {";
+    os << nl.open << pswitch(u, "t");
+    for (rpc_utag t : u.cases)
+      os << nl << map_case(t.swval);
+    os << nl << "  return true;"
+       << nl << "}"
+       << nl << "return false;"
+       << nl.close << "}" << endl;
+  }
+
+  os << nl << "const char *_name_of_selected() const {"
+     << nl.open << pswitch(u);
   for (rpc_utag t : u.cases) {
     os << nl << map_case(t.swval);
     if (t.tagvalid) {
@@ -148,12 +176,14 @@ gen(std::ostream &os, const rpc_union &u)
 	os << nl << "  return \"" << t.tag.id << "\";";
     }
   }
-  os << nl << "}"
-     << nl.close << "}" << endl;
+  os << nl << "}";
+  if (!u.hasdefault)
+    os << nl << "return nullptr;";
+  os << nl.close << "}" << endl;
 
   os << nl << "template<typename F>"
      << nl << "xdr::result_type_or_void<F> _apply_to_selected(F &_f) {"
-     << nl.open << "switch (" << u.tagid << "_) {";
+     << nl.open << pswitch(u);
   for (rpc_utag t : u.cases) {
     os << nl << map_case(t.swval);
     if (t.tagvalid) {
@@ -169,9 +199,9 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << u.tagid << "_; }";
   os << nl << "void set_" << u.tagid << "(" << u.tagtype << " _t) {"
-     << nl.open << "_apply_to_selected(case_destroyer{});"
-     << nl << u.tagid << "_ = t;"
-     << nl << "_apply_to_selected(case_constructor{});"
+     << nl.open << "_apply_to_selected(xdr::case_destroyer);"
+     << nl << u.tagid << "_ = _t;"
+     << nl << "_apply_to_selected(xdr::case_constructor);"
      << nl.close << "}" << endl;
 
   os << nl.close << "}";

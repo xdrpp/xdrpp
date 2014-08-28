@@ -3,7 +3,7 @@
 #include "xdrc_internal.h"
 #define YYSTYPE YYSTYPE
 
-const string xdr_unbounded = "XDR_MAX_LEN";
+string xdr_unbounded = "xdr::XDR_MAX_LEN";
 static int proc_compare(const void *, const void *);
 static int vers_compare(const void *, const void *);
 static string getnewid(string, bool repeats_bad);
@@ -196,6 +196,12 @@ union_case: T_CASE value ':'
 	| T_DEFAULT ':'
 	{
 	  rpc_sym *s = &symlist.back ();
+	  if (s->sunion->hasdefault) {
+	    yyerror("duplicate default statement");
+	    YYERROR;
+	  }
+	  else
+	    s->sunion->hasdefault = true;
 	  rpc_utag *ut = &s->sunion->cases.push_back ();
 	  ut->tagvalid = false;
 	}
@@ -242,7 +248,7 @@ declaration: type T_ID ';'
 	| T_STRING T_ID ';'
 	 { $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
 	   $$.bound = xdr_unbounded;
-	   yywarn ("strings require variable-length array declarations");
+	   yywarn ("strings require variable-length array declarations (<>)");
 	 }
 	| type '*' T_ID ';'
 	 { $$.id = $3; $$.type = $1; $$.qual = rpc_decl::PTR; }
