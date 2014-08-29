@@ -22,20 +22,27 @@ map_type(const string &s)
 }
 
 string
+map_tag(const string &s)
+{
+  assert (!s.empty());
+  if (s == "TRUE")
+    return "true";
+  if (s == "FALSE")
+    return "false";
+  if (s[0] == '-')
+    // Stuff should get implicitly converted to unsigned anyway, but
+    // this avoids clang++ warnings.
+    return string("std::uint32_t(") + s + ")";
+  else
+    return s;
+}
+
+string
 map_case(const string &s)
 {
   if (s.empty())
     return "default:";
-  if (s == "TRUE")
-    return "case true:";
-  if (s == "FALSE")
-    return "case false:";
-  if (s[0] == '-')
-    // Stuff should get implicitly converted to unsigned anyway, but
-    // this avoids clang++ warnings.
-    return string("case std::uint32_t(") + s + "):";
-  else
-    return string("case ") + s + ":";
+  return "case " + map_tag(s) + ":";
 }
 
 namespace {
@@ -250,7 +257,13 @@ gen(std::ostream &os, const rpc_union &u)
 	   << nl << "  return &" << f->field.id << "_;"
 	   << nl << "}";
       }
-      os << nl.close << "}";
+    }
+    else if (f->cases.size() < 3) {
+      string t = u.tagid + "_";
+      os << nl << "return " << t << " == " << map_tag(f->cases[0]);
+      for (int i = 1; i < f->cases.size(); i++)
+	os << " || " << t << " == " << map_tag(f->cases[i]);
+      os << " ? &" << f->field.id << "_" << " : nullptr;";
     }
     else {
       os << nl << pswitch(u);
