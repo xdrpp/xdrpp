@@ -14,6 +14,27 @@
 
 namespace xdr {
 
+//! Generic class of XDR unmarshaling errors.
+struct xdr_runtime_error : std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
+//! Attempt to exceed the bounds of a variable-length array or string.
+struct xdr_overflow : xdr_runtime_error {
+  using xdr_runtime_error::xdr_runtime_error;
+};
+
+//! Attempt to set invalid value for a union discriminant.
+struct xdr_bad_value : xdr_runtime_error {
+  using xdr_runtime_error::xdr_runtime_error;
+};
+
+//! Attempt to access wrong field of a union.
+struct xdr_wrong_union : std::logic_error {
+  using std::logic_error::logic_error;
+};
+
+
 constexpr std::uint32_t XDR_MAX_LEN = 0xffffffff;
 
 //! A string with a maximum length (returned by xstring::max_size()).
@@ -32,7 +53,7 @@ template<std::uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   void validate() const {
     if (size() > max_size()) {
       const_cast<string *>(this)->clear();
-      throw std::out_of_range("xstring overflow");
+      throw xdr_overflow("xstring overflow");
     }
   }
 
