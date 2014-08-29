@@ -246,8 +246,7 @@ gen(std::ostream &os, const rpc_union &u)
     }
     else
       cases = f->cases;
-
-    if (f->cases.size() < 3) {
+    if (cases.size() < 3) {
       string t = u.tagid + "_";
       os << nl << "return " << t << " == " << map_tag(cases[0]);
       for (size_t i = 1; i < cases.size(); i++)
