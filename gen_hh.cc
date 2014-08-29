@@ -10,6 +10,7 @@ std::unordered_map<string, string> xdr_type_map = {
   {"int", "std::int32_t"},
   {"unsigned hyper", "std::uint64_t"},
   {"hyper", "std::int64_t"},
+  {"opaque", "std::uint8_t"},
 };
 
 string
@@ -80,16 +81,9 @@ string
 decl_type(const rpc_decl &d)
 {
   string type = map_type(d.type);
-  if (type == "string" || type == "opaque") {
-    switch (d.qual) {
-    case rpc_decl::ARRAY:
-      return string("std::array<char,") + d.bound + ">";
-    case rpc_decl::VEC:
-      return string("xdr::xstring<") + d.bound + ">";
-    default:
-      assert(!"Invalid size for opaque/string");
-    }
-  }
+
+  if (type == "string")
+    return string("xdr::xstring<") + d.bound + ">";
 
   switch (d.qual) {
   case rpc_decl::PTR:
@@ -97,7 +91,8 @@ decl_type(const rpc_decl &d)
   case rpc_decl::ARRAY:
     return string("std::array<") + type + "," + d.bound + ">";
   case rpc_decl::VEC:
-    return string("std::vector<") + type + ">";
+    return string("xdr::xvector<") + type +
+      (d.bound.empty() ? ">" : string(",") + d.bound + ">");
   default:
     return type;
   }
@@ -159,8 +154,8 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "union {";
   ++nl;
   for (rpc_ufield f : u.fields)
-    if (f.field.type != "void")
-      os << nl << decl_type(f.field) << ' ' << f.field.id << "_;";
+    if (f.decl.type != "void")
+      os << nl << decl_type(f.decl) << ' ' << f.decl.id << "_;";
   os << nl.close << "};" << endl;
 
   os << nl.outdent << "public:";
@@ -187,10 +182,10 @@ gen(std::ostream &os, const rpc_union &u)
   for (rpc_ufield f : u.fields) {
     for (string c : f.cases)
       os << nl << map_case(c);
-    if (f.field.type == "void")
+    if (f.decl.type == "void")
       os << nl << "  return nullptr;";
     else
-      os << nl << "  return \"" << f.field.id << "\";";
+      os << nl << "  return \"" << f.decl.id << "\";";
   }
   os << nl << "}";
   if (!u.hasdefault)
@@ -206,10 +201,10 @@ gen(std::ostream &os, const rpc_union &u)
     for (rpc_ufield f : u.fields) {
       for (string c : f.cases)
 	os << nl << map_case(c);
-      if (f.field.type == "void")
+      if (f.decl.type == "void")
 	os << nl << "  return _f();";
       else
-	os << nl << "  return _f(" << f.field.id << "_);";
+	os << nl << "  return _f(" << f.decl.id << "_);";
     }
     os << nl << "}"
        << nl.close << "}";
@@ -237,13 +232,13 @@ gen(std::ostream &os, const rpc_union &u)
 
   // Field accessors
   for (auto f = u.fields.cbegin(); f != u.fields.cend(); f++) {
-    if (f->field.type == "void")
+    if (f->decl.type == "void")
       continue;
-    os << nl << decl_type(f->field) << " *_" << f->field.id << "() {";
+    os << nl << decl_type(f->decl) << " *_" << f->decl.id << "() {";
     ++nl;
     if (f->hasdefault) {
       if (u.fields.size() == 1)
-	os << nl << "return &" << f->field.id << "_;";
+	os << nl << "return &" << f->decl.id << "_;";
       else {
 	os << nl << pswitch(u);
 	for (auto ff = u.fields.cbegin(); ff != u.fields.cend(); ff++) {
@@ -254,7 +249,7 @@ gen(std::ostream &os, const rpc_union &u)
 	}
 	os << nl << "  return nullptr;"
 	   << nl << "default:"
-	   << nl << "  return &" << f->field.id << "_;"
+	   << nl << "  return &" << f->decl.id << "_;"
 	   << nl << "}";
       }
     }
@@ -263,13 +258,13 @@ gen(std::ostream &os, const rpc_union &u)
       os << nl << "return " << t << " == " << map_tag(f->cases[0]);
       for (size_t i = 1; i < f->cases.size(); i++)
 	os << " || " << t << " == " << map_tag(f->cases[i]);
-      os << " ? &" << f->field.id << "_" << " : nullptr;";
+      os << " ? &" << f->decl.id << "_" << " : nullptr;";
     }
     else {
       os << nl << pswitch(u);
       for (string c : f->cases)
 	os << nl << map_case(c);
-      os << nl << "  return &" << f->field.id << "_;"
+      os << nl << "  return &" << f->decl.id << "_;"
 	 << nl << "default:"
 	 << nl << "  return nullptr;"
 	 << nl << "}";

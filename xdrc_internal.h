@@ -53,7 +53,7 @@ struct rpc_enum {
 
 struct rpc_ufield {
   vec<string> cases;
-  rpc_decl field;
+  rpc_decl decl;
   bool hasdefault{false};
 };
 

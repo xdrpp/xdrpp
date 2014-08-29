@@ -12,7 +12,7 @@
 /config.status
 /configure
 /depcomp
-/includes/xdrc/endian.h
+/include/xdrc/endian.h
 /install-sh
 /missing
 /parse.cc

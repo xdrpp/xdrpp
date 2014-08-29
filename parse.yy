@@ -205,12 +205,12 @@ union_decl: declaration
 	{
 	  rpc_union &u = *symlist.back().sunion;
 	  rpc_ufield &uf = u.fields.back();
-	  uf.field = $1;
+	  uf.decl = $1;
 	}
 	| T_VOID ';'
 	{
 	  rpc_union &u = *symlist.back().sunion;
-	  rpc_decl &ud = u.fields.back().field;
+	  rpc_decl &ud = u.fields.back().decl;
 	  ud.type = "void";
 	  ud.qual = rpc_decl::SCALAR;
 	}

@@ -37,25 +37,48 @@ struct xdr_wrong_union : std::logic_error {
 
 constexpr std::uint32_t XDR_MAX_LEN = 0xffffffff;
 
+//! A vector with a maximum size (returned by xvector::max_size()).
+//! Note that you can exceed the size, but an error will happen when
+//! marshaling or unmarshaling the data structure.
+template<typename T, std::uint32_t N = XDR_MAX_LEN>
+struct xvector : std::vector<T> {
+  using vector = std::vector<T>;
+
+  using vector::vector;
+
+  //! Return the maximum size allowed by the type.
+  static constexpr std::uint32_t max_size() { return N; }
+
+  //! Check whether a size is in bounds
+  static void check_size(size_t n) {
+    if (n > max_size())
+      throw xdr_overflow("xvector overflow");
+  }
+};
+
+//! Variable-length opaque data is just a vector of std::uint32_t.
+template<std::uint32_t N = XDR_MAX_LEN> using opaque = xvector<std::uint8_t, N>;
+
 //! A string with a maximum length (returned by xstring::max_size()).
-//! Note that this intentionally isn't bullet-proof, but if you don't
-//! upcast it to std::string it tries to catch most overflow errors
-//! and throw std::out_of_range.
-template<std::uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
+//! Note that you can exceed the size, but an error will happen when
+//! marshaling or unmarshaling the data structure.
+template<std::uint32_t N = XDR_MAX_LEN>
+struct xstring : std::string {
   using string = std::string;
 
   //! Return the maximum size allowed by the type.
   static constexpr std::uint32_t max_size() { return N; }
 
+  //! Check whether a size is in bounds
+  static void check_size(size_t n) {
+    if (n > max_size())
+      throw xdr_overflow("xvector overflow");
+  }
+
   //! Check that the string length is not greater than the maximum
   //! size.  \throws std::out_of_range and clears the contents of the
   //! string if it is too long.
-  void validate() const {
-    if (size() > max_size()) {
-      const_cast<xstring<N> *>(this)->clear();
-      throw xdr_overflow("xstring overflow");
-    }
-  }
+  void validate() const { check_size(size()); }
 
   xstring() = default;
   xstring(const xstring &) = default;
