@@ -222,7 +222,7 @@ gen(std::ostream &os, const rpc_union &u)
   // Tag getter/setter
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
-  os << nl << "void set_" << u.tagid << "(" << u.tagtype << " _t) {"
+  os << nl << "void " << u.tagid << "(" << u.tagtype << " _t) {"
      << nl.open << "if (std::uint32_t(_t) != " << u.tagid << "_) {"
      << nl.open << "_apply_to_selected(xdr::case_destroyer);"
      << nl << u.tagid << "_ = _t;"
@@ -236,37 +236,31 @@ gen(std::ostream &os, const rpc_union &u)
       continue;
     os << nl << decl_type(f->decl) << " *_" << f->decl.id << "() {";
     ++nl;
+    vec<string> cases;
+    string match{string("&") + f->decl.id + "_"}, nomatch{"nullptr"};
     if (f->hasdefault) {
-      if (u.fields.size() == 1)
-	os << nl << "return &" << f->decl.id << "_;";
-      else {
-	os << nl << pswitch(u);
-	for (auto ff = u.fields.cbegin(); ff != u.fields.cend(); ff++) {
-	  if (ff == f)
-	    continue;
-	  for (string c : ff->cases)
-	    os << nl << map_case(c);
-	}
-	os << nl << "  return nullptr;"
-	   << nl << "default:"
-	   << nl << "  return &" << f->decl.id << "_;"
-	   << nl << "}";
-      }
+      std::swap(match, nomatch);
+      for (auto ff = u.fields.cbegin(); ff != u.fields.cend(); ff++)
+	if (ff != f)
+	  cases.insert(cases.end(), ff->cases.cbegin(), ff->cases.cend());
     }
-    else if (f->cases.size() < 3) {
+    else
+      cases = f->cases;
+
+    if (f->cases.size() < 3) {
       string t = u.tagid + "_";
-      os << nl << "return " << t << " == " << map_tag(f->cases[0]);
-      for (size_t i = 1; i < f->cases.size(); i++)
-	os << " || " << t << " == " << map_tag(f->cases[i]);
-      os << " ? &" << f->decl.id << "_" << " : nullptr;";
+      os << nl << "return " << t << " == " << map_tag(cases[0]);
+      for (size_t i = 1; i < cases.size(); i++)
+	os << " || " << t << " == " << map_tag(cases[i]);
+      os << " ? " << match << " : " << nomatch << ';';
     }
     else {
       os << nl << pswitch(u);
-      for (string c : f->cases)
+      for (string c : cases)
 	os << nl << map_case(c);
-      os << nl << "  return &" << f->decl.id << "_;"
+      os << nl << "  return " << match << ';'
 	 << nl << "default:"
-	 << nl << "  return nullptr;"
+	 << nl << "  return " << nomatch << ';'
 	 << nl << "}";
     }
     os << nl.close << "}";
