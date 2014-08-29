@@ -1,6 +1,4 @@
 // -*- C++ -*-
-// Warning: Make sure to edit xdrc.h.in, not xdrc.h.
-# 4 "xdrc.h.in"
 
 /** \file xdrc.h Type definitions for xdrc compiler output. */
 
@@ -15,19 +13,6 @@
 #include <vector>
 
 namespace xdr {
-
-#ifndef WORDS_BIGENDIAN
-//! Default value set on build machine, but can be overridden (by
-//! defining WORDS_BIGENDIAN to 0 or 1) in case of cross-compilation.
-#define WORDS_BIGENDIAN @IS_BIG_ENDIAN@
-#endif // !WORDS_BIGENDIAN
-
-//! True on big endian machines, false on little endian machines.
-#if WORDS_BIGENDIAN
-constexpr bool is_big_endian = true;
-#else // !WORDS_BIGENDIAN
-constexpr bool is_big_endian = false;
-#endif // !WORDS_BIGENDIAN
 
 constexpr std::uint32_t XDR_MAX_LEN = 0xffffffff;
 
@@ -110,3 +95,4 @@ constexpr case_destroyer_t case_destroyer;
 }
 
 #endif // !_XDRC_H_HEADER_INCLUDED_
+

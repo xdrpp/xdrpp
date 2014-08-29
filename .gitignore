@@ -19,5 +19,5 @@
 /scan.cc
 /stamp-*
 /xdrc
-/xdrc.h
+/xdrc_endian.h
 /ylwrap

@@ -1,0 +1,26 @@
+// -*- C++ -*-
+// Warning: Make sure to edit xdrc_endian.h.in, not xdrc_endian.h.
+
+/** \file xdrc_endian.h Endianness of build machine. */
+
+#ifndef _XDRC_ENDIAN_H_HEADER_INCLUDED_
+#define _XDRC_ENDIAN_H_HEADER_INCLUDED_ 1
+
+namespace xdr {
+
+#ifndef WORDS_BIGENDIAN
+//! Default value set on build machine, but can be overridden (by
+//! defining WORDS_BIGENDIAN to 0 or 1) in case of cross-compilation.
+#define WORDS_BIGENDIAN @IS_BIG_ENDIAN@
+#endif // !WORDS_BIGENDIAN
+
+//! True on big endian machines, false on little endian machines.
+#if WORDS_BIGENDIAN
+constexpr bool is_big_endian = true;
+#else // !WORDS_BIGENDIAN
+constexpr bool is_big_endian = false;
+#endif // !WORDS_BIGENDIAN
+
+}
+
+#endif // !_XDRC_ENDIAN_H_HEADER_INCLUDED_
