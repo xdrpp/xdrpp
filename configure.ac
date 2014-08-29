@@ -32,6 +32,6 @@ AC_C_BIGENDIAN(IS_BIG_ENDIAN=1, IS_BIG_ENDIAN=0)
 AC_SUBST(IS_BIG_ENDIAN)
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile xdrc_endian.h])
+AC_CONFIG_FILES([Makefile include/xdrc/endian.h])
 AC_OUTPUT
 

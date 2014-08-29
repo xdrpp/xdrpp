@@ -12,6 +12,7 @@
 /config.status
 /configure
 /depcomp
+/includes/xdrc/endian.h
 /install-sh
 /missing
 /parse.cc
@@ -19,5 +20,4 @@
 /scan.cc
 /stamp-*
 /xdrc
-/xdrc_endian.h
 /ylwrap

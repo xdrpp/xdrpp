@@ -52,7 +52,7 @@ template<std::uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   //! string if it is too long.
   void validate() const {
     if (size() > max_size()) {
-      const_cast<string *>(this)->clear();
+      const_cast<xstring<N> *>(this)->clear();
       throw xdr_overflow("xstring overflow");
     }
   }
