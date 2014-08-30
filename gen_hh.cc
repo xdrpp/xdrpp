@@ -211,7 +211,7 @@ gen(std::ostream &os, const rpc_union &u)
     if (uf.decl.type != "void")
       os << nl << "  \"" << uf.decl.id << "\",";
   os << nl << "};";
-  
+
   // _field_number
   os << nl
      << "static constexpr int _field_number(std::uint32_t _which) {";
@@ -223,6 +223,25 @@ gen(std::ostream &os, const rpc_union &u)
 	return to_string(-1);
     });
   os << nl << "}";
+
+  // _apply_to_field_pointer
+  os << nl << "template<typename F> static void"
+     << nl << "_apply_to_field_pointer(F &f, std::uint32_t _which) {"
+     << nl.open << pswitch(u, "_which");
+  for (rpc_ufield f : u.fields) {
+    for (string c : f.cases)
+      os << nl << map_case(c);
+    if (f.decl.type == "void")
+      os << nl << "  f(nullptr);";
+    else
+      os << nl << "  f(&" << u.id << "::" << f.decl.id << "_);";
+    os << nl << "break;";
+  }
+  os << nl << "}";
+  if (!u.hasdefault)
+    os << nl << "f(nullptr);";
+  os << nl.close << "}"
+     << endl;
 
   if (u.hasdefault)
     os << nl << "static constexpr bool _tag_is_valid("
