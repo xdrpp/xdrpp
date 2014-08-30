@@ -107,6 +107,10 @@ struct xstring : std::string {
   ASSIGN_LIKE(replace)
   ASSIGN_LIKE(swap)
 #undef ASSIGN_LIKE
+
+  template<typename Archive> void serialize(Archive &archive) {
+    archive(static_cast<string &>(*this));
+  }
 };
 
 
@@ -167,6 +171,16 @@ struct case_assign_from {
   }
 };
 
+
+#ifdef CEREAL_NVP
+using cereal::make_nvp;
+#else // !CEREAL_NVP
+template<typename T> inline T&&
+make_nvp(const char *, T &&t)
+{
+  return std::forward<T>(t);
+}
+#endif // !CEREAL_NVP
 
 }
 

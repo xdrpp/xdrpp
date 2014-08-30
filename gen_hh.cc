@@ -103,6 +103,26 @@ gen(std::ostream &os, const rpc_struct &s)
   ++nl;
   for(auto d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << ';';
+  os << endl;
+
+  for (string decl :
+    { "template<class _Archive> void save (_Archive &_archive) const {",
+	"template<class _Archive> void load (_Archive &_archive) {" } ) {
+    os << nl << decl
+       << nl.open << "using namespace xdr;"
+       << nl << "_archive(";
+    bool first = true;
+    for (const auto &d : s.decls) {
+      if (first)
+	first = false;
+      else
+	os << "," << nl << "         ";
+      os << "make_nvp(\"" << d.id << "\", " << d.id << ")";
+    }
+    os << ");"
+       << nl.close << "}";
+  }
+  
   os << nl.close << "}";
   if (!s.id.empty())
     os << ';';
