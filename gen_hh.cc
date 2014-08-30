@@ -240,6 +240,8 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl.close << "}"
      << endl;
 
+#if 0
+  // _tag_is_valid
   if (u.hasdefault)
     os << nl << "static constexpr bool _tag_is_valid("
        << u.tagtype << ") { return true; }";
@@ -247,6 +249,7 @@ gen(std::ostream &os, const rpc_union &u)
     os << nl << "static bool _tag_is_valid(" << u.tagtype
        << " t) { return _field_number(t) >= 0; }"
        << endl;
+#endif
 
   // Default constructor
   os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
@@ -281,6 +284,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "}"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
+     << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "xdr::case_construct_from _dest{this};"
      << nl << "_on_field_ptr(_dest, _source, " << u.tagid << "_);"
      << nl.close << "}"
@@ -295,6 +299,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "}"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
+     << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "xdr::case_construct_from _dest{this};"
      << nl << "_on_field_ptr(_dest, std::move(_source), " << u.tagid << "_);"
      << nl.close << "}"
@@ -318,6 +323,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.close << "}"
      << nl.close << "}" << endl;
 
+#if 0
   // Field accessors
   for (auto f = u.fields.cbegin(); f != u.fields.cend(); f++) {
     if (f->decl.type == "void")
@@ -351,6 +357,20 @@ gen(std::ostream &os, const rpc_union &u)
 	 << nl << "}";
     }
     os << nl.close << "}";
+  }
+#endif
+  for (const auto &f : u.fields) {
+    if (f.decl.type == "void")
+      continue;
+    for (string cnst : {"", "const "})
+      os << nl << cnst << decl_type(f.decl) << " &" << f.decl.id
+	 << "() " << cnst << "{"
+	 << nl.open << "if (_field_number(" << u.tagid << "_) == "
+	 << f.fieldno << ")"
+	 << nl << "  return " << f.decl.id << "_;"
+	 << nl << "throw xdr::xdr_wrong_union(\""
+	 << u.id << ": " << f.decl.id << " accessed when not selected\");"
+	 << nl.close << "}";
   }
 
   os << nl.close << "}";
