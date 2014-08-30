@@ -18,6 +18,26 @@ std::set<string> ids;
 string input_file;
 string output_file;
 
+string
+strip_directory(string in)
+{
+  size_t r = in.rfind('/');
+  if (r != string::npos)
+    return input_file.substr(r+1);
+  return in ;
+}
+
+string
+strip_dot_x(string in)
+{
+  size_t r = in.size();
+  if (r < 2)
+    return in;
+  if (in.substr(r-2) == ".x")
+    return in.substr(0,r-2);
+  return in;
+}
+
 rpc_program *
 get_prog(bool creat)
 {
@@ -132,7 +152,14 @@ main(int argc, char **argv)
   if (pclose(yyin))
     exit(1);
 
-  if (output_file.empty())
+  if (output_file.empty()) {
+    output_file = strip_dot_x(input_file);
+    if (output_file == input_file)
+      usage();
+    output_file = strip_directory(output_file) + ".hh";
+  }
+
+  if (output_file == "-")
     gen(cout);
   else {
     std::ofstream out(output_file);

@@ -54,18 +54,10 @@ string
 guard_token()
 {
   string in;
-  if (!output_file.empty())
+  if (!output_file.empty() && output_file != "-")
     in = output_file;
-  else {
-    size_t r = input_file.rfind('/');
-    if (r != string::npos)
-      in = input_file.substr(r+1);
-    else
-      in = input_file;
-    r = in.size();
-    if (r >= 2 && in.substr(r-2) == ".x")
-      in.back() = 'h';
-  }
+  else
+    in = strip_directory(strip_dot_x(input_file)) + ".h";
 
   string ret = "__XDR_";
   for (char c : in)
@@ -379,6 +371,6 @@ gen_hh(std::ostream &os)
     last_type = s.type;
   }
 
-  os << endl << nl << "#endif /* !" << gtok << " */" << nl;
+  os << endl << nl << "#endif // !" << gtok << nl;
 }
 

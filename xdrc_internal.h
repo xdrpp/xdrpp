@@ -161,6 +161,8 @@ using strlist_t = vec<string>;
 extern strlist_t litq;
 
 rpc_program *get_prog (bool creat);
+string strip_directory(string in);
+string strip_dot_x(string in);
 void gen_hh(std::ostream &os);
 
 extern string input_file;
