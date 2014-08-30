@@ -204,8 +204,15 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
     " \"union discriminant must be 4 bytes\");";
 
-  os << endl;
-
+  // _field_names
+  os << nl << "static constexpr const char *_field_names[] = {"
+     << nl << "  nullptr,";
+  for (const rpc_ufield &uf : u.fields)
+    if (uf.decl.type != "void")
+      os << nl << "  \"" << uf.decl.id << "\",";
+  os << nl << "};";
+  
+  // _field_number
   os << nl
      << "static constexpr int _field_number(std::uint32_t _which) {";
   union_function(os, u, "_which", [](const rpc_ufield *uf) {
@@ -216,42 +223,14 @@ gen(std::ostream &os, const rpc_union &u)
 	return to_string(-1);
     });
   os << nl << "}";
-  os << nl << "static constexpr const char *_field_names[] = {"
-     << nl << "  nullptr,";
-  for (const rpc_ufield &uf : u.fields)
-    if (uf.decl.type != "void")
-      os << nl << "  \"" << uf.decl.id << "\",";
-  os << nl << "};" << endl;
-  
+
   if (u.hasdefault)
     os << nl << "static constexpr bool _tag_is_valid("
        << u.tagtype << ") { return true; }";
-  else {
-    os << nl << "static bool _tag_is_valid(" << u.tagtype << " t) {";
-    os << nl.open << pswitch(u, "t");
-    for (rpc_ufield f : u.fields)
-      for (string name : f.cases)
-	os << nl << map_case(name);
-    os << nl << "  return true;"
-       << nl << "}"
-       << nl << "return false;"
-       << nl.close << "}";
-  }
-
-  os << nl << "static const char *_name_of_field(std::uint32_t t) {"
-     << nl.open << "switch (t) {";
-  for (rpc_ufield f : u.fields) {
-    for (string c : f.cases)
-      os << nl << map_case(c);
-    if (f.decl.type == "void")
-      os << nl << "  return nullptr;";
-    else
-      os << nl << "  return \"" << f.decl.id << "\";";
-  }
-  os << nl << "}";
-  if (!u.hasdefault)
-    os << nl << "return nullptr;";
-  os << nl.close << "}" << endl;
+  else
+    os << nl << "static bool _tag_is_valid(" << u.tagtype
+       << " t) { return _field_number(t) >= 0; }"
+       << endl;
 
   // _apply_to_selected
   for (auto constkw : {"", "const "}) {
