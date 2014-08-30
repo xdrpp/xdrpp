@@ -235,7 +235,7 @@ gen(std::ostream &os, const rpc_union &u)
       os << nl << "  f(nullptr);";
     else
       os << nl << "  f(&" << u.id << "::" << f.decl.id << "_);";
-    os << nl << "break;";
+    os << nl << "  break;";
   }
   os << nl << "}";
   if (!u.hasdefault)
