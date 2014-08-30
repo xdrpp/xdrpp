@@ -232,14 +232,14 @@ gen(std::ostream &os, const rpc_union &u)
     for (string c : f.cases)
       os << nl << map_case(c);
     if (f.decl.type == "void")
-      os << nl << "  f(nullptr);";
+      os << nl << "  f();";
     else
       os << nl << "  f(&" << u.id << "::" << f.decl.id << "_);";
     os << nl << "  break;";
   }
   os << nl << "}";
   if (!u.hasdefault)
-    os << nl << "f(nullptr);";
+    os << nl << "f();";
   os << nl.close << "}"
      << endl;
 
