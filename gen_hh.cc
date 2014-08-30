@@ -220,9 +220,9 @@ gen(std::ostream &os, const rpc_union &u)
     });
   os << nl << "}";
 
-  // _apply_to_field_pointer
+  // _on_field_ptr
   os << nl << "template<typename F, typename T> static void"
-     << nl << "_apply_to_field_pointer(F &f, T &&t, std::uint32_t _which) {"
+     << nl << "_on_field_ptr(F &f, T &&t, std::uint32_t _which) {"
      << nl.open << pswitch(u, "_which");
   for (rpc_ufield f : u.fields) {
     for (string c : f.cases)
@@ -248,16 +248,62 @@ gen(std::ostream &os, const rpc_union &u)
        << " t) { return _field_number(t) >= 0; }"
        << endl;
 
-  // Constructor/destructor
+  // Default constructor
   os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
      << map_type(u.tagtype) << "{}) : " << u.tagid << "_(_t) {"
-     << nl.open << "_apply_to_field_pointer(xdr::case_constructor, this, "
+     << nl.open << "_on_field_ptr(xdr::case_constructor, this, "
      << u.tagid << "_);"
+     << nl.close << "}";
+
+  // Copy/move constructor
+  os << nl << u.id << "(const " << u.id << " &_source) : "
+     << u.tagid << "_(_source." << u.tagid << "_) {"
+     << nl.open << "xdr::case_construct_from _dest{this};"
+     << nl << "_on_field_ptr(_dest, _source, " << u.tagid << "_);"
+     << nl.close << "}";
+  os << nl << u.id << "(" << u.id << " &&_source) : "
+     << u.tagid << "_(_source." << u.tagid << "_) {"
+     << nl.open << "xdr::case_construct_from _dest{this};"
+     << nl << "_on_field_ptr(_dest, std::move(_source), " << u.tagid << "_);"
+     << nl.close << "}";
+
+  // Destructor
+  os << nl << "~" << u.id
+     << "() { _on_field_ptr(xdr::case_destroyer, this, "
+     << u.tagid << "_); }";
+
+  // Assignment
+  os << nl << u.id << " &operator=(const " << u.id << " &_source) {"
+     << nl.open << "if (_field_number(" << u.tagid
+     << "_) == _field_number(_source." << u.tagid << "_)) {"
+     << nl << "  xdr::case_assign_from _dest{this};"
+     << nl << "  _on_field_ptr(_dest, _source, " << u.tagid << "_);"
+     << nl << "}"
+     << nl << "else {"
+     << nl.open << "this->~" << u.id << "();"
+     << nl << "xdr::case_construct_from _dest{this};"
+     << nl << "_on_field_ptr(_dest, _source, " << u.tagid << "_);"
      << nl.close << "}"
-     << nl << "~" << u.id
-     << "() { _apply_to_field_pointer(xdr::case_destroyer, this, "
-     << u.tagid << "_); }"
-     << endl;
+     << nl << u.tagid << "_ = _source." << u.tagid << "_;"
+     << nl << "return *this;"
+     << nl.close << "}";
+  os << nl << u.id << " &operator=(" << u.id << " &&_source) {"
+     << nl.open << "if (_field_number(" << u.tagid
+     << "_) == _field_number(_source." << u.tagid << "_)) {"
+     << nl << "  xdr::case_assign_from _dest{this};"
+     << nl << "  _on_field_ptr(_dest, std::move(_source), " << u.tagid << "_);"
+     << nl << "}"
+     << nl << "else {"
+     << nl.open << "this->~" << u.id << "();"
+     << nl << "xdr::case_construct_from _dest{this};"
+     << nl << "_on_field_ptr(_dest, std::move(_source), " << u.tagid << "_);"
+     << nl.close << "}"
+     << nl << u.tagid << "_ = _source." << u.tagid << "_;"
+     << nl << "return *this;"
+     << nl.close << "}";
+
+
+  os << endl;
 
   // Tag getter/setter
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
@@ -267,7 +313,7 @@ gen(std::ostream &os, const rpc_union &u)
      << u.tagid << "_)) {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = _t;"
-     << nl << "_apply_to_field_pointer(xdr::case_constructor, this, "
+     << nl << "_on_field_ptr(xdr::case_constructor, this, "
      << u.tagid << "_);"
      << nl.close << "}"
      << nl.close << "}" << endl;

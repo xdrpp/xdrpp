@@ -141,6 +141,33 @@ struct case_destroyer_t {
 };
 constexpr case_destroyer_t case_destroyer;
 
+struct case_construct_from {
+  void *dest_;
+  constexpr case_construct_from(void *dest) : dest_(dest) {}
+  void operator()() const {}
+  template<typename T> void operator()(T &&) const {}
+  template<typename T, typename F> void operator()(const T &t, F T::*f) const {
+    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F{t.*f};
+  }
+  template<typename T, typename F> void operator()(T &&t, F T::*f) const {
+    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F{std::move(t.*f)};
+  }
+};
+
+struct case_assign_from {
+  void *dest_;
+  constexpr case_assign_from(void *dest) : dest_(dest) {}
+  void operator()() const {}
+  template<typename T> void operator()(T &&) const {}
+  template<typename T, typename F> void operator()(const T &t, F T::*f) const {
+    static_cast<T*>(dest_)->*f = t.*f;
+  }
+  template<typename T, typename F> void operator()(T &&t, F T::*f) const {
+    static_cast<T*>(dest_)->*f = std::move(t.*f);
+  }
+};
+
+
 }
 
 #endif // !_XDRC_H_HEADER_INCLUDED_
