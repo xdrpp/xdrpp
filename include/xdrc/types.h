@@ -107,12 +107,23 @@ struct xstring : std::string {
   ASSIGN_LIKE(replace)
   ASSIGN_LIKE(swap)
 #undef ASSIGN_LIKE
-
-  template<typename Archive> void serialize(Archive &archive) {
-    archive(static_cast<string &>(*this));
-  }
 };
 
+template<typename Archive, uint32_t N> inline void
+save(Archive &ar, const xstring<N> &s)
+{
+  s.validate();
+  save(ar, static_cast<std::string &>(s));
+}
+template<typename Archive, uint32_t N> inline void
+load(Archive &ar, xstring<N> &s)
+{
+  cereal::size_type size;
+  ar(cereal::make_size_tag(size));
+  s.check_size(size);
+  s.resize(static_cast<std::size_t>(size));
+  ar(cereal::binary_data(&s[0], size));
+}
 
 struct _result_type_or_void_helper {
   template<typename T> static typename T::result_type sfinae(T *);
