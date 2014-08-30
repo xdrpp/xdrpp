@@ -120,19 +120,24 @@ struct _result_type_or_void_helper {
 template<typename T> using result_type_or_void =
   decltype(_result_type_or_void_helper::sfinae(static_cast<T*>(0)));
 
+
 struct case_constructor_t {
   constexpr case_constructor_t() {}
-  template<typename T> void operator()(T &t) const {
-    new (static_cast<void *>(std::addressof(t))) T{};
-  }
   void operator()() const {}
+  template<typename T> void operator()(T *) const {}
+  template<typename T, typename F> void operator()(T *t, F T::*f) const {
+    new (static_cast<void *>(std::addressof(t->*f))) F{};
+  }
 };
 constexpr case_constructor_t case_constructor;
 
 struct case_destroyer_t {
   constexpr case_destroyer_t() {}
-  template<typename T> void operator()(T &t) const { t.~T(); }
   void operator()() const {}
+  template<typename T> void operator()(T *) const {}
+  template<typename T, typename F> void operator()(T *t, F T::*f) const {
+    (t->*f).~F();
+  }
 };
 constexpr case_destroyer_t case_destroyer;
 

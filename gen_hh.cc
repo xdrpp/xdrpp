@@ -204,6 +204,10 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
     " \"union discriminant must be 4 bytes\");";
 
+  // _discriminant
+  os << nl << "std::uint32_t _discriminant() const { return "
+     << u.tagid << "_; }";
+
   // _field_names
   os << nl << "static constexpr const char *_field_names[] = {"
      << nl << "  nullptr,";
@@ -225,16 +229,17 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "}";
 
   // _apply_to_field_pointer
-  os << nl << "template<typename F> static void"
-     << nl << "_apply_to_field_pointer(F &f, std::uint32_t _which) {"
+  os << nl << "template<typename F, typename T> static void"
+     << nl << "_apply_to_field_pointer(F &f, T &&t, std::uint32_t _which) {"
      << nl.open << pswitch(u, "_which");
   for (rpc_ufield f : u.fields) {
     for (string c : f.cases)
       os << nl << map_case(c);
     if (f.decl.type == "void")
-      os << nl << "  f();";
+      os << nl << "  f(std::forward<T>(t));";
     else
-      os << nl << "  f(&" << u.id << "::" << f.decl.id << "_);";
+      os << nl << "  f(std::forward<T>(t), &"
+	 << u.id << "::" << f.decl.id << "_);";
     os << nl << "  break;";
   }
   os << nl << "}";
@@ -251,41 +256,27 @@ gen(std::ostream &os, const rpc_union &u)
        << " t) { return _field_number(t) >= 0; }"
        << endl;
 
-  // _apply_to_selected
-  for (auto constkw : {"", "const "}) {
-    os << nl << "template<typename F>"
-       << nl << "xdr::result_type_or_void<F> _apply_to_selected(F &_f) "
-       << constkw << "{"
-       << nl.open << pswitch(u);
-    for (rpc_ufield f : u.fields) {
-      for (string c : f.cases)
-	os << nl << map_case(c);
-      if (f.decl.type == "void")
-	os << nl << "  return _f();";
-      else
-	os << nl << "  return _f(" << f.decl.id << "_);";
-    }
-    os << nl << "}"
-       << nl.close << "}";
-  }
-  os << endl;
-
-  // Constructor
+  // Constructor/destructor
   os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
      << map_type(u.tagtype) << "{}) : " << u.tagid << "_(_t) {"
-     << nl.open << "_apply_to_selected(xdr::case_constructor);"
+     << nl.open << "_apply_to_field_pointer(xdr::case_constructor, this, "
+     << u.tagid << "_);"
      << nl.close << "}"
-     << nl << "~" << u.id << "() { _apply_to_selected(xdr::case_destroyer); }"
+     << nl << "~" << u.id
+     << "() { _apply_to_field_pointer(xdr::case_destroyer, this, "
+     << u.tagid << "_); }"
      << endl;
 
   // Tag getter/setter
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
   os << nl << "void " << u.tagid << "(" << u.tagtype << " _t) {"
-     << nl.open << "if (std::uint32_t(_t) != " << u.tagid << "_) {"
-     << nl.open << "_apply_to_selected(xdr::case_destroyer);"
+     << nl.open << "if (_field_number(_t) != _field_number("
+     << u.tagid << "_)) {"
+     << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = _t;"
-     << nl << "_apply_to_selected(xdr::case_constructor);"
+     << nl << "_apply_to_field_pointer(xdr::case_constructor, this, "
+     << u.tagid << "_);"
      << nl.close << "}"
      << nl.close << "}" << endl;
 
