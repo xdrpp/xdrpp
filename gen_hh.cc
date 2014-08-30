@@ -145,6 +145,48 @@ pswitch(const rpc_union &u, string id = string())
   return ret;
 }
 
+std::ostream &
+ufbol(bool *first, std::ostream &os)
+{
+  if (*first) {
+    os << nl << "return ";
+    *first = false;
+  }
+  else
+    os << nl << "  : ";
+  return os;
+}
+
+void
+union_function(std::ostream &os, const rpc_union &u, string tagcmp,
+	       const std::function<string(const rpc_ufield *)> &cb)
+{
+  const rpc_ufield *def = nullptr;
+  bool first = true;
+  if (tagcmp.empty())
+    tagcmp = u.tagid + "_ == ";
+  else
+    tagcmp += " == ";
+
+  ++nl;
+
+  for (auto fi = u.fields.cbegin(), e = u.fields.cend();
+       fi != e; ++fi) {
+    if (fi->hasdefault) {
+      def = &*fi;
+      continue;
+    }
+    ufbol(&first, os) << tagcmp << map_tag(fi->cases[0]);
+    for (size_t i = 1; i < fi->cases.size(); ++i)
+      os << " || " << tagcmp << map_tag(fi->cases[i]);
+    os << " ? " << cb(&*fi);
+  }
+  ufbol(&first, os) << cb(def);
+  os << ";";
+
+  --nl;
+}
+
 void
 gen(std::ostream &os, const rpc_union &u)
 {
@@ -162,6 +204,25 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
     " \"union discriminant must be 4 bytes\");";
 
+  os << endl;
+
+  os << nl
+     << "static constexpr int _field_number(std::uint32_t _which) {";
+  union_function(os, u, "_which", [](const rpc_ufield *uf) {
+      using std::to_string;
+      if (uf)
+	return to_string(uf->fieldno);
+      else
+	return to_string(-1);
+    });
+  os << nl << "}";
+  os << nl << "static constexpr const char *_field_names[] = {"
+     << nl << "  nullptr,";
+  for (const rpc_ufield &uf : u.fields)
+    if (uf.decl.type != "void")
+      os << nl << "  \"" << uf.decl.id << "\",";
+  os << nl << "};" << endl;
+  
   if (u.hasdefault)
     os << nl << "static constexpr bool _tag_is_valid("
        << u.tagtype << ") { return true; }";

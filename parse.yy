@@ -108,7 +108,7 @@ def_struct: T_STRUCT newid '{'
 
 def_union: T_UNION newid T_SWITCH '(' type T_ID ')' '{'
 	{
-	  rpc_sym *s = &symlist.push_back ();
+	  rpc_sym *s = &symlist.push_back();
 	  s->settype (rpc_sym::UNION);
 	  s->sunion->id = $2;
 	  s->sunion->tagtype = $5;
@@ -116,6 +116,16 @@ def_union: T_UNION newid T_SWITCH '(' type T_ID ')' '{'
 	  s->sunion->fields.push_back();
 	}
 	union_fieldlist '}' ';'
+	{
+	  rpc_union &u = *symlist.back().sunion;
+	  int next = 0;
+	  for (rpc_ufield &uf : u.fields) {
+	    if (uf.decl.type == "void")
+	      uf.fieldno = 0;
+	    else
+	      uf.fieldno = ++next;
+	  }
+	}
 	;
 
 def_program: T_PROGRAM newid '{'

@@ -55,6 +55,7 @@ struct rpc_ufield {
   vec<string> cases;
   rpc_decl decl;
   bool hasdefault{false};
+  int fieldno{-1}; // 1, 2, 3, ... where default comes last
 };
 
 struct rpc_union {
