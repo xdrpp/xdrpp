@@ -109,12 +109,18 @@ struct xstring : std::string {
 #undef ASSIGN_LIKE
 };
 
+#ifdef CEREAL_NVP
 template<typename Archive, uint32_t N> inline void
 save(Archive &ar, const xstring<N> &s)
 {
   s.validate();
-  save(ar, static_cast<std::string &>(s));
+  // Don't forget to include <cereal/types/string.h> for following to work:
+  ar(static_cast<const std::string &>(s));
+  // Dosn't work for JSON, as no BinaryData<char *> support
+  //ar(cereal::make_size_tag(static_cast<cereal::size_type>(s.size())));
+  //ar(cereal::binary_data(const_cast<char *>(s.data()), s.size()));
 }
+
 template<typename Archive, uint32_t N> inline void
 load(Archive &ar, xstring<N> &s)
 {
@@ -124,6 +130,7 @@ load(Archive &ar, xstring<N> &s)
   s.resize(static_cast<std::size_t>(size));
   ar(cereal::binary_data(&s[0], size));
 }
+#endif // CEREAL_NVP
 
 struct _result_type_or_void_helper {
   template<typename T> static typename T::result_type sfinae(T *);
