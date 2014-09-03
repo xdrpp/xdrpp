@@ -36,18 +36,6 @@ load(Archive &ar, xstring<N> &s)
   ar(cereal::binary_data(&s[0], size));
 }
 
-#if 0
-template<typename Archive, uint32_t N> inline
-typename std::enable_if<!cereal::traits::is_input_serializable<
-			  cereal::BinaryData<char *>,Archive>::value>::type
-load(Archive &ar, xstring<N> &s)
-{
-  std::string ss;
-  ar(ss);
-  s.check_size(ss.size());
-  static_cast<std::string &>(s) = std::move(s);
-}
-#endif
 
 #define XDR_ARCHIVE_TAKES_NAME(archive)					\
 } namespace cereal { class archive; } namespace xdr {			\
@@ -56,10 +44,17 @@ template<> struct prepare_field<cereal::archive> {			\
   nvp(const char *name, T &&t) {					\
     return cereal::make_nvp(name, std::forward<T>(t));			\
   }									\
-  template<std::uint32_t N> static inline cereal::NameValuePair<std::string &> \
+  template<std::uint32_t N>						\
+  static inline cereal::NameValuePair<const std::string &>		\
   nvp(const char *name, const xstring<N> &s) {				\
-    return cereal::make_nvp(name,					\
-      const_cast<std::string &>(static_cast<const std::string &>(s)));	\
+    s.validate();							\
+    return cereal::make_nvp(name, static_cast<const std::string &>(s));	\
+  }									\
+  template<std::uint32_t N>						\
+  static inline cereal::NameValuePair<std::string &>			\
+  nvp(const char *name, xstring<N> &s) {				\
+    return cereal::make_nvp(name, static_cast<std::string &>(s));	\
+    /* XXX - no way to validate	*/					\
   }									\
 };
 
