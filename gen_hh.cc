@@ -97,6 +97,20 @@ id_space(const string &s)
 }
 
 void
+make_nvp(std::ostream &os, const string &name, bool first, bool last)
+{
+  if (first)
+    os << nl << "_archive(";
+  else
+    os << nl << "         ";
+  os << "xdr::prepare_field<_Archive>::nvp(\"" << name << "\", " << name << ")";
+  if (last)
+    os << ");";
+  else
+    os << ",";
+}
+
+void
 gen(std::ostream &os, const rpc_struct &s)
 {
   os << "struct " << id_space(s.id) << '{';
@@ -108,19 +122,11 @@ gen(std::ostream &os, const rpc_struct &s)
   for (string decl :
     { "template<class _Archive> void save (_Archive &_archive) const {",
 	"template<class _Archive> void load (_Archive &_archive) {" } ) {
-    os << nl << decl
-       << nl.open << "using namespace xdr;"
-       << nl << "_archive(";
-    bool first = true;
-    for (const auto &d : s.decls) {
-      if (first)
-	first = false;
-      else
-	os << "," << nl << "         ";
-      os << "make_nvp(\"" << d.id << "\", " << d.id << ")";
-    }
-    os << ");"
-       << nl.close << "}";
+    os << nl << decl;
+    ++nl;
+    for (size_t i = 0; i < s.decls.size(); ++i)
+      make_nvp(os, s.decls[i].id, i == 0, i + 1 == s.decls.size());
+    os << nl.close << "}";
   }
   
   os << nl.close << "}";

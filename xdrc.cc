@@ -1,6 +1,4 @@
 
-#include "include/xdrc/types.h"
-
 #include <cassert>
 #include <iostream>
 #include <fstream>

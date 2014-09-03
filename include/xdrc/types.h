@@ -2,8 +2,8 @@
 
 /** \file xdrc.h Type definitions for xdrc compiler output. */
 
-#ifndef _XDRC_H_HEADER_INCLUDED_
-#define _XDRC_H_HEADER_INCLUDED_ 1
+#ifndef _XDRC_TYPES_H_HEADER_INCLUDED_
+#define _XDRC_TYPES_H_HEADER_INCLUDED_ 1
 
 #include <array>
 #include <cstdint>
@@ -109,29 +109,6 @@ struct xstring : std::string {
 #undef ASSIGN_LIKE
 };
 
-#ifdef CEREAL_NVP
-template<typename Archive, uint32_t N> inline void
-save(Archive &ar, const xstring<N> &s)
-{
-  s.validate();
-  // Don't forget to include <cereal/types/string.h> for following to work:
-  ar(static_cast<const std::string &>(s));
-  // Dosn't work for JSON, as no BinaryData<char *> support
-  //ar(cereal::make_size_tag(static_cast<cereal::size_type>(s.size())));
-  //ar(cereal::binary_data(const_cast<char *>(s.data()), s.size()));
-}
-
-template<typename Archive, uint32_t N> inline void
-load(Archive &ar, xstring<N> &s)
-{
-  cereal::size_type size;
-  ar(cereal::make_size_tag(size));
-  s.check_size(size);
-  s.resize(static_cast<std::size_t>(size));
-  ar(cereal::binary_data(&s[0], size));
-}
-#endif // CEREAL_NVP
-
 struct _result_type_or_void_helper {
   template<typename T> static typename T::result_type sfinae(T *);
   static void sfinae(...);
@@ -190,17 +167,13 @@ struct case_assign_from {
 };
 
 
-#ifdef CEREAL_NVP
-using cereal::make_nvp;
-#else // !CEREAL_NVP
-template<typename T> inline T&&
-make_nvp(const char *, T &&t)
-{
-  return std::forward<T>(t);
-}
-#endif // !CEREAL_NVP
+template<typename Archive> struct prepare_field {
+  template<typename T> static inline T&&nvp(const char *, T &&t) {
+    return std::forward<T>(t);
+  }
+};
 
 }
 
-#endif // !_XDRC_H_HEADER_INCLUDED_
+#endif // !_XDRC_TYPES_H_HEADER_INCLUDED_
 
