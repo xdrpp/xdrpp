@@ -173,6 +173,29 @@ template<typename Archive> struct prepare_field {
   }
 };
 
+template<typename Archive> struct case_save {
+  Archive &ar_;
+  const char *name_;
+  constexpr case_save(Archive &ar, const char *name) : ar_(ar), name_(name) {}
+  void operator()() const {}
+  template<typename T> void operator()(const T *) const {}
+  template<typename T, typename F> void operator()(const T *t, F T::*f) const {
+    _ar(xdr::prepare_field<Archive>::nvp(name_, t->*f));
+  }
+};
+
+template<typename T, typename Archive> struct case_load {
+  Archive &ar_;
+  const char *name_;
+  constexpr case_load(Archive &ar, const char *name) : ar_(ar), name_(name) {}
+  void operator()() const {}
+  void operator()(T *) const {}
+  template<typename F> void operator()(T *t, F T::*f) const {
+    _ar(xdr::prepare_field<Archive>::nvp(name_, t->*f));
+  }
+};
+
+
 }
 
 #endif // !_XDRC_TYPES_H_HEADER_INCLUDED_

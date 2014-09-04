@@ -120,8 +120,8 @@ gen(std::ostream &os, const rpc_struct &s)
   os << endl;
 
   for (string decl :
-    { "template<class _Archive> void save (_Archive &_archive) const {",
-	"template<class _Archive> void load (_Archive &_archive) {" } ) {
+    { "template<class _Archive> void save(_Archive &_archive) const {",
+	"template<class _Archive> void load(_Archive &_archive) {" } ) {
     os << nl << decl;
     ++nl;
     for (size_t i = 0; i < s.decls.size(); ++i)
@@ -349,42 +349,6 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.close << "}"
      << nl.close << "}" << endl;
 
-#if 0
-  // Field accessors
-  for (auto f = u.fields.cbegin(); f != u.fields.cend(); f++) {
-    if (f->decl.type == "void")
-      continue;
-    os << nl << decl_type(f->decl) << " *_" << f->decl.id << "() {";
-    ++nl;
-    vec<string> cases;
-    string match{string("&") + f->decl.id + "_"}, nomatch{"nullptr"};
-    if (f->hasdefault) {
-      std::swap(match, nomatch);
-      for (auto ff = u.fields.cbegin(); ff != u.fields.cend(); ff++)
-	if (ff != f)
-	  cases.insert(cases.end(), ff->cases.cbegin(), ff->cases.cend());
-    }
-    else
-      cases = f->cases;
-    if (cases.size() < 3) {
-      string t = u.tagid + "_";
-      os << nl << "return " << t << " == " << map_tag(cases[0]);
-      for (size_t i = 1; i < cases.size(); i++)
-	os << " || " << t << " == " << map_tag(cases[i]);
-      os << " ? " << match << " : " << nomatch << ';';
-    }
-    else {
-      os << nl << pswitch(u);
-      for (string c : cases)
-	os << nl << map_case(c);
-      os << nl << "  return " << match << ';'
-	 << nl << "default:"
-	 << nl << "  return " << nomatch << ';'
-	 << nl << "}";
-    }
-    os << nl.close << "}";
-  }
-#endif
   for (const auto &f : u.fields) {
     if (f.decl.type == "void")
       continue;
@@ -398,6 +362,31 @@ gen(std::ostream &os, const rpc_union &u)
 	 << u.id << ": " << f.decl.id << " accessed when not selected\");"
 	 << nl.close << "}";
   }
+
+  os << endl;
+
+  os << nl << "template<class _Archive> void save(_Archive &_archive) const {"
+     << nl.open << "save(xdr::prepare_field<_Archive>(\""
+     << u.tagid << "\", " << u.tagid << "_));"
+     << nl << "const char *_field_name = _field_names + _field_number("
+     << u.tagid << "_);"
+     << nl << "_on_field_ptr(xdr::case_save<_Archive>(_archive, _field_name),"
+     << nl << "              this, " << u.tagid << "_);"
+     << nl.close << "}";
+
+  os << nl << "template<class _Archive> void load(_Archive &_archive) {"
+     << nl.open << "std::uint32_t _which;"
+     << nl << "load(xdr::prepare_field<_Archive>(\""
+     << u.tagid << "\", _which));"
+     << nl << "int _fnum = _field_number(_which);"
+     << nl << "if (_fnum < 0)"
+     << nl << "  throw xdr::xdr_bad_value(\"bad value of "
+     << u.tagid << " in " << u.id << "::load\");"
+     << nl << u.tagid << "(_which);"
+     << nl << "_on_field_ptr(xdr::case_load<_Archive>"
+     << "(_archive, _field_names + __fnum),"
+     << nl << "              this, " << u.tagid << "_);"
+     << nl.close << "}";
 
   os << nl.close << "}";
   if (!u.id.empty())

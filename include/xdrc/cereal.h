@@ -47,14 +47,12 @@ template<> struct prepare_field<cereal::archive> {			\
   template<std::uint32_t N>						\
   static inline cereal::NameValuePair<const std::string &>		\
   nvp(const char *name, const xstring<N> &s) {				\
-    s.validate();							\
     return cereal::make_nvp(name, static_cast<const std::string &>(s));	\
   }									\
   template<std::uint32_t N>						\
   static inline cereal::NameValuePair<std::string &>			\
   nvp(const char *name, xstring<N> &s) {				\
     return cereal::make_nvp(name, static_cast<std::string &>(s));	\
-    /* XXX - no way to validate	*/					\
   }									\
 };
 
