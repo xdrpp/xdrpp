@@ -226,6 +226,7 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "std::uint32_t _discriminant() const { return "
      << u.tagid << "_; }";
 
+#if 0
   // _field_names
   os << nl << "static constexpr const char *_field_names[] = {"
      << nl << "  nullptr,";
@@ -233,6 +234,7 @@ gen(std::ostream &os, const rpc_union &u)
     if (uf.decl.type != "void")
       os << nl << "  \"" << uf.decl.id << "\",";
   os << nl << "};";
+#endif
 
   // _field_number
   os << nl
@@ -248,10 +250,19 @@ gen(std::ostream &os, const rpc_union &u)
 
   // _field_name
   os << nl
-     << "const char *_field_name() const {"
-     << nl.open << "int _fnum = _field_number(" << u.tagid << "_);"
-     << nl << "return _fnum > 0 ? _field_names[_fnum] : nullptr;"
-     << nl.close << "}";
+     << "static constexpr const char *_field_name(std::uint32_t _which) {";
+  union_function(os, u, "_which", [](const rpc_ufield *uf) {
+      using std::to_string;
+      if (uf && uf->decl.type != "void")
+	return string("\"") + uf->decl.id + "\"";
+      else
+	return string("nullptr");
+    });
+  os << nl << "}";
+
+  // _field_name
+  os << nl << "const char *_field_name() const { return _field_name("
+     << u.tagid << "_); }";
 
   // _on_field_ptr
   os << nl << "template<typename F, typename T> static void"
