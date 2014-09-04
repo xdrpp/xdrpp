@@ -246,6 +246,13 @@ gen(std::ostream &os, const rpc_union &u)
     });
   os << nl << "}";
 
+  // _field_name
+  os << nl
+     << "const char *_field_name() const {"
+     << nl.open << "int _fnum = _field_number(" << u.tagid << "_);"
+     << nl << "return _fnum > 0 ? _field_names[_fnum] : nullptr;"
+     << nl.close << "}";
+
   // _on_field_ptr
   os << nl << "template<typename F, typename T> static void"
      << nl << "_on_field_ptr(F &f, T &&t, std::uint32_t _which) {"
@@ -333,15 +340,18 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "return *this;"
      << nl.close << "}";
 
-
   os << endl;
 
   // Tag getter/setter
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
-  os << nl << "void " << u.tagid << "(" << u.tagtype << " _t) {"
-     << nl.open << "if (_field_number(_t) != _field_number("
-     << u.tagid << "_)) {"
+  os << nl << "void " << u.tagid << "(" << u.tagtype
+     << " _t, bool _validate = true) {"
+     << nl.open << "int _fnum = _field_number(_t);"
+     << nl << "if (_fnum < 0 && _validate)"
+     << nl << "  throw xdr::xdr_bad_value(\"bad value of "
+     << u.tagid << " in " << u.id << "::" << u.tagid << "\");"
+     << nl << "if (_fnum != _field_number(" << u.tagid << "_)) {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = _t;"
      << nl << "_on_field_ptr(xdr::case_constructor, this, "
@@ -366,26 +376,19 @@ gen(std::ostream &os, const rpc_union &u)
   os << endl;
 
   os << nl << "template<class _Archive> void save(_Archive &_archive) const {"
-     << nl.open << "save(xdr::prepare_field<_Archive>(\""
+     << nl.open << "_archive(xdr::prepare_field<_Archive>::nvp(\""
      << u.tagid << "\", " << u.tagid << "_));"
-     << nl << "const char *_field_name = _field_names + _field_number("
-     << u.tagid << "_);"
-     << nl << "_on_field_ptr(xdr::case_save<_Archive>(_archive, _field_name),"
-     << nl << "              this, " << u.tagid << "_);"
+     << nl << "xdr::case_save<_Archive> _cs{_archive, _field_name()};"
+     << nl << "_on_field_ptr(_cs, this, " << u.tagid << "_);"
      << nl.close << "}";
 
   os << nl << "template<class _Archive> void load(_Archive &_archive) {"
      << nl.open << "std::uint32_t _which;"
-     << nl << "load(xdr::prepare_field<_Archive>(\""
+     << nl << "_archive(xdr::prepare_field<_Archive>::nvp(\""
      << u.tagid << "\", _which));"
-     << nl << "int _fnum = _field_number(_which);"
-     << nl << "if (_fnum < 0)"
-     << nl << "  throw xdr::xdr_bad_value(\"bad value of "
-     << u.tagid << " in " << u.id << "::load\");"
-     << nl << u.tagid << "(_which);"
-     << nl << "_on_field_ptr(xdr::case_load<_Archive>"
-     << "(_archive, _field_names + __fnum),"
-     << nl << "              this, " << u.tagid << "_);"
+     << nl << u.tagid << "(" << u.tagtype << "(_which), true);"
+     << nl << "xdr::case_load<_Archive> _cl{_archive, _field_name()};"
+     << nl << "_on_field_ptr(_cl, this, " << u.tagid << "_);"
      << nl.close << "}";
 
   os << nl.close << "}";
