@@ -39,7 +39,7 @@ struct rpc_decl {
   enum { SCALAR, PTR, ARRAY, VEC } qual;
   string bound;
 
-  enum { TS_ID, TS_ENUM, TS_STRUCT, TS_UNION } ts_which;
+  enum { TS_ID, TS_ENUM, TS_STRUCT, TS_UNION } ts_which { TS_ID };
   string type;
   std::shared_ptr<rpc_enum> ts_enum;
   std::shared_ptr<rpc_struct> ts_struct;
