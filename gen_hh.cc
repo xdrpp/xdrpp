@@ -115,7 +115,7 @@ gen(std::ostream &os, const rpc_struct &s)
 {
   os << "struct " << id_space(s.id) << '{';
   ++nl;
-  for(auto d : s.decls)
+  for(auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << ';';
   os << endl;
 
@@ -213,7 +213,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.open << "std::uint32_t " << u.tagid << "_;"
      << nl << "union {";
   ++nl;
-  for (rpc_ufield f : u.fields)
+  for (const rpc_ufield &f : u.fields)
     if (f.decl.type != "void")
       os << nl << decl_type(f.decl) << ' ' << f.decl.id << "_;";
   os << nl.close << "};" << endl;
@@ -268,7 +268,7 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "template<typename F, typename T> static void"
      << nl << "_on_field_ptr(F &f, T &&t, std::uint32_t _which) {"
      << nl.open << pswitch(u, "_which");
-  for (rpc_ufield f : u.fields) {
+  for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
       os << nl << map_case(c);
     if (f.decl.type == "void")

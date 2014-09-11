@@ -3,9 +3,10 @@
 #include <cassert>
 #include <iosfwd>
 #include <functional>
-#include <vector>
+#include <memory>
 #include <set>
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include "union.h"
 
@@ -29,11 +30,20 @@ int yylex();
 int yyparse();
 void checkliterals ();
 
+struct rpc_enum;
+struct rpc_struct;
+struct rpc_union;
+
 struct rpc_decl {
   string id;
-  string type;
   enum { SCALAR, PTR, ARRAY, VEC } qual;
   string bound;
+
+  enum { TS_ID, TS_ENUM, TS_STRUCT, TS_UNION } ts_which;
+  string type;
+  std::shared_ptr<rpc_enum> ts_enum;
+  std::shared_ptr<rpc_struct> ts_struct;
+  std::shared_ptr<rpc_union> ts_union;
 };
 
 struct rpc_const {
