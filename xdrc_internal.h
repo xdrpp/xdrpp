@@ -107,12 +107,15 @@ struct rpc_sym {
 		 NAMESPACE } type;
 
   rpc_sym () : _base() {}
-  rpc_sym (const rpc_sym &s) : _base(s._base), type (s.type) {}
+  rpc_sym (rpc_sym &&s) : _base(std::move(s._base)), type (s.type) {}
   ~rpc_sym () { _base.destroy (); }
+#if 0
+  rpc_sym (const rpc_sym &s) : _base(s._base), type (s.type) {}
 private:
   rpc_sym &operator= (const rpc_sym &n)
     { type = n.type; _base = n._base; return *this; }
 public:
+#endif
 
   symtype gettype () const { return type; }
 

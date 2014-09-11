@@ -21,23 +21,27 @@ protected:
       std::terminate();
     }
   }
+#if UNION_COPY_CONSTRUCT
   virtual void copy_construct_to(union_entry_base *dest) const {
     new (static_cast<void *>(dest)) union_entry_base;
   }
+#endif // UNION_COPY_CONSTRUCT
   virtual void move_construct_to(union_entry_base *dest) {
     new (static_cast<void *>(dest)) union_entry_base;
   }
 
 public:
   union_entry_base() = default;
-  union_entry_base(const union_entry_base &ueb) { ueb.copy_construct_to(this); }
   union_entry_base(union_entry_base &&ueb) { ueb.move_construct_to(this); }
+#if UNION_COPY_CONSTRUCT
+  union_entry_base(const union_entry_base &ueb) { ueb.copy_construct_to(this); }
   union_entry_base &operator=(const union_entry_base &ueb) {
     destroy();
     try { ueb.copy_construct_to(this); }
     catch(...) { new (static_cast<void *>(this)) union_entry_base; }
     return *this;
   }
+#endif // UNION_COPY_CONSTRUCT
   union_entry_base &operator=(union_entry_base &&ueb) {
     destroy();
     try { ueb.move_construct_to(this); }
@@ -53,9 +57,11 @@ template<typename T> class union_entry : public union_entry_base {
   T val_;
 
 protected:
+#if UNION_COPY_CONSTRUCT
   void copy_construct_to(union_entry_base *dest) const override {
     new (static_cast<void *>(dest)) union_entry{val_};
   }
+#endif // UNION_COPY_CONSTRUCT
   void move_construct_to(union_entry_base *dest) override {
     new (static_cast<void *>(dest)) union_entry{std::move(val_)};
   }

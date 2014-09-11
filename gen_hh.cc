@@ -422,7 +422,7 @@ gen_hh(std::ostream &os)
 
   int last_type = -1;
 
-  for (auto s : symlist) {
+  for (auto &s : symlist) {
     switch(s.type) {
     case rpc_sym::CONST:
     case rpc_sym::TYPEDEF:
