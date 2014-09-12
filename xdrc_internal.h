@@ -65,7 +65,7 @@ struct rpc_ufield {
   vec<string> cases;
   rpc_decl decl;
   bool hasdefault{false};
-  int fieldno{-1}; // 1, 2, 3, ... where default comes last
+  int fieldno{-1}; // 1, 2, 3, but 0 for void
 };
 
 struct rpc_union {
@@ -164,6 +164,10 @@ struct YYSTYPE {
   struct rpc_decl decl;
   struct rpc_const cnst;
   string str;
+  vec<rpc_decl> decl_list;
+  vec<rpc_const> const_list;
+  rpc_ufield ufield;
+  rpc_union ubody;
 };
 extern YYSTYPE yylval;
 

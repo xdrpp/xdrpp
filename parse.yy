@@ -39,10 +39,14 @@ static string getnewid(string, bool repeats_bad);
 %token <str> T_OPAQUE
 %token <str> T_STRING
 
-%type <str> id qid newid type_or_void type base_type value nsid
-%type <decl> declaration
-%type <cnst> enum_cnstag
+%type <str> id qid newid type_or_void type base_type value nsid union_case
+%type <decl> declaration union_decl
+%type <cnst> enum_tag
 %type <num> number
+%type <decl_list> struct_body declaration_list
+%type <const_list> enum_body enum_tag_list
+%type <ufield> union_case_list union_case_spec
+%type <ubody> union_case_spec_list union_body
 
 %%
 file: /* empty */ { checkliterals (); }
@@ -84,47 +88,143 @@ def_const: T_CONST newid '=' value ';'
 	}
 	;
 
-def_enum: T_ENUM newid '{'
+enum_tag: id '=' value { $$.id = $1; $$.val = $3; }
+	| id { $$.id = $1; }
+
+enum_tag_list: enum_tag
+	{ assert($$.empty()); $$.push_back(std::move($1)); }
+	| enum_tag_list ',' enum_tag
+	{ $$ = std::move($1); $$.push_back(std::move($3)); }
+
+enum_body: '{' enum_tag_list comma_warn '}' { $$ = std::move($2); }
+	;
+
+def_enum: T_ENUM newid enum_body ';'
 	{
 	  rpc_sym *s = &symlist.push_back ();
 	  s->settype (rpc_sym::ENUM);
 	  s->senum->id = $2;
+	  s->senum->tags = std::move($3);
 	}
-	enum_taglist comma_warn '}' ';'
 	;
 
 comma_warn: /* empty */
-	| ',' { yywarn ("comma not allowed at end of enum"); }
+	| ',' { yywarn("comma not allowed at end of enum"); }
 	;
 
-def_struct: T_STRUCT newid '{'
+declaration_list: declaration
+	{
+	  assert($$.empty());
+	  $$.push_back(std::move($1));
+	}
+	| declaration_list declaration
+	{
+	  $$ = std::move($1);
+	  $$.push_back(std::move($2));
+	}
+	;
+
+struct_body: '{' declaration_list '}'
+	{
+	  $$ = std::move($2);
+	}
+	;
+
+def_struct: T_STRUCT newid struct_body ';'
 	{
 	  rpc_sym *s = &symlist.push_back ();
 	  s->settype (rpc_sym::STRUCT);
 	  s->sstruct->id = $2;
+	  s->sstruct->decls = std::move($3);
 	}
-	struct_decllist '}' ';'
 	;
 
-def_union: T_UNION newid T_SWITCH '(' type T_ID ')' '{'
+union_case: T_CASE value ':' { $$ = $2; }
+	| T_DEFAULT ':' { $$ = ""; }
+	;
+
+union_case_list: union_case
 	{
-	  rpc_sym *s = &symlist.push_back();
-	  s->settype (rpc_sym::UNION);
-	  s->sunion->id = $2;
-	  s->sunion->tagtype = $5;
-	  s->sunion->tagid = $6;
-	  s->sunion->fields.push_back();
+	  assert($$.cases.empty());
+	  if ($1.empty()) {
+	    if ($$.hasdefault) {
+	      yyerror("duplicate default statement");
+	      YYERROR;
+	    }
+	    $$.hasdefault = true;
+	  }
+	  $$.cases.push_back($1);
 	}
-	union_fieldlist '}' ';'
+	| union_case_list union_case
 	{
-	  rpc_union &u = *symlist.back().sunion;
+	  $$ = std::move($1);
+	  if ($2.empty()) {
+	    if ($$.hasdefault) {
+	      yyerror("duplicate default statement");
+	      YYERROR;
+	    }
+	    $$.hasdefault = true;
+	  }
+	  $$.cases.push_back($2);
+	}
+	;
+
+union_decl: declaration { $$ = std::move($1); }
+	| T_VOID ';'
+	{
+	  $$.qual = rpc_decl::SCALAR;
+	  $$.ts_which = rpc_decl::TS_ID;
+	  $$.type = "void";
+	}
+	;
+
+union_case_spec: union_case_list union_decl
+	{
+	  $$ = std::move($1);
+	  $$.decl = std::move($2);
+	}
+
+union_case_spec_list: union_case_spec
+	{
+	  assert($$.fields.empty());
+	  if ($1.hasdefault)
+	    $$.hasdefault = true;
+	  $$.fields.push_back(std::move($1));
+	}
+	| union_case_spec_list union_case_spec
+	{
+	  if ($1.hasdefault && $2.hasdefault) {
+	    yyerror("duplicate default statement");
+	    YYERROR;
+	  }
+	  $$ = std::move($1);
+	  if ($2.hasdefault)
+	    $$.hasdefault = true;
+	  $$.fields.push_back(std::move($2));
+	}
+
+union_body: T_SWITCH '(' type T_ID ')' '{' union_case_spec_list '}'
+	{
+	  $$ = std::move($7);
+	  $$.tagtype = $3;
+	  $$.tagid = $4;
 	  int next = 0;
-	  for (rpc_ufield &uf : u.fields) {
+	  for (rpc_ufield &uf : $$.fields) {
 	    if (uf.decl.type == "void")
 	      uf.fieldno = 0;
 	    else
 	      uf.fieldno = ++next;
 	  }
+	}
+	;
+
+def_union: T_UNION newid union_body ';'
+	{
+          symlist.push_back();
+	  symlist.back().settype(rpc_sym::UNION);
+	  rpc_union &u = *symlist.back().sunion;
+	  u = std::move($3);
+	  u.id = $2;
 	}
 	;
 
@@ -187,74 +287,6 @@ proc_decl: type_or_void newid '(' type_or_void ')' '=' number ';'
 	  rp->arg = $4;
 	  rp->res = $1;
 	}
-	;
-
-union_caselist: union_case | union_caselist union_case
-	;
-
-union_case: T_CASE value ':'
-	{
-	  rpc_union &u = *symlist.back().sunion;
-	  rpc_ufield &uf = u.fields.back();
-	  uf.cases.push_back($2);
-	}
-	| T_DEFAULT ':'
-	{
-	  rpc_union &u = *symlist.back().sunion;
-	  rpc_ufield &uf = u.fields.back();
-	  if (u.hasdefault) {
-	    yyerror("duplicate default statement");
-	    YYERROR;
-	  }
-	  uf.cases.push_back("");
-	  u.hasdefault = uf.hasdefault = true;
-	}
-	;
-
-union_decl: declaration
-	{
-	  rpc_union &u = *symlist.back().sunion;
-	  rpc_ufield &uf = u.fields.back();
-	  uf.decl = $1;
-	}
-	| T_VOID ';'
-	{
-	  rpc_union &u = *symlist.back().sunion;
-	  rpc_decl &ud = u.fields.back().decl;
-	  ud.type = "void";
-	  ud.qual = rpc_decl::SCALAR;
-	}
-	;
-
-union_field: union_caselist union_decl
-	;
-
-union_fieldlist: union_field
-        | union_fieldlist
-        {
-	  rpc_union &u = *symlist.back().sunion;
-	  u.fields.push_back();
-	}
-        union_field
-        ;
-
-struct_decllist: struct_decl | struct_decllist struct_decl
-	;
-
-struct_decl: declaration
-	{ symlist.back ().sstruct->decls.push_back ($1); }
-	;
-
-enum_taglist: enum_tag {}
-	| enum_taglist ',' enum_tag {}
-	;
-
-enum_tag: enum_cnstag
-	{ symlist.back ().senum->tags.push_back ($1); }
-	;
-
-enum_cnstag: newid '=' value { $$.id = $1; $$.val = $3; }
-	| newid { $$.id = $1; }
 	;
 
 declaration: type T_ID ';'
