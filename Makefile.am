@@ -11,8 +11,8 @@ pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h
 
 CLEANFILES = *~ .gitignore~
 
-xdrc.1: xdrc.1.md
-	pandoc -s -w man xdrc.1.md -o xdrc.1
+$(srcdir)/xdrc.1: $(srcdir)/xdrc.1.md
+	-pandoc -s -w man $(srcdir)/xdrc.1.md -o $(srcdir)/xdrc.1
 
 distclean-local:
 	rm -rf autom4te.cache
@@ -22,5 +22,5 @@ maintainer-clean-local:
 	rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 
 man_MANS = xdrc.1
-EXTRA_DIST = .gitignore xdrc.1.md include/xdrc/endian.h.in
+EXTRA_DIST = .gitignore xdrc.1 xdrc.1.md include/xdrc/endian.h.in
 MAINTAINERCLEANFILES = parse.hh parse.cc scan.cc xdrc.1
