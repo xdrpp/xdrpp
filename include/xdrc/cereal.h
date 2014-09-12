@@ -1,6 +1,8 @@
 // -*- C++ -*-
 
-/** \file cereal.h Interface for cereal serealization back ends. */
+/** \file cereal.h Interface for cereal serealization back ends.  By
+ * including this file, you can archive any XDR data structure with
+ * cereal. */
 
 #ifndef _XDRC_CEREAL_H_HEADER_INCLUDED_
 #define _XDRC_CEREAL_H_HEADER_INCLUDED_ 1
@@ -36,7 +38,7 @@ load(Archive &ar, xstring<N> &s)
   ar(cereal::binary_data(&s[0], size));
 }
 
-
+//! \hideinitializer
 #define XDR_ARCHIVE_TAKES_NAME(archive)					\
 } namespace cereal { class archive; } namespace xdr {			\
 template<> struct prepare_field<cereal::archive> {			\

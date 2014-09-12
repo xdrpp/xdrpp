@@ -1,6 +1,6 @@
 // -*- C++ -*-
 
-/** \file xdrc.h Type definitions for xdrc compiler output. */
+/** \file types.h Type definitions for xdrc compiler output. */
 
 #ifndef _XDRC_TYPES_H_HEADER_INCLUDED_
 #define _XDRC_TYPES_H_HEADER_INCLUDED_ 1
@@ -92,6 +92,7 @@ struct xstring : std::string {
   using string::data;
   char *data() { return &(*this)[0]; } // protobufs does this, so probably ok
 
+//! \hideinitializer
 #define ASSIGN_LIKE(method)					\
   template<typename...Args> xstring &method(Args&&...args) {	\
     string::method(std::forward<Args>(args)...);		\
@@ -108,16 +109,6 @@ struct xstring : std::string {
   ASSIGN_LIKE(swap)
 #undef ASSIGN_LIKE
 };
-
-struct _result_type_or_void_helper {
-  template<typename T> static typename T::result_type sfinae(T *);
-  static void sfinae(...);
-};
-//! \c result_type_or_void<T> is equivalent to the type \c
-//! T::result_type unless \c T has no type named \c result_type, in
-//! which case it is \c void.
-template<typename T> using result_type_or_void =
-  decltype(_result_type_or_void_helper::sfinae(static_cast<T*>(0)));
 
 
 struct case_constructor_t {
@@ -167,6 +158,10 @@ struct case_assign_from {
 };
 
 
+//! This is used to bundle a field together with its name.  The
+//! default is to ignore the field name, but for debugging, or for
+//! textual format <tt>Archive</tt>s such as JSON, it is useful to be
+//! able to specialize this template.
 template<typename Archive> struct prepare_field {
   template<typename T> static inline T&&nvp(const char *, T &&t) {
     return std::forward<T>(t);
