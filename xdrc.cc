@@ -67,14 +67,14 @@ enum opttag {
 usage(int err = 1)
 {
   std::ostream &os = err ? cerr : cout;
-  os << "usage: xdrc {-hh|-cc} [-DVAR=VALUE...] [-o OUTFILE] INPUT.x\n";
+  os << "usage: xdrc -hh [-DVAR=VALUE...] [-o OUTFILE] INPUT.x\n";
   exit(err);
 }
 
 static const struct option xdrc_options[] = {
   {"version", no_argument, nullptr, OPT_VERSION},
   {"help", no_argument, nullptr, OPT_HELP},
-  {"cc", no_argument, nullptr, OPT_CC},
+  //{"cc", no_argument, nullptr, OPT_CC},
   {"hh", no_argument, nullptr, OPT_HH},
   {nullptr, 0, nullptr, 0}
 };
@@ -89,6 +89,7 @@ main(int argc, char **argv)
 {
   string cpp_command {CPP_COMMAND};
   void (*gen)(std::ostream &) = nullptr;
+  string suffix;
 
   int opt;
   while ((opt = getopt_long_only(argc, argv, "D:o:",
@@ -115,12 +116,14 @@ main(int argc, char **argv)
 	usage();
       gen = gen_cc;
       cpp_command += " -DXDRC_CC";
+      suffix = ".cc";
       break;
     case OPT_HH:
       if (gen)
 	usage();
       gen = gen_hh;
       cpp_command += " -DXDRC_HH";
+      suffix = ".hh";
       break;
     default:
       usage();
@@ -130,7 +133,7 @@ main(int argc, char **argv)
   if (optind + 1 != argc)
     usage();
   if (!gen) {
-    cerr << "xdrc: missing language specifier (-cc or -hh)" << endl;
+    cerr << "xdrc: missing language specifier (-hh)" << endl;
     usage();
   }
   cpp_command += " ";
@@ -151,7 +154,7 @@ main(int argc, char **argv)
     output_file = strip_dot_x(input_file);
     if (output_file == input_file)
       usage();
-    output_file = strip_directory(output_file) + ".hh";
+    output_file = strip_directory(output_file) + suffix;
   }
 
   if (output_file == "-")
