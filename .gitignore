@@ -1,6 +1,7 @@
 *.o
 *~
 .deps
+.dirstamp
 /Makefile
 /Makefile.in
 /aclocal.m4
@@ -15,9 +16,11 @@
 /include/xdrc/endian.h
 /install-sh
 /missing
-/parse.cc
-/parse.hh
-/scan.cc
 /stamp-*
-/xdrc
+/xdrc/parse.cc
+/xdrc/parse.hh
+/xdrc/scan.cc
+/xdrc/xdrc
+/xdrc/xdrc.1
 /ylwrap
+xdrc-*.tar.gz
