@@ -110,6 +110,10 @@ make_nvp(std::ostream &os, const string &name, bool first, bool last)
     os << ",";
 }
 
+void gen(std::ostream &os, const rpc_struct &s);
+void gen(std::ostream &os, const rpc_enum &e);
+void gen(std::ostream &os, const rpc_union &u);
+
 void
 gen(std::ostream &os, const rpc_struct &s)
 {
@@ -130,8 +134,6 @@ gen(std::ostream &os, const rpc_struct &s)
   }
   
   os << nl.close << "}";
-  if (!s.id.empty())
-    os << ';';
 }
 
 void
@@ -145,8 +147,6 @@ gen(std::ostream &os, const rpc_enum &e)
     else
       os << nl << c.id << " = " << c.val << ',';
   os << nl.close << "}";
-  if (!e.id.empty())
-    os << ';';
 }
 
 string
@@ -226,16 +226,6 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "std::uint32_t _discriminant() const { return "
      << u.tagid << "_; }";
 
-#if 0
-  // _field_names
-  os << nl << "static constexpr const char *_field_names[] = {"
-     << nl << "  nullptr,";
-  for (const rpc_ufield &uf : u.fields)
-    if (uf.decl.type != "void")
-      os << nl << "  \"" << uf.decl.id << "\",";
-  os << nl << "};";
-#endif
-
   // _field_number
   os << nl
      << "static constexpr int _field_number(std::uint32_t _which) {";
@@ -283,17 +273,6 @@ gen(std::ostream &os, const rpc_union &u)
     os << nl << "f();";
   os << nl.close << "}"
      << endl;
-
-#if 0
-  // _tag_is_valid
-  if (u.hasdefault)
-    os << nl << "static constexpr bool _tag_is_valid("
-       << u.tagtype << ") { return true; }";
-  else
-    os << nl << "static bool _tag_is_valid(" << u.tagtype
-       << " t) { return _field_number(t) >= 0; }"
-       << endl;
-#endif
 
   // Default constructor
   os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
@@ -403,8 +382,6 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.close << "}";
 
   os << nl.close << "}";
-  if (!u.id.empty())
-    os << ';';
 }
 
 }
@@ -440,12 +417,15 @@ gen_hh(std::ostream &os)
       break;
     case rpc_sym::STRUCT:
       gen(os, *s.sstruct);
+      os << ';';
       break;
     case rpc_sym::UNION:
       gen(os, *s.sunion);
+      os << ';';
       break;
     case rpc_sym::ENUM:
       gen(os, *s.senum);
+      os << ';';
       break;
     case rpc_sym::TYPEDEF:
       os << "using " << s.stypedef->id << " = "
