@@ -93,9 +93,9 @@ enum_tag: T_ID '=' value { $$.id = $1; $$.val = $3; }
 	| T_ID { $$.id = $1; }
 
 enum_tag_list: enum_tag
-	{ assert($$.empty()); $$.push_back(std::move($1)); }
+	{ $$.select(); assert($$->empty()); $$->push_back(std::move($1)); }
 	| enum_tag_list ',' enum_tag
-	{ $$ = std::move($1); $$.push_back(std::move($3)); }
+	{ $$ = std::move($1); $$->push_back(std::move($3)); }
 
 enum_body: '{' enum_tag_list comma_warn '}' { $$ = std::move($2); }
 	;
@@ -105,7 +105,7 @@ def_enum: T_ENUM newid enum_body ';'
 	  rpc_sym *s = &symlist.push_back ();
 	  s->settype (rpc_sym::ENUM);
 	  s->senum->id = $2;
-	  s->senum->tags = std::move($3);
+	  s->senum->tags = std::move(*$3);
 	}
 	;
 
@@ -115,13 +115,14 @@ comma_warn: /* empty */
 
 declaration_list: declaration
 	{
-	  assert($$.empty());
-	  $$.push_back(std::move($1));
+	  $$.select();
+	  assert($$->empty());
+	  $$->push_back(std::move($1));
 	}
 	| declaration_list declaration
 	{
 	  $$ = std::move($1);
-	  $$.push_back(std::move($2));
+	  $$->push_back(std::move($2));
 	}
 	;
 
@@ -136,7 +137,7 @@ def_struct: T_STRUCT newid struct_body ';'
 	  rpc_sym *s = &symlist.push_back ();
 	  s->settype (rpc_sym::STRUCT);
 	  s->sstruct->id = $2;
-	  s->sstruct->decls = std::move($3);
+	  s->sstruct->decls = std::move(*$3);
 	}
 	;
 
@@ -146,27 +147,28 @@ union_case: T_CASE value ':' { $$ = $2; }
 
 union_case_list: union_case
 	{
-	  assert($$.cases.empty());
+	  $$.select();
+	  assert($$->cases.empty());
 	  if ($1.empty()) {
-	    if ($$.hasdefault) {
+	    if ($$->hasdefault) {
 	      yyerror("duplicate default statement");
 	      YYERROR;
 	    }
-	    $$.hasdefault = true;
+	    $$->hasdefault = true;
 	  }
-	  $$.cases.push_back($1);
+	  $$->cases.push_back($1);
 	}
 	| union_case_list union_case
 	{
 	  $$ = std::move($1);
 	  if ($2.empty()) {
-	    if ($$.hasdefault) {
+	    if ($$->hasdefault) {
 	      yyerror("duplicate default statement");
 	      YYERROR;
 	    }
-	    $$.hasdefault = true;
+	    $$->hasdefault = true;
 	  }
-	  $$.cases.push_back($2);
+	  $$->cases.push_back($2);
 	}
 	;
 
@@ -182,35 +184,36 @@ union_decl: declaration { $$ = std::move($1); }
 union_case_spec: union_case_list union_decl
 	{
 	  $$ = std::move($1);
-	  $$.decl = std::move($2);
+	  $$->decl = std::move($2);
 	}
 
 union_case_spec_list: union_case_spec
 	{
-	  assert($$.fields.empty());
-	  if ($1.hasdefault)
-	    $$.hasdefault = true;
-	  $$.fields.push_back(std::move($1));
+	  $$.select();
+	  assert($$->fields.empty());
+	  if ($1->hasdefault)
+	    $$->hasdefault = true;
+	  $$->fields.push_back(std::move(*$1));
 	}
 	| union_case_spec_list union_case_spec
 	{
-	  if ($1.hasdefault && $2.hasdefault) {
+	  if ($1->hasdefault && $2->hasdefault) {
 	    yyerror("duplicate default statement");
 	    YYERROR;
 	  }
 	  $$ = std::move($1);
-	  if ($2.hasdefault)
-	    $$.hasdefault = true;
-	  $$.fields.push_back(std::move($2));
+	  if ($2->hasdefault)
+	    $$->hasdefault = true;
+	  $$->fields.push_back(std::move(*$2));
 	}
 
 union_body: T_SWITCH '(' type T_ID ')' '{' union_case_spec_list '}'
 	{
 	  $$ = std::move($7);
-	  $$.tagtype = $3;
-	  $$.tagid = $4;
+	  $$->tagtype = $3;
+	  $$->tagid = $4;
 	  int next = 0;
-	  for (rpc_ufield &uf : $$.fields) {
+	  for (rpc_ufield &uf : $$->fields) {
 	    if (uf.decl.type == "void")
 	      uf.fieldno = 0;
 	    else
@@ -224,7 +227,7 @@ def_union: T_UNION newid union_body ';'
           symlist.push_back();
 	  symlist.back().settype(rpc_sym::UNION);
 	  rpc_union &u = *symlist.back().sunion;
-	  u = std::move($3);
+	  u = std::move(*$3);
 	  u.id = $2;
 	}
 	;
@@ -294,17 +297,17 @@ type_specifier: type { $$.type = $1; }
 	| T_ENUM enum_body
 	{
 	  $$.ts_which = rpc_decl::TS_ENUM;
-	  $$.ts_enum.reset(new rpc_enum {"", std::move($2)});
+	  $$.ts_enum.reset(new rpc_enum {"", std::move(*$2)});
 	}
 	| T_STRUCT struct_body
 	{
 	  $$.ts_which = rpc_decl::TS_STRUCT;
-	  $$.ts_struct.reset(new rpc_struct {"", std::move($2)});
+	  $$.ts_struct.reset(new rpc_struct {"", std::move(*$2)});
 	}
 	| T_UNION union_body
 	{
 	  $$.ts_which = rpc_decl::TS_UNION;
-	  $$.ts_union.reset(new rpc_union {std::move($2)});
+	  $$.ts_union.reset(new rpc_union {std::move(*$2)});
 	}
 	;
 

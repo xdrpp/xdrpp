@@ -18,8 +18,6 @@
 
 class union_entry_base {
 protected:
-  // Do not call destructor (might get wrong vtable), call destroy().
-  virtual ~union_entry_base() {}
   void want_type(const std::type_info &wanted) const {
     const std::type_info &actual = typeid(*this);
     if (wanted != actual) {
@@ -54,6 +52,8 @@ public:
     catch(...) { new (static_cast<void *>(this)) union_entry_base; }
     return *this;
   }
+  //! Do not call destructor (might get wrong vtable), call destroy().
+  virtual ~union_entry_base() {}
   void destroy() volatile { this->~union_entry_base(); }
 };
 
@@ -73,7 +73,21 @@ protected:
 public:
   template<typename ...A> union_entry(A&&...a)
     : val_(std::forward<A>(a)...) {}
-  union_entry &operator=(const union_entry &) = delete;
+  template<typename TT> union_entry &operator=(TT &&tt) {
+    return assign(std::forward<TT>(tt));
+  }
+#if UNION_COPY_CONSTRUCT
+  union_entry(const union_entry &ue) : val_(*ue.get()) {}
+  union_entry &operator=(const union_entry &ue) {
+    ue.verify();
+    return assign(*ue.get());
+  }
+#endif // !UNION_COPY_CONSTRUCT
+  union_entry(union_entry &&ue) : val_(std::move(*ue.get())) {}
+  union_entry &operator=(union_entry &&ue) {
+    ue.verify();
+    return assign(std::move(*ue.get()));
+  }
 
   void verify() const { want_type(typeid(union_entry)); }
 
@@ -99,6 +113,13 @@ public:
     destroy();
     try { new (static_cast<void *>(this)) union_entry{std::forward<A>(a)...}; }
     catch(...) { new (static_cast<void *>(this)) union_entry_base; throw; }
+  }
+  template<typename TT> union_entry &assign(TT &&tt) {
+    if (constructed())
+      *get() = std::forward<TT>(tt);
+    else
+      emplace(std::forward<TT>(tt));
+    return *this;
   }
 };
 

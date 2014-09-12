@@ -185,10 +185,37 @@ struct YYSTYPE {
   struct rpc_decl decl;
   struct rpc_const cnst;
   string str;
-  vec<rpc_decl> decl_list;
-  vec<rpc_const> const_list;
-  rpc_ufield ufield;
-  rpc_union ubody;
+  union {
+    union_entry_base _base;
+    union_entry<vec<rpc_decl>> decl_list;
+    union_entry<vec<rpc_const>> const_list;
+    union_entry<rpc_ufield> ufield;
+    union_entry<rpc_union> ubody;
+  };
+
+  YYSTYPE() : _base() {}
+  YYSTYPE(const YYSTYPE &st)
+    : num(st.num), decl(st.decl), cnst(st.cnst), str(st.str), _base(st._base) {}
+  YYSTYPE(YYSTYPE &&st)
+    : num(st.num), decl(std::move(st.decl)), cnst(std::move(st.cnst)),
+      str(std::move(st.str)), _base(std::move(st._base)) {}
+  ~YYSTYPE() { _base.destroy(); }
+  YYSTYPE &operator=(const YYSTYPE &st) {
+    num = st.num;
+    decl = st.decl;
+    cnst = st.cnst;
+    str = st.str;
+    _base = st._base;
+    return *this;
+  }
+  YYSTYPE &operator=(YYSTYPE &&st) {
+    num = st.num;
+    decl = std::move(st.decl);
+    cnst = std::move(st.cnst);
+    str = std::move(st.str);
+    _base = std::move(st._base);
+    return *this;
+  }
 };
 extern YYSTYPE yylval;
 
