@@ -316,26 +316,26 @@ vec_len: '<' '>' { $$ = xdr_unbounded; }
 	;
 
 declaration: type_specifier T_ID ';'
-	{ $$ = std::move($1); $$.id = $2; }
+	{ $$ = std::move($1); $$.set_id($2); }
 	| type_specifier T_ID '[' value ']' ';'
-	{ $$ = std::move($1); $$.id = $2;
+	{ $$ = std::move($1); $$.set_id($2);
 	  $$.qual = rpc_decl::ARRAY; $$.bound = $4; }
 	| T_OPAQUE T_ID '[' value ']' ';'
-	{ $$.type = std::move($1); $$.id = $2;
+	{ $$.type = std::move($1); $$.set_id($2);
 	  $$.qual = rpc_decl::ARRAY; $$.bound = $4; }
 	| type_specifier T_ID vec_len ';'
-	{ $$ = std::move($1); $$.id = $2;
+	{ $$ = std::move($1); $$.set_id($2);
 	  $$.qual = rpc_decl::VEC; $$.bound = $3; }
 	| T_OPAQUE T_ID vec_len ';'
-	{ $$.type = std::move($1); $$.id = $2;
+	{ $$.type = std::move($1); $$.set_id($2);
 	  $$.qual = rpc_decl::VEC; $$.bound = $3; }
 	| T_STRING T_ID vec_len ';'
-	{ $$.type = std::move($1); $$.id = $2;
+	{ $$.type = std::move($1); $$.set_id($2);
 	  $$.qual = rpc_decl::VEC; $$.bound = $3; }
 	| type_specifier '*' T_ID ';'
-	{ $$ = std::move($1); $$.qual = rpc_decl::PTR; $$.id = $3; }
+	{ $$ = std::move($1); $$.qual = rpc_decl::PTR; $$.set_id($3); }
 	| T_STRING T_ID ';'
-	{ $$.id = $2; $$.type = $1; $$.qual = rpc_decl::VEC;
+	{ $$.set_id($2); $$.type = $1; $$.qual = rpc_decl::VEC;
 	  $$.bound = xdr_unbounded;
 	  yywarn ("strings require variable-length array declarations (<>)");
 	}

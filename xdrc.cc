@@ -16,6 +16,26 @@ std::set<string> ids;
 string input_file;
 string output_file;
 
+void
+rpc_decl::set_id(const string &nid)
+{
+  id = nid;
+  string name = string("_") + id + "_t";
+  switch (ts_which) {
+  case TS_ID:
+    break;
+  case TS_ENUM:
+    ts_enum->id = name;
+    break;
+  case TS_STRUCT:
+    ts_struct->id = name;
+    break;
+  case TS_UNION:
+    ts_union->id = name;
+    break;
+  }
+}
+
 string
 strip_directory(string in)
 {

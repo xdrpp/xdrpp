@@ -72,6 +72,8 @@ struct rpc_decl {
     _base = std::move(d._base);
     return *this;
   }
+
+  void set_id(const string &nid);
 };
 
 struct rpc_const {
