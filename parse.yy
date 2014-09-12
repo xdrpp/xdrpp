@@ -134,8 +134,8 @@ struct_body: '{' declaration_list '}'
 
 def_struct: T_STRUCT newid struct_body ';'
 	{
-	  rpc_sym *s = &symlist.push_back ();
-	  s->settype (rpc_sym::STRUCT);
+	  rpc_sym *s = &symlist.push_back();
+	  s->settype(rpc_sym::STRUCT);
 	  s->sstruct->id = $2;
 	  s->sstruct->decls = std::move(*$3);
 	}

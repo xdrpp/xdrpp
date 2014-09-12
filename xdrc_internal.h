@@ -61,6 +61,7 @@ struct rpc_decl {
     qual = d.qual;
     bound = d.bound;
     ts_which = d.ts_which;
+    type = d.type;
     _base = d._base;
     return *this;
   }
@@ -70,6 +71,7 @@ struct rpc_decl {
     bound = std::move(d.bound);
     ts_which = d.ts_which;
     _base = std::move(d._base);
+    type = std::move(d.type);
     return *this;
   }
 

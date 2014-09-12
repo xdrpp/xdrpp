@@ -1,6 +1,7 @@
 
 #include <cassert>
 #include <ctype.h>
+#include <sstream>
 #include "xdrc_internal.h"
 
 using std::endl;
@@ -69,27 +70,6 @@ guard_token()
   return ret;
 }
 
-string
-decl_type(const rpc_decl &d)
-{
-  string type = map_type(d.type);
-
-  if (type == "string")
-    return string("xdr::xstring<") + d.bound + ">";
-
-  switch (d.qual) {
-  case rpc_decl::PTR:
-    return string("std::unique_ptr<") + type + ">";
-  case rpc_decl::ARRAY:
-    return string("std::array<") + type + "," + d.bound + ">";
-  case rpc_decl::VEC:
-    return string("xdr::xvector<") + type +
-      (d.bound.empty() ? ">" : string(",") + d.bound + ">");
-  default:
-    return type;
-  }
-}
-
 inline string
 id_space(const string &s)
 {
@@ -114,11 +94,63 @@ void gen(std::ostream &os, const rpc_struct &s);
 void gen(std::ostream &os, const rpc_enum &e);
 void gen(std::ostream &os, const rpc_union &u);
 
+string
+decl_type(const rpc_decl &d)
+{
+  string type = map_type(d.type);
+
+  if (type == "string")
+    return string("xdr::xstring<") + d.bound + ">";
+
+  switch (d.qual) {
+  case rpc_decl::PTR:
+    return string("std::unique_ptr<") + type + ">";
+  case rpc_decl::ARRAY:
+    return string("std::array<") + type + "," + d.bound + ">";
+  case rpc_decl::VEC:
+    return string("xdr::xvector<") + type +
+      (d.bound.empty() ? ">" : string(",") + d.bound + ">");
+  default:
+    return type;
+  }
+}
+
+bool
+gen_embedded(std::ostream &os, const rpc_decl &d)
+{
+  switch (d.ts_which) {
+  case rpc_decl::TS_ENUM:
+    os << nl;
+    gen(os, *d.ts_enum);
+    break;
+  case rpc_decl::TS_STRUCT:
+    os << nl;
+    gen(os, *d.ts_struct);
+    break;
+  case rpc_decl::TS_UNION:
+    os << nl;
+    gen(os, *d.ts_union);
+    break;
+  default:
+    return false;
+  }
+  os << ";";
+  return true;
+}
+
 void
 gen(std::ostream &os, const rpc_struct &s)
 {
   os << "struct " << id_space(s.id) << '{';
   ++nl;
+  bool blank{false};
+  for(auto &d : s.decls) {
+    if (gen_embedded(os, d))
+      blank = true;
+  }
+  if (blank)
+    os << endl;
+
   for(auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << ';';
   os << endl;
@@ -208,9 +240,16 @@ union_function(std::ostream &os, const rpc_union &u, string tagcmp,
 void
 gen(std::ostream &os, const rpc_union &u)
 {
-  os << "class " << u.id << " {"
-    //<< nl.open << map_type(u.tagtype) << ' ' << u.tagid << "_;"
-     << nl.open << "std::uint32_t " << u.tagid << "_;"
+  os << "struct " << u.id << " {";
+  ++nl;
+  bool blank{false};
+  for (const rpc_ufield &f : u.fields)
+    if (gen_embedded(os, f.decl))
+      blank = true;
+  if (blank)
+    os << endl;
+  os << nl.outdent << "private:"
+     << nl << "std::uint32_t " << u.tagid << "_;"
      << nl << "union {";
   ++nl;
   for (const rpc_ufield &f : u.fields)

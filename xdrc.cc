@@ -25,13 +25,13 @@ rpc_decl::set_id(const string &nid)
   case TS_ID:
     break;
   case TS_ENUM:
-    ts_enum->id = name;
+    ts_enum->id = type = name;
     break;
   case TS_STRUCT:
-    ts_struct->id = name;
+    ts_struct->id = type = name;
     break;
   case TS_UNION:
-    ts_union->id = name;
+    ts_union->id = type = name;
     break;
   }
 }
