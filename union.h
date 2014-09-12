@@ -8,11 +8,18 @@
 
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <new>
 #include <typeinfo>
 
+#ifndef UNION_COPY_CONSTRUCT
+#define UNION_COPY_CONSTRUCT 1
+#endif // !UNION_COPY_CONSTRUCT
+
 class union_entry_base {
 protected:
+  // Do not call destructor (might get wrong vtable), call destroy().
+  virtual ~union_entry_base() {}
   void want_type(const std::type_info &wanted) const {
     const std::type_info &actual = typeid(*this);
     if (wanted != actual) {
@@ -29,7 +36,6 @@ protected:
   virtual void move_construct_to(union_entry_base *dest) {
     new (static_cast<void *>(dest)) union_entry_base;
   }
-
 public:
   union_entry_base() = default;
   union_entry_base(union_entry_base &&ueb) { ueb.move_construct_to(this); }
@@ -48,8 +54,6 @@ public:
     catch(...) { new (static_cast<void *>(this)) union_entry_base; }
     return *this;
   }
-  // Do not call destructor, call destroy().
-  virtual ~union_entry_base() {}
   void destroy() volatile { this->~union_entry_base(); }
 };
 
@@ -107,6 +111,37 @@ public:
       new (static_cast<void *>(this)) union_entry;
     }
   }
+};
+
+template<typename T> class union_ptr
+  : public union_entry<std::shared_ptr<T>> {
+  using super = union_entry<std::shared_ptr<T>>;
+public:
+  using super::super;
+
+  void select() {
+    if (!super::constructed()) {
+      super::select();
+      super::get()->reset(new T);
+    }
+  }
+  template<typename ...A> void reset(A&&...a) {
+    if (!super::constructed())
+      super::select();
+    get_ptr().reset(std::forward<A>(a)...);
+  }
+
+  std::shared_ptr<T> &get_ptr() { return *super::get(); }
+  const std::shared_ptr<T> &get_ptr() const { return *super::get(); }
+
+  T *get() { return get_ptr().get(); }
+  const T *get() const { return get_ptr().get(); }
+  operator T*() { return get(); }
+  operator const T*() const { return get(); }
+  T *operator->() { return get(); }
+  const T *operator->() const { return get(); }
+  T &operator*() { return *get(); }
+  const T &operator*() const { return *get(); }
 };
 
 #endif /* !_UNION_H_ */

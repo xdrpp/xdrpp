@@ -41,9 +41,37 @@ struct rpc_decl {
 
   enum { TS_ID, TS_ENUM, TS_STRUCT, TS_UNION } ts_which {TS_ID};
   string type;
-  std::shared_ptr<rpc_enum> ts_enum;
-  std::shared_ptr<rpc_struct> ts_struct;
-  std::shared_ptr<rpc_union> ts_union;
+  union {
+    union_entry_base _base;
+    union_ptr<rpc_enum> ts_enum;
+    union_ptr<rpc_struct> ts_struct;
+    union_ptr<rpc_union> ts_union;
+  };
+
+  rpc_decl() : _base() {}
+  ~rpc_decl() { _base.destroy(); }
+  rpc_decl(const rpc_decl &d)
+    : id(d.id), qual(d.qual), bound(d.bound), ts_which(d.ts_which),
+      type(d.type), _base(d._base) {}
+  rpc_decl(rpc_decl &&d)
+    : id(std::move(d.id)), qual(d.qual), bound(std::move(d.bound)),
+      ts_which(d.ts_which), type(d.type), _base(std::move(d._base)) {}
+  rpc_decl &operator=(const rpc_decl &d) {
+    id = d.id;
+    qual = d.qual;
+    bound = d.bound;
+    ts_which = d.ts_which;
+    _base = d._base;
+    return *this;
+  }
+  rpc_decl &operator=(rpc_decl &&d) {
+    id = std::move(d.id);
+    qual = d.qual;
+    bound = std::move(d.bound);
+    ts_which = d.ts_which;
+    _base = std::move(d._base);
+    return *this;
+  }
 };
 
 struct rpc_const {

@@ -39,7 +39,7 @@ static string getnewid(string, bool repeats_bad);
 %token <str> T_OPAQUE
 %token <str> T_STRING
 
-%type <str> id qid newid type_or_void type base_type value nsid union_case
+%type <str> qid newid type_or_void type base_type value union_case
 %type <str> vec_len
 %type <decl> declaration union_decl type_specifier
 %type <cnst> enum_tag
@@ -89,8 +89,8 @@ def_const: T_CONST newid '=' value ';'
 	}
 	;
 
-enum_tag: id '=' value { $$.id = $1; $$.val = $3; }
-	| id { $$.id = $1; }
+enum_tag: T_ID '=' value { $$.id = $1; $$.val = $3; }
+	| T_ID { $$.id = $1; }
 
 enum_tag_list: enum_tag
 	{ assert($$.empty()); $$.push_back(std::move($1)); }
@@ -243,7 +243,7 @@ def_program: T_PROGRAM newid '{'
 	}
 	;
 
-def_namespace: T_NAMESPACE nsid '{'
+def_namespace: T_NAMESPACE newid '{'
         {
 	  rpc_sym *s = &symlist.push_back ();
 	  s->settype (rpc_sym::NAMESPACE);
@@ -355,19 +355,13 @@ base_type: T_UNSIGNED { $$ = "unsigned"; }
 	| T_BOOL { $$ = "bool"; }
 	;
 
-value: id | T_NUM
+value: T_ID | T_NUM
 	;
 
 number: T_NUM { $$ = strtoul ($1.c_str(), NULL, 0); }
 	;
 
 newid: T_ID { $$ = getnewid ($1, true); }
-	;
-
-nsid: T_ID { $$ = getnewid ($1, false); } 
-        ;
-
-id: T_ID
 	;
 
 qid: T_ID | T_QID
