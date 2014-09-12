@@ -443,6 +443,8 @@ gen_hh(std::ostream &os)
     case rpc_sym::CONST:
     case rpc_sym::TYPEDEF:
     case rpc_sym::LITERAL:
+    case rpc_sym::NAMESPACE:
+    case rpc_sym::CLOSEBRACE:
       if (s.type != last_type)
       // cascade
     default:
@@ -477,6 +479,10 @@ gen_hh(std::ostream &os)
       os << *s.sliteral << nl;
       break;
     case rpc_sym::NAMESPACE:
+      os << "namespace " << *s.sliteral << " {";
+      break;
+    case rpc_sym::CLOSEBRACE:
+      os << "}";
       break;
     default:
       std::cerr << "unknown type " << s.type << nl;

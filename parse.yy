@@ -50,8 +50,8 @@ static string getnewid(string, bool repeats_bad);
 %type <ubody> union_case_spec_list union_body
 
 %%
-file: /* empty */ { checkliterals (); }
-	| file { checkliterals (); } definition { checkliterals (); }
+file: /* empty */ { checkliterals(); }
+	| file { checkliterals(); } definition { checkliterals(); }
 	;
 
 definition: def_const
@@ -65,25 +65,25 @@ definition: def_const
 
 def_type: T_TYPEDEF declaration
 	{
-	  rpc_sym *s = &symlist.push_back ();
-	  s->settype (rpc_sym::TYPEDEF);
+	  rpc_sym *s = &symlist.push_back();
+	  s->settype(rpc_sym::TYPEDEF);
 	  *s->stypedef = $2;
-	  s->stypedef->id = getnewid (s->stypedef->id, true);
+	  s->stypedef->id = getnewid(s->stypedef->id, true);
 	}
 	| T_TYPEDEF T_STRUCT declaration
 	{
-	  rpc_sym *s = &symlist.push_back ();
-	  s->settype (rpc_sym::TYPEDEF);
+	  rpc_sym *s = &symlist.push_back();
+	  s->settype(rpc_sym::TYPEDEF);
 	  *s->stypedef = $3;
 	  s->stypedef->type = string("struct ") + $3.type;
-	  s->stypedef->id = getnewid (s->stypedef->id, true);
+	  s->stypedef->id = getnewid(s->stypedef->id, true);
 	}
 	;
 
 def_const: T_CONST newid '=' value ';'
 	{
-	  rpc_sym *s = &symlist.push_back ();
-	  s->settype (rpc_sym::CONST);
+	  rpc_sym *s = &symlist.push_back();
+	  s->settype(rpc_sym::CONST);
 	  s->sconst->id = $2;
 	  s->sconst->val = $4;
 	}
@@ -102,8 +102,8 @@ enum_body: '{' enum_tag_list comma_warn '}' { $$ = std::move($2); }
 
 def_enum: T_ENUM newid enum_body ';'
 	{
-	  rpc_sym *s = &symlist.push_back ();
-	  s->settype (rpc_sym::ENUM);
+	  rpc_sym *s = &symlist.push_back();
+	  s->settype(rpc_sym::ENUM);
 	  s->senum->id = $2;
 	  s->senum->tags = std::move(*$3);
 	}
@@ -234,47 +234,35 @@ def_union: T_UNION newid union_body ';'
 
 def_program: T_PROGRAM newid '{'
 	{
-	  rpc_program *s = get_prog (true);
-	  s->id = $2;
+	  rpc_sym *s = &symlist.push_back();
+	  s->settype(rpc_sym::PROGRAM);
+	  s->sprogram->id = $2;
 	}
 	version_list '}' '=' number ';'
 	{
-	  rpc_program *s = get_prog (false);
-	  s->val = $8;
-	  qsort (s->vers.data(), s->vers.size(), 
-	         sizeof(rpc_vers), vers_compare);
+	  rpc_sym *s = &symlist.back();
+	  s->sprogram->val = $8;
+	  qsort(s->sprogram->vers.data(), s->sprogram->vers.size(),
+	        sizeof (rpc_vers), vers_compare);
 	}
 	;
-
-def_namespace: T_NAMESPACE newid '{'
-        {
-	  rpc_sym *s = &symlist.push_back ();
-	  s->settype (rpc_sym::NAMESPACE);
-	  s->snamespace->id = $2;
-
-        } 
-	program_list '}' ';'
-	;
-
-program_list: def_program | program_list def_program
-        ;
 
 version_list: version_decl | version_list version_decl
 	;
 
 version_decl: T_VERSION newid '{'
 	{
-          rpc_program *p = get_prog (false);
-	  rpc_vers *rv = &p->vers.push_back ();
+	  rpc_sym *s = &symlist.back();
+	  rpc_vers *rv = &s->sprogram->vers.push_back();
 	  rv->id = $2;
 	}
 	proc_list '}' '=' number ';'
 	{
-          rpc_program *p = get_prog (false);
-	  rpc_vers *rv = &p->vers.back ();
+	  rpc_sym *s = &symlist.back();
+	  rpc_vers *rv = &s->sprogram->vers.back();
 	  rv->val = $8;
-	  qsort (rv->procs.data(), rv->procs.size(),
-		 sizeof(rpc_proc), proc_compare);
+	  qsort(rv->procs.data(), rv->procs.size(),
+		sizeof (rpc_proc), proc_compare);
 	}
 	;
 
@@ -283,13 +271,26 @@ proc_list: proc_decl | proc_list proc_decl
 
 proc_decl: type_or_void newid '(' type_or_void ')' '=' number ';'
 	{
-          rpc_program *p = get_prog (false);
-	  rpc_vers *rv = &p->vers.back ();
-	  rpc_proc *rp = &rv->procs.push_back ();
+	  rpc_sym *s = &symlist.back();
+	  rpc_vers *rv = &s->sprogram->vers.back();
+	  rpc_proc *rp = &rv->procs.push_back();
 	  rp->id = $2;
 	  rp->val = $7;
 	  rp->arg = $4;
 	  rp->res = $1;
+	}
+	;
+
+def_namespace: T_NAMESPACE newid '{'
+        {
+	  rpc_sym *s = &symlist.push_back ();
+	  s->settype (rpc_sym::NAMESPACE);
+	  s->sliteral = $2;
+        } 
+	file '}'
+	{
+	  rpc_sym *s = &symlist.push_back ();
+	  s->settype (rpc_sym::CLOSEBRACE);
 	}
 	;
 

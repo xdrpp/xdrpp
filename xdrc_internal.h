@@ -127,11 +127,6 @@ struct rpc_program {
   vec<rpc_vers> vers;
 };
 
-struct rpc_namespace {
-  string id;
-  vec<rpc_program> progs;
-};
-
 struct rpc_sym {
   union {
     union_entry_base _base;
@@ -142,11 +137,10 @@ struct rpc_sym {
     union_entry<rpc_union> sunion;
     union_entry<rpc_program> sprogram;
     union_entry<string> sliteral;
-    union_entry<rpc_namespace> snamespace;
   };
 
   enum symtype { CONST, STRUCT, UNION, ENUM, TYPEDEF, PROGRAM, LITERAL,
-		 NAMESPACE } type;
+		 NAMESPACE, CLOSEBRACE } type;
 
   rpc_sym () : _base() {}
   rpc_sym (rpc_sym &&s) : _base(std::move(s._base)), type (s.type) {}
@@ -157,7 +151,7 @@ struct rpc_sym {
   void settype (symtype t) {
     switch (type = t) {
     case NAMESPACE:
-      snamespace.select ();
+      sliteral.select ();
       break;
     case CONST:
       sconst.select ();
@@ -179,6 +173,9 @@ struct rpc_sym {
       break;
     case LITERAL:
       sliteral.select ();
+      break;
+    default:
+      _base.deselect();
       break;
     }
   }
@@ -229,7 +226,6 @@ extern symlist_t symlist;
 using strlist_t = vec<string>;
 extern strlist_t litq;
 
-rpc_program *get_prog (bool creat);
 string strip_directory(string in);
 string strip_dot_x(string in);
 void gen_hh(std::ostream &os);

@@ -77,7 +77,7 @@ protected:
     new (static_cast<void *>(dest)) union_entry_base;
   }
 public:
-  union_entry_base() = default;
+  union_entry_base() noexcept = default;
   //! Move construct currently active field.  It is a serious error to
   //! call this if the active field in the copied union is not a
   //! member of the constructed union.
@@ -109,6 +109,11 @@ public:
   //! vtable being used.
   virtual ~union_entry_base() {}
   void destroy() volatile { this->~union_entry_base(); }
+  //! Reset the union to a state where no field is selected.
+  void deselect() {
+    destroy();
+    new (static_cast<void *>(this)) union_entry_base;
+  };
 };
 
 //! A union entry for holding an optional type \c T.  The union entry
