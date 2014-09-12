@@ -7,9 +7,12 @@ BUILT_SOURCES = parse.cc parse.hh scan.cc
 AM_YFLAGS = -d
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
-pkginclude_HEADERS = include/xdrc/types.h
+pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h
 
 CLEANFILES = *~ .gitignore~
+
+xdrc.1: xdrc.1.md
+	pandoc -s -w man xdrc.1.md -o xdrc.1
 
 distclean-local:
 	rm -rf autom4te.cache
@@ -18,5 +21,6 @@ maintainer-clean-local:
 	+@echo rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 	rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 
-EXTRA_DIST = .gitignore include/xdrc/endian.h.in
-MAINTAINERCLEANFILES = parse.hh parse.cc scan.cc
+man_MANS = xdrc.1
+EXTRA_DIST = .gitignore xdrc.1.md include/xdrc/endian.h.in
+MAINTAINERCLEANFILES = parse.hh parse.cc scan.cc xdrc.1

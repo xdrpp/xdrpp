@@ -476,7 +476,7 @@ gen_hh(std::ostream &os)
       /* need some action */
       break;
     case rpc_sym::LITERAL:
-      os << *s.sliteral << nl;
+      os << *s.sliteral;
       break;
     case rpc_sym::NAMESPACE:
       os << "namespace " << *s.sliteral << " {";

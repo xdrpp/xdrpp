@@ -115,14 +115,14 @@ main(int argc, char **argv)
       if (gen)
 	usage();
       gen = gen_cc;
-      cpp_command += " -DXDRC_CC";
+      cpp_command += " -DXDRC_CC=1";
       suffix = ".cc";
       break;
     case OPT_HH:
       if (gen)
 	usage();
       gen = gen_hh;
-      cpp_command += " -DXDRC_HH";
+      cpp_command += " -DXDRC_HH=1";
       suffix = ".hh";
       break;
     default:
