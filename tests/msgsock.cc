@@ -6,7 +6,7 @@
 #include <thread>
 #include <sys/socket.h>
 #include <sodium.h>
-#include "xmsg/msgsock.h"
+#include "xdrc/msgsock.h"
 
 using namespace std;
 using namespace xdr;
