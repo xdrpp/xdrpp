@@ -22,6 +22,7 @@
 /missing
 /stamp-*
 /test-driver
+/tests/*.hh
 /tests/test-*
 /xdrc/parse.cc
 /xdrc/parse.hh

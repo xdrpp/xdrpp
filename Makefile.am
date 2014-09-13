@@ -17,15 +17,22 @@ xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc		\
 	include/xdrc/iniparse.h
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
-pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h
+pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
+	include/xdrc/marshal.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
-check_PROGRAMS = tests/test-msgsock
-TESTS = $(check_PROGRAMS)
+check_PROGRAMS = tests/test-msgsock tests/test-marshal
+#TESTS = $(check_PROGRAMS)
 tests_test_msgsock_SOURCES = tests/msgsock.cc xmsg/libxmsg.a
+tests_test_marshal_SOURCES = tests/xdrtest.hh tests/marshal.cc xmsg/libxmsg.a
+tests/marshal.o: tests/xdrtest.hh
 
-CLEANFILES = *~ */*~ .gitignore~
+SUFFIXES = .x .hh
+.x.hh: $(top_builddir)/xdrc/xdrc$(EXEEXT)
+	$(top_builddir)/xdrc/xdrc$(EXEEXT) -hh -o $@ $<
+
+CLEANFILES = *~ */*~ .gitignore~ tests/xdrtest.hh
 
 $(srcdir)/xdrc/xdrc.1: $(srcdir)/xdrc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/xdrc/xdrc.1.md -o $(srcdir)/xdrc/xdrc.1

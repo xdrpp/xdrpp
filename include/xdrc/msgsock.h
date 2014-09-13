@@ -7,8 +7,8 @@
 //! non-blocking sockets.
 
 #include <deque>
-#include "xdrc/pollset.h"
-#include "xdrc/endian.h"
+#include <xdrc/pollset.h>
+#include <xdrc/endian.h>
 
 namespace xdr {
 
