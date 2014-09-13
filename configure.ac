@@ -7,6 +7,8 @@ AM_INIT_AUTOMAKE([-Wall subdir-objects])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_PROG_RANLIB
+AM_PROG_AR
 AC_PROG_CPP
 # gcc does this weird thing where it interprets everything (including
 # .x files) as a linker script without the -xc option.

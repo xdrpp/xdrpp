@@ -1,5 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
+
 bin_PROGRAMS = xdrc/xdrc
 
 xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/scan.ll	\
@@ -7,10 +9,15 @@ xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/scan.ll	\
 BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc
 AM_YFLAGS = -d
 
+lib_LIBRARIES = xmsg/libxmsg.a
+xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
+	xmsg/msgsock.h xmsg/pollset.cc include/xdrc/pollset.h	\
+	include/xdrc/iniparse.h
+
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h
 
-CLEANFILES = *~ .gitignore~
+CLEANFILES = *~ */*~ .gitignore~
 
 $(srcdir)/xdrc/xdrc.1: $(srcdir)/xdrc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/xdrc/xdrc.1.md -o $(srcdir)/xdrc/xdrc.1
