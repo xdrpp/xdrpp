@@ -28,6 +28,8 @@ AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r x
 AX_CXX_COMPILE_STDCXX_11(noext,mandatory)
 test -z "$WFLAGS" || CXXFLAGS="$CXXFLAGS $WFLAGS"
 AC_LANG(C++)
+# -pthread Seems to be required by g++ -stc=c++11
+AX_APPEND_COMPILE_FLAGS([-pthread])
 
 AC_C_BIGENDIAN
 AC_C_BIGENDIAN(IS_BIG_ENDIAN=1, IS_BIG_ENDIAN=0)

@@ -20,6 +20,8 @@
 /install-sh
 /missing
 /stamp-*
+/test-driver
+/tests/test-*
 /xdrc/parse.cc
 /xdrc/parse.hh
 /xdrc/scan.cc

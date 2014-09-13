@@ -6,8 +6,10 @@ bin_PROGRAMS = xdrc/xdrc
 
 xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/scan.ll	\
 	xdrc/parse.yy xdrc/union.h xdrc/xdrc_internal.h
-BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc
+xdrc_xdrc_LDADD =
+
 AM_YFLAGS = -d
+BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc
 
 lib_LIBRARIES = xmsg/libxmsg.a
 xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
@@ -16,6 +18,12 @@ xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h
+
+LDADD = $(top_builddir)/xmsg/libxmsg.a
+
+check_PROGRAMS = tests/test-msgsock
+TESTS = $(check_PROGRAMS)
+tests_test_msgsock_SOURCES = tests/msgsock.cc xmsg/libxmsg.a
 
 CLEANFILES = *~ */*~ .gitignore~
 
