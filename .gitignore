@@ -16,6 +16,7 @@
 /config.status
 /configure
 /depcomp
+/doc/html
 /include/xdrc/endian.h
 /install-sh
 /missing
