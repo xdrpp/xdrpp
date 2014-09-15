@@ -261,13 +261,13 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
     " \"union discriminant must be 4 bytes\");";
 
-  // _discriminant
-  os << nl << "std::uint32_t _discriminant() const { return "
+  // _xdr_discriminant
+  os << nl << "std::uint32_t _xdr_discriminant() const { return "
      << u.tagid << "_; }";
 
-  // _field_number
+  // _xdr_field_number
   os << nl
-     << "static constexpr int _field_number(std::uint32_t _which) {";
+     << "static constexpr int _xdr_field_number(std::uint32_t _which) {";
   union_function(os, u, "_which", [](const rpc_ufield *uf) {
       using std::to_string;
       if (uf)
@@ -277,9 +277,9 @@ gen(std::ostream &os, const rpc_union &u)
     });
   os << nl << "}";
 
-  // _field_name
+  // _xdr_field_name
   os << nl
-     << "static constexpr const char *_field_name(std::uint32_t _which) {";
+     << "static constexpr const char *_xdr_field_name(std::uint32_t _which) {";
   union_function(os, u, "_which", [](const rpc_ufield *uf) {
       using std::to_string;
       if (uf && uf->decl.type != "void")
@@ -289,13 +289,13 @@ gen(std::ostream &os, const rpc_union &u)
     });
   os << nl << "}";
 
-  // _field_name
-  os << nl << "const char *_field_name() const { return _field_name("
+  // _xdr_field_name
+  os << nl << "const char *_xdr_field_name() const { return _xdr_field_name("
      << u.tagid << "_); }";
 
-  // _on_field_ptr
+  // _xdr_on_field_ptr
   os << nl << "template<typename F, typename T> static void"
-     << nl << "_on_field_ptr(F &f, T &&t, std::uint32_t _which) {"
+     << nl << "_xdr_on_field_ptr(F &f, T &&t, std::uint32_t _which) {"
      << nl.open << pswitch(u, "_which");
   for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
@@ -316,7 +316,7 @@ gen(std::ostream &os, const rpc_union &u)
   // Default constructor
   os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
      << map_type(u.tagtype) << "{}) : " << u.tagid << "_(_t) {"
-     << nl.open << "_on_field_ptr(xdr::case_constructor, this, "
+     << nl.open << "_xdr_on_field_ptr(xdr::case_constructor, this, "
      << u.tagid << "_);"
      << nl.close << "}";
 
@@ -324,46 +324,49 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << u.id << "(const " << u.id << " &_source) : "
      << u.tagid << "_(_source." << u.tagid << "_) {"
      << nl.open << "xdr::case_construct_from _dest{this};"
-     << nl << "_on_field_ptr(_dest, _source, " << u.tagid << "_);"
+     << nl << "_xdr_on_field_ptr(_dest, _source, " << u.tagid << "_);"
      << nl.close << "}";
   os << nl << u.id << "(" << u.id << " &&_source) : "
      << u.tagid << "_(_source." << u.tagid << "_) {"
      << nl.open << "xdr::case_construct_from _dest{this};"
-     << nl << "_on_field_ptr(_dest, std::move(_source), " << u.tagid << "_);"
+     << nl << "_xdr_on_field_ptr(_dest, std::move(_source), "
+     << u.tagid << "_);"
      << nl.close << "}";
 
   // Destructor
   os << nl << "~" << u.id
-     << "() { _on_field_ptr(xdr::case_destroyer, this, "
+     << "() { _xdr_on_field_ptr(xdr::case_destroyer, this, "
      << u.tagid << "_); }";
 
   // Assignment
   os << nl << u.id << " &operator=(const " << u.id << " &_source) {"
-     << nl.open << "if (_field_number(" << u.tagid
-     << "_) == _field_number(_source." << u.tagid << "_)) {"
+     << nl.open << "if (_xdr_field_number(" << u.tagid
+     << "_) == _xdr_field_number(_source." << u.tagid << "_)) {"
      << nl << "  xdr::case_assign_from _dest{this};"
-     << nl << "  _on_field_ptr(_dest, _source, " << u.tagid << "_);"
+     << nl << "  _xdr_on_field_ptr(_dest, _source, " << u.tagid << "_);"
      << nl << "}"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "xdr::case_construct_from _dest{this};"
-     << nl << "_on_field_ptr(_dest, _source, " << u.tagid << "_);"
+     << nl << "_xdr_on_field_ptr(_dest, _source, " << u.tagid << "_);"
      << nl.close << "}"
      << nl << u.tagid << "_ = _source." << u.tagid << "_;"
      << nl << "return *this;"
      << nl.close << "}";
   os << nl << u.id << " &operator=(" << u.id << " &&_source) {"
-     << nl.open << "if (_field_number(" << u.tagid
-     << "_) == _field_number(_source." << u.tagid << "_)) {"
+     << nl.open << "if (_xdr_field_number(" << u.tagid
+     << "_) == _xdr_field_number(_source." << u.tagid << "_)) {"
      << nl << "  xdr::case_assign_from _dest{this};"
-     << nl << "  _on_field_ptr(_dest, std::move(_source), " << u.tagid << "_);"
+     << nl << "  _xdr_on_field_ptr(_dest, std::move(_source), "
+     << u.tagid << "_);"
      << nl << "}"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "xdr::case_construct_from _dest{this};"
-     << nl << "_on_field_ptr(_dest, std::move(_source), " << u.tagid << "_);"
+     << nl << "_xdr_on_field_ptr(_dest, std::move(_source), "
+     << u.tagid << "_);"
      << nl.close << "}"
      << nl << u.tagid << "_ = _source." << u.tagid << "_;"
      << nl << "return *this;"
@@ -376,14 +379,14 @@ gen(std::ostream &os, const rpc_union &u)
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
   os << nl << "void " << u.tagid << "(" << u.tagtype
      << " _t, bool _validate = true) {"
-     << nl.open << "int _fnum = _field_number(_t);"
+     << nl.open << "int _fnum = _xdr_field_number(_t);"
      << nl << "if (_fnum < 0 && _validate)"
      << nl << "  throw xdr::xdr_bad_value(\"bad value of "
      << u.tagid << " in " << u.id << "::" << u.tagid << "\");"
-     << nl << "if (_fnum != _field_number(" << u.tagid << "_)) {"
+     << nl << "if (_fnum != _xdr_field_number(" << u.tagid << "_)) {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = _t;"
-     << nl << "_on_field_ptr(xdr::case_constructor, this, "
+     << nl << "_xdr_on_field_ptr(xdr::case_constructor, this, "
      << u.tagid << "_);"
      << nl.close << "}"
      << nl.close << "}" << endl;
@@ -394,7 +397,7 @@ gen(std::ostream &os, const rpc_union &u)
     for (string cnst : {"", "const "})
       os << nl << cnst << decl_type(f.decl) << " &" << f.decl.id
 	 << "() " << cnst << "{"
-	 << nl.open << "if (_field_number(" << u.tagid << "_) == "
+	 << nl.open << "if (_xdr_field_number(" << u.tagid << "_) == "
 	 << f.fieldno << ")"
 	 << nl << "  return " << f.decl.id << "_;"
 	 << nl << "throw xdr::xdr_wrong_union(\""
@@ -407,8 +410,8 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "template<class _Archive> void save(_Archive &_archive) const {"
      << nl.open << "_archive(xdr::prepare_field<_Archive>::nvp(\""
      << u.tagid << "\", " << u.tagid << "_));"
-     << nl << "xdr::case_save<_Archive> _cs{_archive, _field_name()};"
-     << nl << "_on_field_ptr(_cs, this, " << u.tagid << "_);"
+     << nl << "xdr::case_save<_Archive> _cs{_archive, _xdr_field_name()};"
+     << nl << "_xdr_on_field_ptr(_cs, this, " << u.tagid << "_);"
      << nl.close << "}";
 
   os << nl << "template<class _Archive> void load(_Archive &_archive) {"
@@ -416,8 +419,8 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "_archive(xdr::prepare_field<_Archive>::nvp(\""
      << u.tagid << "\", _which));"
      << nl << u.tagid << "(" << u.tagtype << "(_which), true);"
-     << nl << "xdr::case_load<_Archive> _cl{_archive, _field_name()};"
-     << nl << "_on_field_ptr(_cl, this, " << u.tagid << "_);"
+     << nl << "xdr::case_load<_Archive> _cl{_archive, _xdr_field_name()};"
+     << nl << "_xdr_on_field_ptr(_cl, this, " << u.tagid << "_);"
      << nl.close << "}";
 
   os << nl.close << "}";
