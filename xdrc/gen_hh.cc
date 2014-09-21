@@ -101,9 +101,9 @@ decl_type(const rpc_decl &d)
 
   switch (d.qual) {
   case rpc_decl::PTR:
-    return string("xdr::optional<") + type + ">";
+    return string("xdr::pointer<") + type + ">";
   case rpc_decl::ARRAY:
-    return string("xdr::array<") + type + "," + d.bound + ">";
+    return string("xdr::xarray<") + type + "," + d.bound + ">";
   case rpc_decl::VEC:
     return string("xdr::xvector<") + type +
       (d.bound.empty() ? ">" : string(",") + d.bound + ">");

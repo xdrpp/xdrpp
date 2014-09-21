@@ -53,18 +53,25 @@ template<typename T> struct xdr_container : std::false_type {};
 constexpr std::uint32_t XDR_MAX_LEN = 0xffffffff;
 
 //! XDR arrays are implemented using std::array
-using std::array;
+template<typename T, std::uint32_t N> struct xarray
+  : std::array<T, size_t(N)> {
+  using array = std::array<T, size_t(N)>;
+  using array::array;
+};
 
-template<typename T, std::uint32_t N> struct xdr_container<array<T, N>>
+template<typename T, std::uint32_t N> struct xdr_container<xarray<T, N>>
   : std::true_type {
-  using element_type = T;
-  using container_type = array<T, N>;
   static constexpr bool variable = false;
   static constexpr bool pointer = false;
-  static constexpr std::uint32_t size(const container_type &) { return N; }
-  static T *begin(container_type &c) { return &*c.begin(); }
-  static const T *begin(const container_type &c) { return &*c.cbegin(); }
-  static const T *end(container_type &c) { &*c.cend(); }
+  T &extend_at(std::uint32_t i) {
+    if (i >= N)
+      throw xdr_overflow("attempt to access invalid position in xdr::xarray");
+    return (*this)[i];
+  }
+  void resize(std::uint32_t i) {
+    if (i != N)
+      throw xdr_overflow("invalid resize in xdr::xarray");
+  }
 };
 
 //! Opaque is represented as std::uint8_t;
@@ -83,7 +90,6 @@ template<std::uint32_t N> struct xdr_container<opaque_array<N>>
 template<typename T, std::uint32_t N = XDR_MAX_LEN>
 struct xvector : std::vector<T> {
   using vector = std::vector<T>;
-
   using vector::vector;
 
   //! Return the maximum size allowed by the type.
@@ -94,18 +100,24 @@ struct xvector : std::vector<T> {
     if (n > max_size())
       throw xdr_overflow("xvector overflow");
   }
+
+  T &extend_at(std::uint32_t i) {
+    if (i >= N)
+      throw xdr_overflow("attempt to access invalid position in xdr::xvector");
+    if (i == this->size())
+      this->push_back();
+    return this->at(i);
+  }
+  void resize(std::uint32_t n) {
+    check_size(n);
+    vector::resize(n);
+  }
 };
 
 template<typename T, std::uint32_t N> struct xdr_container<xvector<T, N>>
   : std::true_type {
-  using element_type = T;
-  using container_type = xvector<T, N>;
   static constexpr bool variable = true;
   static constexpr bool pointer = false;
-  static std::uint32_t size(const container_type &c) { return c.size(); }
-  static T *begin(container_type &c) { return &*c.begin(); }
-  static const T *begin(const container_type &c) { return &*c.cbegin(); }
-  static const T *end(container_type &c) { &*c.cend(); }
 };
 
 
@@ -169,19 +181,40 @@ struct xstring : std::string {
 };
 
 //! Optional data (represented with pointer notation in XDR source).
-template<typename T> using optional = std::unique_ptr<T>;
+template<typename T> struct pointer : std::unique_ptr<T> {
+  using std::unique_ptr<T>::unique_ptr;
+  using std::unique_ptr<T>::get;
+  std::uint32_t size() const { return *this != false; }
+  T *begin() { return get(); }
+  const T *cbegin() const { return get(); }
+  T *end() { return begin() + size(); }
+  T *cend() const { return begin() + size(); }
+  T &extend_at(std::uint32_t i) {
+    if (i != 0)
+      throw xdr_overflow("attempt to access position > 0 in xdr::pointer");
+    if (!size())
+      reset(new T);
+    return **this;
+  }
+  void resize(std::uint32_t n) {
+    if (n == size())
+      return;
+    switch(n) {
+    case 0:
+      this->reset();
+      break;
+    case 1:
+      this->reset(new T);
+      break;
+    default:
+      throw xdr_overflow("xdr::pointer::resize: valid sizes are 0 and 1");
+    }
+  }
+};
 
-template<typename T> struct xdr_container<optional<T>> : std::true_type {
-  using element_type = T;
-  using container_type = optional<T>;
+template<typename T> struct xdr_container<pointer<T>> : std::true_type {
   static constexpr bool variable = true;
   static constexpr bool pointer = true;
-  static std::uint32_t size(const container_type &c) { return c == true; }
-  static T *begin(container_type &c) { return c ? c.get() : nullptr; }
-  static const T *begin(const container_type &c) {
-    return c ? c.get() : nullptr;
-  }
-  static const T *end(container_type &c) { return c ? begin() + 1 : begin(); }
 };
 
 

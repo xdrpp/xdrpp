@@ -110,7 +110,7 @@ struct Printer {
     bol() << "}" << std::endl;
   }
 
-  template<typename T> void operator()(const char *field, const optional<T> &t)
+  template<typename T> void operator()(const char *field, const pointer<T> &t)
   {
     if (!t) {
       if (field)
