@@ -10,21 +10,19 @@ using namespace xdr;
 int
 main()
 {
-  bool b = true;
   xdr::Printer p;
-
+#if 0
+  bool b = true;
   p("b", b);
+  p("x", 5);
+#endif
+  numerics n;
+  n.ip.reset(new int (5));
+  n.nester.resize(2);
+  n.nester[0].juju = "hi";
+  n.nester[1].juju = "there";
+  p("n", n);
   std::cout << p.buf_.str();
-
-  using x_t = int32_t;
-  
-  std::cout << xdr_class<x_t>::value << endl;
-  std::cout << xdr_enum<x_t>::value << endl;
-  std::cout << xdr_container<x_t>::value << endl;
-  std::cout << is_arithmetic<x_t>::value << endl;
-
-  x_t x;
-  p("x", x);
 
   return 0;
 }

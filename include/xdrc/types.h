@@ -68,8 +68,10 @@ template<typename T, std::uint32_t N> struct xdr_container<array<T, N>>
 };
 
 //! Opaque is represented as std::uint8_t;
-template<std::uint32_t N = XDR_MAX_LEN> using opaque_array =
-  array<std::uint8_t, N>;
+template<std::uint32_t N = XDR_MAX_LEN> struct opaque_array
+  : std::array<std::uint8_t, N> {
+  using std::array<std::uint8_t, N>::array;
+};
 
 template<std::uint32_t N> struct xdr_container<opaque_array<N>>
   : std::false_type {};

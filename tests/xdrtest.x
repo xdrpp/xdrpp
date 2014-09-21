@@ -7,12 +7,12 @@ enum color {
 
 struct numerics {
   int i32;
-  unsigned u32;
-  hyper i64;
-  unsigned hyper u64;
-  float f;
+  int *ip;
   double d;
   int iv[4];
+  struct {
+    string juju<>;
+  } nester<>;
   opaque hash[20];
   opaque longone<>;
 };

@@ -175,13 +175,13 @@ gen(std::ostream &os, const rpc_struct &s)
     << "template<> struct xdr::xdr_class<" << scope.back()
     << "> : std::true_type {" << endl;
   for (string decl :
-    { string("template<typename _Archive> void save(_Archive &_archive,\n"
-	     "                                        const ")
+    { string("  template<typename _Archive> static void\n"
+	     "  save(_Archive &_archive, const ")
 	+ scope.back() + " &_xdr_obj) {",
-      string("template<typename _Archive> void load(_Archive &_archive,\n"
-	     "                                        ")
+      string("  template<typename _Archive> static void\n"
+	     "  load(_Archive &_archive, ")
         + scope.back() + " &_xdr_obj) {" } ) {
-    top_material << "  " << decl << endl;
+    top_material << decl << endl;
     for (size_t i = 0; i < s.decls.size(); ++i)
       top_material << "    _archive(\"" << s.decls[i].id << "\", _xdr_obj."
 		   << s.decls[i].id << ");" << endl;
@@ -479,7 +479,7 @@ gen(std::ostream &os, const rpc_union &u)
     << "template<> struct xdr::xdr_class<" << scope.back()
     << "> : std::true_type {" << endl;
   top_material
-    << "  template<typename _Archive> void" << endl
+    << "  template<typename _Archive> static void" << endl
     << "  save(_Archive &_archive, const "
     << scope.back() << " &_xdr_obj) {" << endl
     << "    _archive(\"" << u.tagid << "\", _xdr_obj."
@@ -490,7 +490,7 @@ gen(std::ostream &os, const rpc_union &u)
     << u.tagid << "());" << endl
     << "  }" << endl;
   top_material
-    << "  template<typename _Archive> void" << endl
+    << "  template<typename _Archive> static void" << endl
     << "  load(_Archive &_archive, "
     << scope.back() << " &_xdr_obj) {" << endl
     << "    " << scope.back() << "::_xdr_discriminant_t _xdr_which;" << endl

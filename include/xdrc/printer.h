@@ -60,7 +60,7 @@ struct Printer {
     os.fill('0');
     os.setf(std::ios::hex, std::ios::basefield);
     for (std::uint8_t c : a)
-      os << std::setw(2) << c;
+      os << std::setw(2) << (unsigned(c) & 0xff);
     os << std::endl;
   }
   template<std::uint32_t N>
@@ -77,7 +77,8 @@ struct Printer {
     os << std::endl;
   }
 
-  template<typename T> std::enable_if<std::is_arithmetic<T>::value>
+  template<typename T> typename
+  std::enable_if<std::is_arithmetic<T>::value>::type
   operator()(const char *field, T t) {
     if (field)
       bol() << field << " = " << t << std::endl;
@@ -85,7 +86,7 @@ struct Printer {
       bol() << t << std::endl;
   }
 
-  template<typename T> std::enable_if<xdr_enum<T>::value>
+  template<typename T> typename std::enable_if<xdr_enum<T>::value>::type
   operator()(const char *field, T t) {
     if (field)
       bol() << field << " = ";
@@ -97,27 +98,39 @@ struct Printer {
       buf_ << t << std::endl;
   }
 
-  template<typename T> std::enable_if<xdr_class<T>::value>
+  template<typename T> typename std::enable_if<xdr_class<T>::value>::type
   operator()(const char *field, const T &t) {
     if (field)
       bol() << field << " = {" << std::endl;
     else
       bol() << "{" << std::endl;
     ++indent_;
-    xdr_class<T>::save(t);
+    xdr_class<T>::save(*this, t);
     --indent_;
     bol() << "}" << std::endl;
   }
 
-  template<typename T> std::enable_if<!xdr_container<T>::value>
+  template<typename T> void operator()(const char *field, const optional<T> &t)
+  {
+    if (!t) {
+      if (field)
+	bol() << field << " = NULL" << std::endl;
+      else
+	bol() << "NULL" << std::endl;
+    }
+    else
+      (*this)(field, *t);
+  }
+
+  template<typename T> typename std::enable_if<!xdr_container<T>::pointer>::type
   operator()(const char *field, const T &t) {
     if (field)
       bol() << field << " = {" << std::endl;
     else
       bol() << "{" << std::endl;
     ++indent_;
-    for (const auto &e = t.cbegin(); e != t.cend(); ++e) {
-      (*this)(e);
+    for (auto e = t.cbegin(); e != t.cend(); ++e) {
+      (*this)(nullptr, *e);
     }
     --indent_;
     bol() << "}" << std::endl;
