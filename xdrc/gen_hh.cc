@@ -300,8 +300,22 @@ gen(std::ostream &os, const rpc_union &u)
     " \"union discriminant must be 4 bytes\");";
 
   // _xdr_discriminant
+  os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
   os << nl << "std::uint32_t _xdr_discriminant() const { return "
      << u.tagid << "_; }";
+  os << nl << "void _xdr_discriminant(std::uint32_t _xdr_d,"
+     << nl << "                       bool _xdr_validate = true) {"
+     << nl.open << "int _xdr_fnum = _xdr_field_number(_xdr_d);"
+     << nl << "if (_xdr_fnum < 0 && _xdr_validate)"
+     << nl << "  throw xdr::xdr_bad_value(\"bad value of "
+     << u.tagid << " in " << u.id << "\");"
+     << nl << "if (_xdr_fnum != _xdr_field_number(" << u.tagid << "_)) {"
+     << nl.open << "this->~" << u.id << "();"
+     << nl << u.tagid << "_ = _xdr_d;"
+     << nl << "_xdr_on_field_ptr(xdr::case_constructor, this, "
+     << u.tagid << "_);"
+     << nl.close << "}"
+     << nl.close << "}" << endl;
 
   // _xdr_field_number
   os << nl
@@ -416,17 +430,8 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
   os << nl << "void " << u.tagid << "(" << u.tagtype
-     << " _t, bool _validate = true) {"
-     << nl.open << "int _fnum = _xdr_field_number(_t);"
-     << nl << "if (_fnum < 0 && _validate)"
-     << nl << "  throw xdr::xdr_bad_value(\"bad value of "
-     << u.tagid << " in " << u.id << "::" << u.tagid << "\");"
-     << nl << "if (_fnum != _xdr_field_number(" << u.tagid << "_)) {"
-     << nl.open << "this->~" << u.id << "();"
-     << nl << u.tagid << "_ = _t;"
-     << nl << "_xdr_on_field_ptr(xdr::case_constructor, this, "
-     << u.tagid << "_);"
-     << nl.close << "}"
+     << " _xdr_d, bool _xdr_validate = true) {"
+     << nl.open << "_xdr_discriminant(_xdr_d, _xdr_validate);"
      << nl.close << "}" << endl;
 
   for (const auto &f : u.fields) {
@@ -443,6 +448,7 @@ gen(std::ostream &os, const rpc_union &u)
 	 << nl.close << "}";
   }
 
+#if 0
   os << endl;
 
   os << nl
@@ -459,6 +465,35 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "xdr::case_load<_Archive> _cl{_archive, _xdr_field_name()};"
      << nl << "_xdr_on_field_ptr(_cl, this, " << u.tagid << "_);"
      << nl.close << "}";
+#endif
+  top_material
+    << "template<> struct xdr::xdr_class<" << scope.back()
+    << "> : std::true_type {" << endl;
+  top_material
+    << "  template<typename _Archive> void" << endl
+    << "  _xdr_save(_Archive &_archive, const "
+    << scope.back() << " &_xdr_obj) {" << endl
+    << "    _archive(\"" << u.tagid << "\", _xdr_obj."
+    << u.tagid << "());" << endl
+    << "    xdr::case_save<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
+    << endl
+    << "    _xdr_obj._xdr_on_field_ptr(_cs, &_xdr_obj, _xdr_obj."
+    << u.tagid << "());" << endl
+    << "  }" << endl;
+  top_material
+    << "  template<typename _Archive> void" << endl
+    << "  _xdr_load(_Archive &_archive, "
+    << scope.back() << " &_xdr_obj) {" << endl
+    << "    " << scope.back() << "::_xdr_discriminant_t _xdr_which;" << endl
+    << "    _archive(\"" << u.tagid << "\", _xdr_which);" << endl
+    << "    _xdr_obj." << u.tagid << "(_xdr_which);" << endl
+    << "    xdr::case_load<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
+    << endl
+    << "    _xdr_obj._xdr_on_field_ptr(_cs, &_xdr_obj, _xdr_obj."
+    << u.tagid << "());" << endl
+    << "  }" << endl;
+  top_material
+    << "};" << endl;
 
   os << nl.close << "}";
 
