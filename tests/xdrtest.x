@@ -12,6 +12,9 @@ struct numerics {
   unsigned hyper u64;
   float f;
   double d;
+  int iv[4];
+  opaque hash[20];
+  opaque longone<>;
 };
 
 union ContainsEnum switch (color c) {

@@ -89,12 +89,21 @@ decl_type(const rpc_decl &d)
 
   if (type == "string")
     return string("xdr::xstring<") + d.bound + ">";
+  if (d.type == "opaque")
+    switch (d.qual) {
+    case rpc_decl::ARRAY:
+      return string("xdr::opaque_array<") + d.bound + ">";
+    case rpc_decl::VEC:
+      return string("xdr::opaque_vec<") + d.bound + ">";
+    default:
+      assert(!"bad opaque qualifier");
+    }
 
   switch (d.qual) {
   case rpc_decl::PTR:
-    return string("std::unique_ptr<") + type + ">";
+    return string("xdr::optional<") + type + ">";
   case rpc_decl::ARRAY:
-    return string("std::array<") + type + "," + d.bound + ">";
+    return string("xdr::array<") + type + "," + d.bound + ">";
   case rpc_decl::VEC:
     return string("xdr::xvector<") + type +
       (d.bound.empty() ? ">" : string(",") + d.bound + ">");
@@ -471,7 +480,7 @@ gen(std::ostream &os, const rpc_union &u)
     << "> : std::true_type {" << endl;
   top_material
     << "  template<typename _Archive> void" << endl
-    << "  _xdr_save(_Archive &_archive, const "
+    << "  save(_Archive &_archive, const "
     << scope.back() << " &_xdr_obj) {" << endl
     << "    _archive(\"" << u.tagid << "\", _xdr_obj."
     << u.tagid << "());" << endl
@@ -482,7 +491,7 @@ gen(std::ostream &os, const rpc_union &u)
     << "  }" << endl;
   top_material
     << "  template<typename _Archive> void" << endl
-    << "  _xdr_load(_Archive &_archive, "
+    << "  load(_Archive &_archive, "
     << scope.back() << " &_xdr_obj) {" << endl
     << "    " << scope.back() << "::_xdr_discriminant_t _xdr_which;" << endl
     << "    _archive(\"" << u.tagid << "\", _xdr_which);" << endl
