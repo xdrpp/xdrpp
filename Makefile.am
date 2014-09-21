@@ -12,9 +12,9 @@ AM_YFLAGS = -d
 BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc
 
 lib_LIBRARIES = xmsg/libxmsg.a
-xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc		\
-	include/xdrc/msgsock.h xmsg/pollset.cc include/xdrc/pollset.h	\
-	include/xdrc/iniparse.h
+xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
+	xmsg/printer.cc include/xdrc/msgsock.h xmsg/pollset.cc	\
+	include/xdrc/pollset.h include/xdrc/iniparse.h
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\

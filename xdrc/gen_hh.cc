@@ -183,7 +183,8 @@ gen(std::ostream &os, const rpc_struct &s)
         + scope.back() + " &_xdr_obj) {" } ) {
     top_material << decl << endl;
     for (size_t i = 0; i < s.decls.size(); ++i)
-      top_material << "    _archive(\"" << s.decls[i].id << "\", _xdr_obj."
+      top_material << "    xdr::archive(_archive, \""
+		   << s.decls[i].id << "\", _xdr_obj."
 		   << s.decls[i].id << ");" << endl;
     top_material << "  }" << endl;;
   }
@@ -457,24 +458,6 @@ gen(std::ostream &os, const rpc_union &u)
 	 << nl.close << "}";
   }
 
-#if 0
-  os << endl;
-
-  os << nl
-     << "template<typename _Archive> void _xdr_save(_Archive &_archive) const {"
-     << nl.open << "_archive(\"" << u.tagid << "\", " << u.tagid << "_);"
-     << nl << "xdr::case_save<_Archive> _cs{_archive, _xdr_field_name()};"
-     << nl << "_xdr_on_field_ptr(_cs, this, " << u.tagid << "_);"
-     << nl.close << "}";
-
-  os << nl << "template<typename _Archive> void _xdr_load(_Archive &_archive) {"
-     << nl.open << "std::uint32_t _which;"
-     << nl << "_archive(\"" << u.tagid << "\", _which);"
-     << nl << u.tagid << "(" << u.tagtype << "(_which), true);"
-     << nl << "xdr::case_load<_Archive> _cl{_archive, _xdr_field_name()};"
-     << nl << "_xdr_on_field_ptr(_cl, this, " << u.tagid << "_);"
-     << nl.close << "}";
-#endif
   top_material
     << "template<> struct xdr::xdr_class<" << scope.back()
     << "> : std::true_type {" << endl;
@@ -482,7 +465,7 @@ gen(std::ostream &os, const rpc_union &u)
     << "  template<typename _Archive> static void" << endl
     << "  save(_Archive &_archive, const "
     << scope.back() << " &_xdr_obj) {" << endl
-    << "    _archive(\"" << u.tagid << "\", _xdr_obj."
+    << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_obj."
     << u.tagid << "());" << endl
     << "    xdr::case_save<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
     << endl
@@ -494,7 +477,7 @@ gen(std::ostream &os, const rpc_union &u)
     << "  load(_Archive &_archive, "
     << scope.back() << " &_xdr_obj) {" << endl
     << "    " << scope.back() << "::_xdr_discriminant_t _xdr_which;" << endl
-    << "    _archive(\"" << u.tagid << "\", _xdr_which);" << endl
+    << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_which);" << endl
     << "    _xdr_obj." << u.tagid << "(_xdr_which);" << endl
     << "    xdr::case_load<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
     << endl

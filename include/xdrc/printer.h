@@ -3,139 +3,107 @@
 #ifndef _XDRC_PRINT_H_HEADER_INCLUDED_
 #define _XDRC_PRINT_H_HEADER_INCLUDED_ 1
 
-#include <iomanip>
 #include <sstream>
-#include <string>
-#include <utility>
 #include <xdrc/types.h>
 
 namespace xdr {
 
-inline std::string
-escape_string(const std::string &s)
-{
-  std::ostringstream os;
-  for (char c : s) {
-    if (c < 0x20 || c >= 0x7f)
-      os << '\\' << std::setw(3) << std::setfill('0')
-	 << std::oct << (unsigned(c) & 0xff);
-    else if (c == '"')
-      os << "\\\"";
-    else
-      os << c;
-  }
-  return os.str();
-}
+std::string escape_string(const std::string &s);
+std::string hexdump(const std::uint8_t *data, size_t len);
 
 struct Printer {
   std::ostringstream buf_;
   int indent_{0};
+  bool skipnl_{true};
+  bool comma_{true};
+  template<typename T> using nvp = std::pair<const char *, const T &>;
 
-  Printer() { buf_ << std::boolalpha; }
+  std::ostream &bol(const char *name = nullptr);
+  void operator()(const char *field, const char *s) { bol(field) << s; }
+  void operator()(const char *field, const std::string &s) { bol(field) << s; }
 
-  std::ostream &bol() {
-    return buf_ << std::string(2*indent_, ' ');
+  template<typename T> void operator()(const char *field, const pointer<T> &t) {
+    if (t)
+      archive(*this, field, *t);
+    else
+      bol(field) << "NULL";
   }
 
-  void operator()(const char *field, bool b) {
-    if (field)
-      bol() << field << " = " << (b ? "TRUE" : "FALSE") << std::endl;
-    else
-      bol() << (b ? "TRUE" : "FALSE") << std::endl;
-  }
-
-  void operator()(const char *field, const std::string &s) {
-    if (field)
-      bol() << field << " = " << escape_string(s) << std::endl;
-    else
-      bol() << escape_string(s) << std::endl;
-  }
-  template<std::uint32_t N>
-  void operator()(const char *field, const opaque_array<N> &a) {
-    if (field)
-      bol() << field << " = ";
-    else
-      bol();
-    std::ostream os (buf_.rdbuf());
-    os.fill('0');
-    os.setf(std::ios::hex, std::ios::basefield);
-    for (std::uint8_t c : a)
-      os << std::setw(2) << (unsigned(c) & 0xff);
-    os << std::endl;
-  }
-  template<std::uint32_t N>
-  void operator()(const char *field, const opaque_vec<N> &a) {
-    if (field)
-      bol() << field << " = ";
-    else
-      bol();
-    std::ostream os (buf_.rdbuf());
-    os.fill('0');
-    os.setf(std::ios::hex, std::ios::basefield);
-    for (std::uint8_t c : a)
-      os << std::setw(2) << c;
-    os << std::endl;
-  }
-
-  template<typename T> typename
-  std::enable_if<std::is_arithmetic<T>::value>::type
-  operator()(const char *field, T t) {
-    if (field)
-      bol() << field << " = " << t << std::endl;
-    else
-      bol() << t << std::endl;
-  }
-
-  template<typename T> typename std::enable_if<xdr_enum<T>::value>::type
-  operator()(const char *field, T t) {
-    if (field)
-      bol() << field << " = ";
-    else
-      bol();
-    if (const char *n = xdr_enum<T>::name(t))
-      buf_ << n << std::endl;
-    else
-      buf_ << t << std::endl;
-  }
-
-  template<typename T> typename std::enable_if<xdr_class<T>::value>::type
+  template<typename T> ENABLE_IF(xdr_class<T>::value)
   operator()(const char *field, const T &t) {
-    if (field)
-      bol() << field << " = {" << std::endl;
-    else
-      bol() << "{" << std::endl;
+    bool skipnl = !field;
+    bol(field) << "{";
+    if (skipnl)
+      buf_ << ' ';
+    comma_ = false;
+    skipnl_ = skipnl;
     ++indent_;
-    xdr_class<T>::save(*this, t);
-    --indent_;
-    bol() << "}" << std::endl;
-  }
-
-  template<typename T> void operator()(const char *field, const pointer<T> &t)
-  {
-    if (!t) {
-      if (field)
-	bol() << field << " = NULL" << std::endl;
-      else
-	bol() << "NULL" << std::endl;
+    xdr_recursive<T>::save(*this, t);
+    if (skipnl) {
+      buf_ << " }";
+      --indent_;
     }
-    else
-      (*this)(field, *t);
+    else {
+      comma_ = false;
+      --indent_;
+      bol() << "}";
+    }
   }
 
-  template<typename T> typename std::enable_if<!xdr_container<T>::pointer>::type
+  template<typename T> ENABLE_IF(xdr_container<T>::value)
   operator()(const char *field, const T &t) {
-    if (field)
-      bol() << field << " = {" << std::endl;
-    else
-      bol() << "{" << std::endl;
+    bool skipnl = !field;
+    bol(field) << '[';
+    if (skipnl)
+      buf_ << ' ';
+    comma_ = false;
+    skipnl_ = skipnl;
     ++indent_;
-    for (auto e = t.cbegin(); e != t.cend(); ++e) {
-      (*this)(nullptr, *e);
+    for (const auto &o : t)
+      archive(*this, nullptr, o);
+    if (skipnl) {
+      buf_ << " ]";
+      --indent_;
     }
-    --indent_;
-    bol() << "}" << std::endl;
+    else {
+      comma_ = false;
+      --indent_;
+      bol() << "]";
+    }
   }
 };
+
+template<> struct archive_adapter<Printer> {
+  template<std::uint32_t N>
+  static void apply(Printer &p, const char *field, const xstring<N> &s) {
+    p(field, escape_string(s));
+  }
+  template<std::uint32_t N>
+  static void apply(Printer &p, const char *field, const opaque_array<N> &v) {
+    p(field, hexdump(v.data(), v.size()));
+  }
+  template<std::uint32_t N>
+  static void apply(Printer &p, const char *field, const opaque_vec<N> &v) {
+    p(field, hexdump(v.data(), v.size()));
+  }
+
+  template<typename T> static ENABLE_IF(xdr_enum<T>::value)
+  apply(Printer &p, const char *field, T t) {
+    if (const char *n = xdr_enum<T>::name(t))
+      p(field, n);
+    else
+      p(field, std::to_string(t));
+  }
+  template<typename T> static ENABLE_IF(std::is_arithmetic<T>::value)
+  apply(Printer &p, const char *field, T t) {
+    p(field, std::to_string(t));
+  };
+
+  template<typename T> static ENABLE_IF(xdr_class<T>::value
+					|| xdr_container<T>::value)
+  apply(Printer &p, const char *field, const T &obj) { p(field, obj); }
+};
+
 
 }
 
