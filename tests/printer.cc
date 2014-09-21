@@ -21,8 +21,8 @@ main()
   n.nester.resize(2);
   n.nester[0].juju = "hi";
   n.nester[1].juju = "there";
-  p(nullptr, n);
-  std::cout << p.buf_.str();
+  //p(nullptr, n);
+  std::cout << xdr_to_string(n);
 
   return 0;
 }

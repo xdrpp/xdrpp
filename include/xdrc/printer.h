@@ -16,7 +16,9 @@ struct Printer {
   int indent_{0};
   bool skipnl_{true};
   bool comma_{true};
-  template<typename T> using nvp = std::pair<const char *, const T &>;
+
+  Printer() {}
+  Printer(int indent) : indent_(indent) {}
 
   std::ostream &bol(const char *name = nullptr);
   void operator()(const char *field, const char *s) { bol(field) << s; }
@@ -37,15 +39,15 @@ struct Printer {
       buf_ << ' ';
     comma_ = false;
     skipnl_ = skipnl;
-    ++indent_;
+    indent_ += 2;
     xdr_recursive<T>::save(*this, t);
     if (skipnl) {
       buf_ << " }";
-      --indent_;
+      indent_ -= 2;
     }
     else {
       comma_ = false;
-      --indent_;
+      indent_ -= 2;
       bol() << "}";
     }
   }
@@ -58,16 +60,16 @@ struct Printer {
       buf_ << ' ';
     comma_ = false;
     skipnl_ = skipnl;
-    ++indent_;
+    indent_ += 2;
     for (const auto &o : t)
       archive(*this, nullptr, o);
     if (skipnl) {
       buf_ << " ]";
-      --indent_;
+      indent_ -= 2;
     }
     else {
       comma_ = false;
-      --indent_;
+      indent_ -= 2;
       bol() << "]";
     }
   }
@@ -104,6 +106,14 @@ template<> struct archive_adapter<Printer> {
   apply(Printer &p, const char *field, const T &obj) { p(field, obj); }
 };
 
+template<typename T> std::string
+xdr_to_string(const T &t, int indent = 0, const char *name = nullptr)
+{
+  Printer p;
+  p(name, t);
+  p.buf_ << std::endl;
+  return p.buf_.str();
+}
 
 }
 

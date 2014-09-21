@@ -41,7 +41,7 @@ Printer::bol(const char *name)
   else {
     if (comma_)
       buf_ << ",";
-    buf_ << std::endl << std::string(2*indent_, ' ');
+    buf_ << std::endl << std::string(indent_, ' ');
   }
   comma_ = true;
   if (name)
