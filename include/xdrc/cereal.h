@@ -43,17 +43,17 @@ load(Archive &ar, xstring<N> &s)
 } namespace cereal { class archive; } namespace xdr {			\
 template<> struct prepare_field<cereal::archive> {			\
   template<typename T> static inline cereal::NameValuePair<T>		\
-  nvp(const char *name, T &&t) {					\
+  prepare(const char *name, T &&t) {					\
     return cereal::make_nvp(name, std::forward<T>(t));			\
   }									\
   template<std::uint32_t N>						\
   static inline cereal::NameValuePair<const std::string &>		\
-  nvp(const char *name, const xstring<N> &s) {				\
+  prepare(const char *name, const xstring<N> &s) {			\
     return cereal::make_nvp(name, static_cast<const std::string &>(s));	\
   }									\
   template<std::uint32_t N>						\
   static inline cereal::NameValuePair<std::string &>			\
-  nvp(const char *name, xstring<N> &s) {				\
+  prepare(const char *name, xstring<N> &s) {				\
     return cereal::make_nvp(name, static_cast<std::string &>(s));	\
   }									\
 };

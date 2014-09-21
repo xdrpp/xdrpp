@@ -18,19 +18,22 @@ xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc		\
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
-	include/xdrc/marshal.h
+	include/xdrc/marshal.h include/xdrc/printer.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
-check_PROGRAMS = tests/test-msgsock tests/test-marshal
+check_PROGRAMS = tests/test-msgsock tests/test-marshal tests/test-printer
 #TESTS = $(check_PROGRAMS)
+tests_test_printer_SOURCES = tests/printer.cc xmsg/libxmsg.a
 tests_test_msgsock_SOURCES = tests/msgsock.cc xmsg/libxmsg.a
-tests_test_marshal_SOURCES = tests/xdrtest.hh tests/marshal.cc xmsg/libxmsg.a
+tests_test_marshal_SOURCES = tests/marshal.cc xmsg/libxmsg.a
 tests/marshal.o: tests/xdrtest.hh
+tests/printer.o: tests/xdrtest.hh
 
 SUFFIXES = .x .hh
-.x.hh: $(top_builddir)/xdrc/xdrc$(EXEEXT)
+.x.hh:
 	$(top_builddir)/xdrc/xdrc$(EXEEXT) -hh -o $@ $<
+$(top_builddir)/tests/xdrtest.hh: $(top_builddir)/xdrc/xdrc$(EXEEXT)
 
 CLEANFILES = *~ */*~ .gitignore~ tests/xdrtest.hh
 

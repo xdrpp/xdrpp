@@ -50,6 +50,8 @@ map_case(const string &s)
 namespace {
 
 indenter nl;
+vec<string> scope;
+std::ostringstream top_material;
 
 string
 guard_token()
@@ -83,7 +85,8 @@ make_nvp(std::ostream &os, const string &name, bool first, bool last)
     os << nl << "_archive(";
   else
     os << nl << "         ";
-  os << "xdr::prepare_field<_Archive>::nvp(\"" << name << "\", " << name << ")";
+  os << "xdr::prepare_field<_Archive>::prepare(\""
+     << name << "\", " << name << ")";
   if (last)
     os << ");";
   else
@@ -141,6 +144,11 @@ gen_embedded(std::ostream &os, const rpc_decl &d)
 void
 gen(std::ostream &os, const rpc_struct &s)
 {
+  if(scope.empty())
+    scope.push_back(s.id);
+  else
+    scope.push_back(scope.back() + "::" + s.id);
+
   os << "struct " << id_space(s.id) << '{';
   ++nl;
   bool blank{false};
@@ -156,8 +164,8 @@ gen(std::ostream &os, const rpc_struct &s)
   os << endl;
 
   for (string decl :
-    { "template<class _Archive> void save(_Archive &_archive) const {",
-	"template<class _Archive> void load(_Archive &_archive) {" } ) {
+    { "template<class _Archive> void _xdr_save(_Archive &_archive) const {",
+	"template<class _Archive> void _xdr_load(_Archive &_archive) {" } ) {
     os << nl << decl;
     ++nl;
     for (size_t i = 0; i < s.decls.size(); ++i)
@@ -166,6 +174,8 @@ gen(std::ostream &os, const rpc_struct &s)
   }
   
   os << nl.close << "}";
+
+  scope.pop_back();
 }
 
 void
@@ -173,12 +183,29 @@ gen(std::ostream &os, const rpc_enum &e)
 {
   os << "enum " << id_space(e.id) << ": std::uint32_t {";
   ++nl;
-  for (rpc_const c : e.tags)
+  for (const rpc_const &c : e.tags)
     if (c.val.empty())
       os << nl << c.id << ',';
     else
       os << nl << c.id << " = " << c.val << ',';
   os << nl.close << "}";
+
+  string myscope = scope.empty() ? "" : scope.back() + "::";
+  string qt = myscope + e.id;
+  top_material
+    << "template<> struct xdr::xdr_enum<" << qt << "> {" << endl
+    << "  static constexpr bool valid = true;" << endl
+    << "  static const char *to_string(" << qt << " _xdr_enum_val) {" << endl
+    << "    switch (_xdr_enum_val) {" << endl;
+  for (const rpc_const &c : e.tags)
+    top_material << "    case " << myscope + c.id << ":" << endl
+		 << "      return \"" << c.id << "\";" << endl;
+  top_material
+    << "    default:" << endl
+    << "      return nullptr;" << endl
+    << "    }" << endl
+    << "  }" << endl
+    << "};" << endl;
 }
 
 string
@@ -240,6 +267,11 @@ union_function(std::ostream &os, const rpc_union &u, string tagcmp,
 void
 gen(std::ostream &os, const rpc_union &u)
 {
+  if(scope.empty())
+    scope.push_back(u.id);
+  else
+    scope.push_back(scope.back() + "::" + u.id);
+
   os << "struct " << u.id << " {";
   ++nl;
   bool blank{false};
@@ -407,16 +439,17 @@ gen(std::ostream &os, const rpc_union &u)
 
   os << endl;
 
-  os << nl << "template<class _Archive> void save(_Archive &_archive) const {"
-     << nl.open << "_archive(xdr::prepare_field<_Archive>::nvp(\""
+  os << nl
+     << "template<class _Archive> void _xdr_save(_Archive &_archive) const {"
+     << nl.open << "_archive(xdr::prepare_field<_Archive>::prepare(\""
      << u.tagid << "\", " << u.tagid << "_));"
      << nl << "xdr::case_save<_Archive> _cs{_archive, _xdr_field_name()};"
      << nl << "_xdr_on_field_ptr(_cs, this, " << u.tagid << "_);"
      << nl.close << "}";
 
-  os << nl << "template<class _Archive> void load(_Archive &_archive) {"
+  os << nl << "template<class _Archive> void _xdr_load(_Archive &_archive) {"
      << nl.open << "std::uint32_t _which;"
-     << nl << "_archive(xdr::prepare_field<_Archive>::nvp(\""
+     << nl << "_archive(xdr::prepare_field<_Archive>::prepare(\""
      << u.tagid << "\", _which));"
      << nl << u.tagid << "(" << u.tagtype << "(_which), true);"
      << nl << "xdr::case_load<_Archive> _cl{_archive, _xdr_field_name()};"
@@ -424,6 +457,8 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.close << "}";
 
   os << nl.close << "}";
+
+  scope.pop_back();
 }
 
 }
@@ -441,6 +476,7 @@ gen_hh(std::ostream &os)
 
   int last_type = -1;
 
+  os << nl;
   for (auto &s : symlist) {
     switch(s.type) {
     case rpc_sym::CONST:
@@ -453,7 +489,6 @@ gen_hh(std::ostream &os)
     default:
 	os << endl;
     }
-    os << nl;
     switch(s.type) {
     case rpc_sym::CONST:
       os << "constexpr std::uint32_t " << s.sconst->id << " = "
@@ -492,8 +527,13 @@ gen_hh(std::ostream &os)
       break;
     }
     last_type = s.type;
+    os << nl;
+    if (!top_material.str().empty()) {
+      os << top_material.str();
+      top_material.str("");
+    }
   }
 
-  os << endl << nl << "#endif // !" << gtok << nl;
+  os << nl << "#endif // !" << gtok << nl;
 }
 

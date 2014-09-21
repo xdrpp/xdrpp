@@ -35,6 +35,22 @@ struct xdr_wrong_union : std::logic_error {
 };
 
 
+//! If \c valid is \c true, can be used to convert type \c T into a \c
+//! std::string for pretty-printing.
+template<typename T> struct xdr_enum { static constexpr bool valid = false; };
+
+
+//! This is used to bundle a field together with its name.  The
+//! default is to ignore the field name, but for debugging, or for
+//! textual format <tt>Archive</tt>s such as JSON, it is useful to be
+//! able to specialize this template.
+template<typename Archive> struct prepare_field {
+  template<typename T> static inline T&&prepare(const char *, T &&t) {
+    return std::forward<T>(t);
+  }
+};
+
+
 constexpr std::uint32_t XDR_MAX_LEN = 0xffffffff;
 
 //! A vector with a maximum size (returned by xvector::max_size()).
@@ -157,17 +173,6 @@ struct case_assign_from {
   }
 };
 
-
-//! This is used to bundle a field together with its name.  The
-//! default is to ignore the field name, but for debugging, or for
-//! textual format <tt>Archive</tt>s such as JSON, it is useful to be
-//! able to specialize this template.
-template<typename Archive> struct prepare_field {
-  template<typename T> static inline T&&nvp(const char *, T &&t) {
-    return std::forward<T>(t);
-  }
-};
-
 template<typename Archive> struct case_save {
   Archive &ar_;
   const char *name_;
@@ -175,7 +180,7 @@ template<typename Archive> struct case_save {
   void operator()() const {}
   template<typename T> void operator()(const T *) const {}
   template<typename T, typename F> void operator()(const T *t, F T::*f) const {
-    ar_(xdr::prepare_field<Archive>::nvp(name_, t->*f));
+    ar_(xdr::prepare_field<Archive>::prepare(name_, t->*f));
   }
 };
 
@@ -186,10 +191,9 @@ template<typename Archive> struct case_load {
   void operator()() const {}
   template<typename T> void operator()(T *) const {}
   template<typename T, typename F> void operator()(T *t, F T::*f) const {
-    ar_(xdr::prepare_field<Archive>::nvp(name_, t->*f));
+    ar_(xdr::prepare_field<Archive>::prepare(name_, t->*f));
   }
 };
-
 
 }
 

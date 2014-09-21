@@ -261,4 +261,3 @@ struct indenter : omanip {
   void operator++() { level_ += 2; }
   void operator--() { level_ -= 2; assert (level_ >= 0); }
 };
-

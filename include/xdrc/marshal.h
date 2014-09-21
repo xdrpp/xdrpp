@@ -47,7 +47,8 @@ from_uint(T u)
   return u;
 }
 template<typename T> inline typename
-std::enable_if<std::is_arithmetic<T>::value, T>::type
+std::enable_if<std::is_arithmetic<T>::value
+               && !std::is_same<T, xdr_uint<sizeof(T)>>::value, T>::type
 from_uint(xdr_uint<sizeof(T)> u)
 {
   return reinterpret_cast<T &>(u);
