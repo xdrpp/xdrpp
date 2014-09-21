@@ -10,6 +10,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace xdr {
@@ -35,21 +36,12 @@ struct xdr_wrong_union : std::logic_error {
 };
 
 
-//! If \c valid is \c true, can be used to convert type \c T into a \c
-//! std::string for pretty-printing.
-template<typename T> struct xdr_enum { static constexpr bool valid = false; };
+//! If \c value is \c true, a \c name static method converts \c T into
+//! a <tt>char *</tt> for pretty-printing.
+template<typename T> struct xdr_enum : std::false_type {};
 
-
-//! This is used to bundle a field together with its name.  The
-//! default is to ignore the field name, but for debugging, or for
-//! textual format <tt>Archive</tt>s such as JSON, it is useful to be
-//! able to specialize this template.
-template<typename Archive> struct prepare_field {
-  template<typename T> static inline T&&prepare(const char *, T &&t) {
-    return std::forward<T>(t);
-  }
-};
-
+//! True for XDR struct and union types.
+template<typename T> struct xdr_class : std::false_type {};
 
 constexpr std::uint32_t XDR_MAX_LEN = 0xffffffff;
 
@@ -180,7 +172,7 @@ template<typename Archive> struct case_save {
   void operator()() const {}
   template<typename T> void operator()(const T *) const {}
   template<typename T, typename F> void operator()(const T *t, F T::*f) const {
-    ar_(xdr::prepare_field<Archive>::prepare(name_, t->*f));
+    ar_(name_, t->*f);
   }
 };
 
@@ -191,7 +183,7 @@ template<typename Archive> struct case_load {
   void operator()() const {}
   template<typename T> void operator()(T *) const {}
   template<typename T, typename F> void operator()(T *t, F T::*f) const {
-    ar_(xdr::prepare_field<Archive>::prepare(name_, t->*f));
+    ar_(name_, t->*f);
   }
 };
 

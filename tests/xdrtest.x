@@ -21,6 +21,3 @@ union ContainsEnum switch (color c) {
    enum { ONE, TWO } num;
 };
 
-
-typedef string foo;
-typedef string bar;

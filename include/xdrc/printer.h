@@ -17,11 +17,6 @@ struct Printer {
   }
 };
 
-template<> struct prepare_field<Printer> {
-  template<typename T> static inline std::pair<const char *, const T&> &&
-    prepare(const char *name, const T &t) { return { name, t }; }
-};
-
 }
 
 #endif // !_XDRC_PRINT_H_HEADER_INCLUDED_

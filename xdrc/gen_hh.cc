@@ -81,16 +81,7 @@ id_space(const string &s)
 void
 make_nvp(std::ostream &os, const string &name, bool first, bool last)
 {
-  if (first)
-    os << nl << "_archive(";
-  else
-    os << nl << "         ";
-  os << "xdr::prepare_field<_Archive>::prepare(\""
-     << name << "\", " << name << ")";
-  if (last)
-    os << ");";
-  else
-    os << ",";
+    os << nl << "_archive(\"" << name << "\", " << name << ");";
 }
 
 void gen(std::ostream &os, const rpc_struct &s);
@@ -164,8 +155,8 @@ gen(std::ostream &os, const rpc_struct &s)
   os << endl;
 
   for (string decl :
-    { "template<class _Archive> void _xdr_save(_Archive &_archive) const {",
-	"template<class _Archive> void _xdr_load(_Archive &_archive) {" } ) {
+    { "template<typename _Archive> void _xdr_save(_Archive &_archive) const {",
+	"template<typename _Archive> void _xdr_load(_Archive &_archive) {" } ) {
     os << nl << decl;
     ++nl;
     for (size_t i = 0; i < s.decls.size(); ++i)
@@ -193,9 +184,10 @@ gen(std::ostream &os, const rpc_enum &e)
   string myscope = scope.empty() ? "" : scope.back() + "::";
   string qt = myscope + e.id;
   top_material
-    << "template<> struct xdr::xdr_enum<" << qt << "> {" << endl
-    << "  static constexpr bool valid = true;" << endl
-    << "  static const char *to_string(" << qt << " _xdr_enum_val) {" << endl
+    << "template<> struct xdr::xdr_enum<"
+    << qt << "> : std::true_type {" << endl
+    << "  static const char *name("
+    << qt << " _xdr_enum_val) {" << endl
     << "    switch (_xdr_enum_val) {" << endl;
   for (const rpc_const &c : e.tags)
     top_material << "    case " << myscope + c.id << ":" << endl
@@ -440,17 +432,15 @@ gen(std::ostream &os, const rpc_union &u)
   os << endl;
 
   os << nl
-     << "template<class _Archive> void _xdr_save(_Archive &_archive) const {"
-     << nl.open << "_archive(xdr::prepare_field<_Archive>::prepare(\""
-     << u.tagid << "\", " << u.tagid << "_));"
+     << "template<typename _Archive> void _xdr_save(_Archive &_archive) const {"
+     << nl.open << "_archive(\"" << u.tagid << "\", " << u.tagid << "_);"
      << nl << "xdr::case_save<_Archive> _cs{_archive, _xdr_field_name()};"
      << nl << "_xdr_on_field_ptr(_cs, this, " << u.tagid << "_);"
      << nl.close << "}";
 
-  os << nl << "template<class _Archive> void _xdr_load(_Archive &_archive) {"
+  os << nl << "template<typename _Archive> void _xdr_load(_Archive &_archive) {"
      << nl.open << "std::uint32_t _which;"
-     << nl << "_archive(xdr::prepare_field<_Archive>::prepare(\""
-     << u.tagid << "\", _which));"
+     << nl << "_archive(\"" << u.tagid << "\", _which);"
      << nl << u.tagid << "(" << u.tagtype << "(_which), true);"
      << nl << "xdr::case_load<_Archive> _cl{_archive, _xdr_field_name()};"
      << nl << "_xdr_on_field_ptr(_cl, this, " << u.tagid << "_);"
