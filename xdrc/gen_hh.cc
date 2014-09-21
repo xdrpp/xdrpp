@@ -78,12 +78,6 @@ id_space(const string &s)
   return s.empty() ? s : s + ' ';
 }
 
-void
-make_nvp(std::ostream &os, const string &name, bool first, bool last)
-{
-    os << nl << "_archive(\"" << name << "\", " << name << ");";
-}
-
 void gen(std::ostream &os, const rpc_struct &s);
 void gen(std::ostream &os, const rpc_enum &e);
 void gen(std::ostream &os, const rpc_union &u);
@@ -152,6 +146,7 @@ gen(std::ostream &os, const rpc_struct &s)
 
   for(auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << ';';
+#if 0
   os << endl;
 
   for (string decl :
@@ -163,8 +158,27 @@ gen(std::ostream &os, const rpc_struct &s)
       make_nvp(os, s.decls[i].id, i == 0, i + 1 == s.decls.size());
     os << nl.close << "}";
   }
+#endif
   
   os << nl.close << "}";
+
+  top_material
+    << "template<> struct xdr::xdr_class<" << scope.back()
+    << "> : std::true_type {" << endl;
+  for (string decl :
+    { string("template<typename _Archive> void save(_Archive &_archive,\n"
+	     "                                        const ")
+	+ scope.back() + " &_xdr_obj) {",
+      string("template<typename _Archive> void load(_Archive &_archive,\n"
+	     "                                        ")
+        + scope.back() + " &_xdr_obj) {" } ) {
+    top_material << "  " << decl << endl;
+    for (size_t i = 0; i < s.decls.size(); ++i)
+      top_material << "    _archive(\"" << s.decls[i].id << "\", _xdr_obj."
+		   << s.decls[i].id << ");" << endl;
+    top_material << "  }" << endl;;
+  }
+  top_material << "};" << endl;
 
   scope.pop_back();
 }
