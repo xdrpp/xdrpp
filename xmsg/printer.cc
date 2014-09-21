@@ -10,13 +10,30 @@ escape_string(const std::string &s)
   std::ostringstream os;
   os << '\"';
   for (char c : s) {
-    if (c < 0x20 || c >= 0x7f)
-      os << '\\' << std::setw(3) << std::setfill('0')
-	 << std::oct << (unsigned(c) & 0xff);
-    else if (c == '"')
-      os << "\\\"";
-    else
+    if (c >= 0x20 && c < 0x7f) {
+      if (c == '\"' || c == '\\')
+	os << '\\';
       os << c;
+    }
+    else
+      switch (c) {
+      case '\t':
+	os << "\\t";
+	break;
+      case '\r':
+	os << "\\r";
+	break;
+      case '\n':
+	os << "\\n";
+	break;
+      case '\"':
+	os << "\\\"";
+	break;
+      default:
+	os << '\\' << std::setw(3) << std::setfill('0')
+	   << std::oct << (unsigned(c) & 0xff);
+	break;
+      }
   }
   os << '\"';
   return os.str();

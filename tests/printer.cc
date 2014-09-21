@@ -16,7 +16,7 @@ main()
   p("b", b);
   p("x", 5);
 #endif
-  numerics n;
+  testns::numerics n;
   n.ip.reset(new int (5));
   n.nester.resize(2);
   n.nester[0].juju = "hi";

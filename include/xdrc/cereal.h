@@ -16,28 +16,49 @@
 
 namespace xdr {
 
-template<typename Archive, uint32_t N> inline
-typename std::enable_if<cereal::traits::is_output_serializable<
-			  cereal::BinaryData<char *>,Archive>::value>::type
-save(Archive &ar, const xstring<N> &s)
+template<typename Archive, typename T> typename
+std::enable_if<xdr_class<T>::value>::type
+save(Archive &ar, const T &t)
 {
-  s.validate();
-  ar(cereal::make_size_tag(static_cast<cereal::size_type>(s.size())));
-  ar(cereal::binary_data(const_cast<char *>(s.data()), s.size()));
+  xdr_class<T>::save(ar, t);
 }
 
-template<typename Archive, uint32_t N> inline
-typename std::enable_if<cereal::traits::is_input_serializable<
-			  cereal::BinaryData<char *>,Archive>::value>::type
-load(Archive &ar, xstring<N> &s)
+template<typename Archive, typename T> typename
+std::enable_if<xdr_class<T>::value>::type
+load(Archive &ar, T &t)
+{
+  xdr_class<T>::load(ar, t);
+}
+
+template<typename Archive, typename T> typename
+std::enable_if<cereal::traits::is_output_serializable<
+		 cereal::BinaryData<char *>,Archive>::value
+               && xdr_bytes<T>::value>::type
+save(Archive &ar, const T &t)
+{
+  if (xdr_bytes<T>::variable)
+    ar(cereal::make_size_tag(static_cast<cereal::size_type>(t.size())));
+  ar(cereal::binary_data(const_cast<char *>(
+         reinterpret_cast<const char *>(t.data())), t.size()));
+}
+
+template<typename Archive, typename T> typename
+std::enable_if<cereal::traits::is_output_serializable<
+		 cereal::BinaryData<char *>,Archive>::value
+               && xdr_bytes<T>::value>::type
+load(Archive &ar, T &t)
 {
   cereal::size_type size;
-  ar(cereal::make_size_tag(size));
-  s.check_size(size);
-  s.resize(static_cast<std::size_t>(size));
-  ar(cereal::binary_data(&s[0], size));
+  if (xdr_bytes<T>::variable)
+    ar(cereal::make_size_tag(size));
+  else
+    size = t.size();
+  t.check_size(size);
+  t.resize(static_cast<std::uint32_t>(size));
+  ar(cereal::binary_data(t.data(), size));
 }
 
+#if 0
 //! \hideinitializer
 #define XDR_ARCHIVE_TAKES_NAME(archive)					\
 } namespace cereal { class archive; } namespace xdr {			\
@@ -63,6 +84,14 @@ XDR_ARCHIVE_TAKES_NAME(JSONOutputArchive)
 XDR_ARCHIVE_TAKES_NAME(XMLOutputArchive)
 XDR_ARCHIVE_TAKES_NAME(XMLInputArchive)
 #undef XDR_ARCHIVE_TAKES_NAME
+#endif
+
+}
+
+namespace cereal {
+
+using xdr::load;
+using xdr::save;
 
 }
 

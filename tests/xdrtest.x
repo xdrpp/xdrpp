@@ -5,6 +5,24 @@ enum color {
   REDDEST
 };
 
+struct simple {
+  int field;
+};
+
+namespace testns {
+
+enum other_color {
+  RED,
+  REDDER,
+  REDDEST
+};
+
+struct bytes {
+  string s<16>;
+  opaque fixed[16];
+  opaque variable<16>;
+};
+
 struct numerics {
   int i32;
   int *ip;
@@ -24,3 +42,4 @@ union ContainsEnum switch (color c) {
    enum { ONE, TWO } num;
 };
 
+}

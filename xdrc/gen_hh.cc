@@ -51,7 +51,30 @@ namespace {
 
 indenter nl;
 vec<string> scope;
+vec<string> namespaces;
 std::ostringstream top_material;
+
+string
+cur_ns()
+{
+  if (namespaces.empty())
+    return "";
+  string out;
+  for (const auto &ns : namespaces) {
+    out += "::";
+    out += ns;
+  }
+  return out;
+}
+
+string
+cur_scope()
+{
+  if (scope.empty())
+    return cur_ns();
+  else
+    return cur_ns() + "::" + scope.back();
+}
 
 string
 guard_token()
@@ -172,18 +195,18 @@ gen(std::ostream &os, const rpc_struct &s)
   os << nl.close << "}";
 
   top_material
-    << "template<> struct xdr::xdr_class<" << scope.back()
+    << "template<> struct xdr_class<" << cur_scope()
     << "> : std::true_type {" << endl;
   for (string decl :
     { string("  template<typename _Archive> static void\n"
 	     "  save(_Archive &_archive, const ")
-	+ scope.back() + " &_xdr_obj) {",
+	+ cur_scope() + " &_xdr_obj) {",
       string("  template<typename _Archive> static void\n"
 	     "  load(_Archive &_archive, ")
-        + scope.back() + " &_xdr_obj) {" } ) {
+	+ cur_scope() + " &_xdr_obj) {" } ) {
     top_material << decl << endl;
     for (size_t i = 0; i < s.decls.size(); ++i)
-      top_material << "    xdr::archive(_archive, \""
+      top_material << "    archive(_archive, \""
 		   << s.decls[i].id << "\", _xdr_obj."
 		   << s.decls[i].id << ");" << endl;
     top_material << "  }" << endl;;
@@ -205,10 +228,12 @@ gen(std::ostream &os, const rpc_enum &e)
       os << nl << c.id << " = " << c.val << ',';
   os << nl.close << "}";
 
-  string myscope = scope.empty() ? "" : scope.back() + "::";
+  string myscope = cur_scope();
+  if (myscope != "::")
+    myscope += "::";
   string qt = myscope + e.id;
   top_material
-    << "template<> struct xdr::xdr_enum<"
+    << "template<> struct xdr_enum<"
     << qt << "> : std::true_type {" << endl
     << "  static const char *name("
     << qt << " _xdr_enum_val) {" << endl
@@ -459,12 +484,12 @@ gen(std::ostream &os, const rpc_union &u)
   }
 
   top_material
-    << "template<> struct xdr::xdr_class<" << scope.back()
+    << "template<> struct xdr_class<" << cur_scope()
     << "> : std::true_type {" << endl;
   top_material
     << "  template<typename _Archive> static void" << endl
     << "  save(_Archive &_archive, const "
-    << scope.back() << " &_xdr_obj) {" << endl
+    << cur_scope() << " &_xdr_obj) {" << endl
     << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_obj."
     << u.tagid << "());" << endl
     << "    xdr::case_save<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
@@ -475,8 +500,8 @@ gen(std::ostream &os, const rpc_union &u)
   top_material
     << "  template<typename _Archive> static void" << endl
     << "  load(_Archive &_archive, "
-    << scope.back() << " &_xdr_obj) {" << endl
-    << "    " << scope.back() << "::_xdr_discriminant_t _xdr_which;" << endl
+    << cur_scope() << " &_xdr_obj) {" << endl
+    << "    " << cur_scope() << "::_xdr_discriminant_t _xdr_which;" << endl
     << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_which);" << endl
     << "    _xdr_obj." << u.tagid << "(_xdr_which);" << endl
     << "    xdr::case_load<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
@@ -548,9 +573,11 @@ gen_hh(std::ostream &os)
       os << *s.sliteral;
       break;
     case rpc_sym::NAMESPACE:
+      namespaces.push_back(*s.sliteral);
       os << "namespace " << *s.sliteral << " {";
       break;
     case rpc_sym::CLOSEBRACE:
+      namespaces.pop_back();
       os << "}";
       break;
     default:
@@ -560,8 +587,15 @@ gen_hh(std::ostream &os)
     last_type = s.type;
     os << nl;
     if (!top_material.str().empty()) {
+      for (size_t i = 0; i < namespaces.size(); i++)
+	os << "} ";
+      os << "namespace xdr {" << nl;
       os << top_material.str();
       top_material.str("");
+      os << "}";
+      for (const std::string &ns : namespaces)
+	os << " namespace " << ns << " {";
+      os << nl;
     }
   }
 

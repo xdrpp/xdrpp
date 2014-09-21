@@ -121,6 +121,7 @@ template<typename T, uint32_t N> struct xarray
   : std::array<T, size_t(N)> {
   using array = std::array<T, size_t(N)>;
   using array::array;
+  static void validate() {}
   static void check_size(uint32_t i) {
     if (i != N)
       throw xdr_overflow("invalid size in xdr::xarray");
