@@ -359,7 +359,7 @@ base_type: T_UNSIGNED { $$ = "unsigned"; }
 	| T_BOOL { $$ = "bool"; }
 	;
 
-value: T_ID | T_NUM
+value: qid | T_NUM
 	;
 
 number: T_NUM { $$ = strtoul ($1.c_str(), NULL, 0); }

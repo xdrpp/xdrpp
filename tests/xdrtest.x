@@ -33,9 +33,9 @@ struct numerics {
   double d;
   int iv<4>;
   union switch (color arbitrary) {
-  case REDDEST:
+  case ::REDDEST:
     opaque big<>;
-  case RED:
+  case ::RED:
     hyper medium;
   } key;
 };
