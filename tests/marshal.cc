@@ -19,7 +19,7 @@ main()
   testns::numerics n1, n2;
   n1.description = "\tsome random text\n";
   n1.var_cookie = {1, 2, 3, 4};
-  //n1.fix_cookie.fill(0xc5);
+  n1.fix_cookie.fill(0xc5);
   n1.i32 = 32;
   n1.d = 3.141592654;
   //n1.ip.activate() = 999;
@@ -43,9 +43,20 @@ main()
     archive(n2);
   }
 
+
+
   cout << xdr::xdr_to_string(n2);
 
   cout << xdr::xdr_bytes<xdr::opaque_array<4>>::value << endl;
+
+
+#if 0
+  using x = xdr::opaque_array<5>;
+  using namespace cereal::traits;
+  cout << boolalpha;
+  cout << has_non_member_save<x, cereal::BinaryOutputArchive>::value << endl;
+  cout << has_non_member_load<x, cereal::BinaryInputArchive>::value << endl;
+#endif
 
   return 0;
 }

@@ -92,7 +92,7 @@ save(Archive &ar, const T &t)
 }
 
 template<typename Archive, typename T> typename
-std::enable_if<cereal::traits::is_output_serializable<
+std::enable_if<cereal::traits::is_input_serializable<
 		 cereal::BinaryData<char *>,Archive>::value
                && xdr_bytes<T>::value>::type
 load(Archive &ar, T &t)
