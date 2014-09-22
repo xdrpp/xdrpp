@@ -60,8 +60,6 @@ main()
 
   cout << xdr::xdr_to_string(n2);
 
-  cout << xdr::xdr_bytes<xdr::opaque_array<4>>::value << endl;
-
 
 #if 0
   using x = xdr::opaque_array<5>;

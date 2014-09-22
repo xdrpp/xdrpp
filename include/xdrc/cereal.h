@@ -26,26 +26,26 @@ class XMLInputArchive;
 namespace xdr {
 
 template<typename Archive, typename T> typename
-std::enable_if<xdr_class<T>::value>::type
+std::enable_if<xdr_traits<T>::is_class>::type
 save(Archive &ar, const T &t)
 {
-  xdr_recursive<T>::save(ar, t);
+  xdr_traits<T>::save(ar, t);
 }
 
 template<typename Archive, typename T> typename
-std::enable_if<xdr_class<T>::value>::type
+std::enable_if<xdr_traits<T>::is_class>::type
 load(Archive &ar, T &t)
 {
-  xdr_recursive<T>::load(ar, t);
+  xdr_traits<T>::load(ar, t);
 }
 
 template<typename Archive, typename T> typename
 std::enable_if<cereal::traits::is_output_serializable<
 		 cereal::BinaryData<char *>,Archive>::value
-               && xdr_bytes<T>::value>::type
+               && xdr_traits<T>::is_bytes>::type
 save(Archive &ar, const T &t)
 {
-  if (xdr_bytes<T>::variable)
+  if (xdr_traits<T>::variable_length)
     ar(cereal::make_size_tag(static_cast<cereal::size_type>(t.size())));
   ar(cereal::binary_data(const_cast<char *>(
          reinterpret_cast<const char *>(t.data())), t.size()));
@@ -54,11 +54,11 @@ save(Archive &ar, const T &t)
 template<typename Archive, typename T> typename
 std::enable_if<cereal::traits::is_input_serializable<
 		 cereal::BinaryData<char *>,Archive>::value
-               && xdr_bytes<T>::value>::type
+               && xdr_traits<T>::is_bytes>::type
 load(Archive &ar, T &t)
 {
   cereal::size_type size;
-  if (xdr_bytes<T>::variable)
+  if (xdr_traits<T>::variable_length)
     ar(cereal::make_size_tag(size));
   else
     size = t.size();
