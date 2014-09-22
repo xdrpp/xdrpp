@@ -111,37 +111,21 @@ template<> struct xdr_traits<bool> : xdr_traits_base {
   }
 };
 
-struct xdr_class_base {
-  static constexpr bool valid = true;
-  static constexpr bool is_bytes = false;
-  static constexpr bool is_class = true;
-  static constexpr bool is_enum = false;
-  static constexpr bool is_container = false;
-  static constexpr bool is_numeric = false;
-  // is_variable_size depends on type
-};
+static constexpr uint32_t XDR_MAX_LEN = 0xffffffff;
 
-struct xdr_bytes_base {
-  static constexpr bool valid = true;
-  static constexpr bool is_bytes = false;
-  static constexpr bool is_class = true;
-  static constexpr bool is_enum = false;
-  static constexpr bool is_container = false;
-  static constexpr bool is_numeric = false;
-  // is_variable_size depends on type
-};
-
-
-template<typename T> struct xdr_recursive_container : xdr_container<T> {
+template<typename T, bool variable> struct xdr_container_base
+  : xdr_traits_base {
+  static constexpr bool is_container = true;
+  static constexpr bool is_variable_size = variable;
   template<typename Archive> static void save(Archive &a, const T &t) {
-    if (xdr_container<T>::variable)
+    if (variable)
       archive(a, nullptr, uint32_t(t.size()));
     for (const typename T::value_type &o : t)
       archive(a, nullptr, o);
   }
   template<typename Archive> static void load(Archive &a, T &t) {
     uint32_t n;
-    if (xdr_container<T>::variable) {
+    if (variable) {
       archive(a, nullptr, n);
       t.check_size(n);
       if (t.size() > n)
@@ -154,14 +138,6 @@ template<typename T> struct xdr_recursive_container : xdr_container<T> {
   }
 };
 
-//! For classes and containers.
-template<typename T> struct xdr_recursive
-: std::conditional<xdr_class<T>::value, xdr_class<T>,
-		   typename std::conditional<xdr_container<T>::value,
-					     xdr_recursive_container<T>,
-					     std::false_type>::type>::type {};
-
-constexpr uint32_t XDR_MAX_LEN = 0xffffffff;
 
 //! XDR arrays are implemented using std::array as a supertype.
 template<typename T, uint32_t N> struct xarray
@@ -184,19 +160,14 @@ template<typename T, uint32_t N> struct xarray
   }
 };
 
-template<typename T, uint32_t N> struct xdr_container<xarray<T, N>>
-  : std::true_type {
-  static constexpr bool variable = false;
-  static constexpr bool pointer = false;
-};
+template<typename T, uint32_t N> struct xdr_traits<xarray<T,N>>
+  : xdr_container_base<xarray<T,N>, false> {};
 
 //! XDR \c opaque is represented as std::uint8_t;
-template<uint32_t N = XDR_MAX_LEN> using opaque_array =
-  xarray<std::uint8_t, N>;
-template<uint32_t N> struct xdr_bytes<opaque_array<N>> : std::true_type {
-  static constexpr bool variable = false;
+template<uint32_t N = XDR_MAX_LEN> using opaque_array = xarray<std::uint8_t,N>;
+template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
+  static constexpr bool is_bytes = true;
 };
-template<uint32_t N> struct xdr_container<opaque_array<N>> : std::false_type {};
 
 
 //! A vector with a maximum size (returned by xvector::max_size()).
@@ -233,20 +204,15 @@ struct xvector : std::vector<T> {
   }
 };
 
-template<typename T, uint32_t N> struct xdr_container<xvector<T, N>>
-  : std::true_type {
-  static constexpr bool variable = true;
-  static constexpr bool pointer = false;
-};
-
+template<typename T, uint32_t N> struct xdr_traits<xvector<T,N>>
+  : xdr_container_base<xvector<T,N>, true> {};
 
 //! Variable-length opaque data is just a vector of std::uint8_t.
-template<uint32_t N = XDR_MAX_LEN> using opaque_vec =
-  xvector<std::uint8_t, N>;
-template<uint32_t N> struct xdr_bytes<opaque_vec<N>> : std::true_type {
-  static constexpr bool variable = true;
+template<uint32_t N = XDR_MAX_LEN> using opaque_vec = xvector<std::uint8_t, N>;
+template<uint32_t N> struct xdr_traits<opaque_vec<N>> : xdr_traits_base {
+  static constexpr bool is_bytes = true;
+  static constexpr bool is_variable_size = true;
 };
-template<uint32_t N> struct xdr_container<opaque_vec<N>> : std::false_type {};
 
 
 //! A string with a maximum length (returned by xstring::max_size()).
@@ -299,9 +265,11 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
 #undef ASSIGN_LIKE
 };
 
-template<uint32_t N> struct xdr_bytes<xstring<N>> : std::true_type {
-  static constexpr bool variable = true;
+template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
+  static constexpr bool is_bytes = true;
+  static constexpr bool is_variable_size = true;
 };
+
 
 //! Optional data (represented with pointer notation in XDR source).
 template<typename T> struct pointer : std::unique_ptr<T> {
@@ -345,10 +313,8 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   }
 };
 
-template<typename T> struct xdr_container<pointer<T>> : std::true_type {
-  static constexpr bool variable = true;
-  static constexpr bool pointer = true;
-};
+template<typename T> struct xdr_traits<pointer<T>>
+  : xdr_container_base<pointer<T>, true> {};
 
 
 struct case_constructor_t {

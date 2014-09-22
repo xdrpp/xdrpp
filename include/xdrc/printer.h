@@ -31,7 +31,7 @@ struct Printer {
       bol(field) << "NULL";
   }
 
-  template<typename T> ENABLE_IF(xdr_class<T>::value)
+  template<typename T> ENABLE_IF(xdr_traits<T>::is_class)
   operator()(const char *field, const T &t) {
     bool skipnl = !field;
     bol(field) << "{";
@@ -40,7 +40,7 @@ struct Printer {
     comma_ = false;
     skipnl_ = skipnl;
     indent_ += 2;
-    xdr_recursive<T>::save(*this, t);
+    xdr_traits<T>::save(*this, t);
     if (skipnl) {
       buf_ << " }";
       indent_ -= 2;
@@ -52,7 +52,7 @@ struct Printer {
     }
   }
 
-  template<typename T> ENABLE_IF(xdr_container<T>::value)
+  template<typename T> ENABLE_IF(xdr_traits<T>::is_container)
   operator()(const char *field, const T &t) {
     bool skipnl = !field;
     bol(field) << '[';
@@ -89,20 +89,20 @@ template<> struct archive_adapter<Printer> {
     p(field, hexdump(v.data(), v.size()));
   }
 
-  template<typename T> static ENABLE_IF(xdr_enum<T>::value)
+  template<typename T> static ENABLE_IF(xdr_traits<T>::is_enum)
   apply(Printer &p, const char *field, T t) {
-    if (const char *n = xdr_enum<T>::name(t))
+    if (const char *n = xdr_traits<T>::enum_name(t))
       p(field, n);
     else
       p(field, std::to_string(t));
   }
-  template<typename T> static ENABLE_IF(xdr_numeric<T>::value)
+  template<typename T> static ENABLE_IF(xdr_traits<T>::is_numeric)
   apply(Printer &p, const char *field, T t) {
     p(field, std::to_string(t));
   };
 
-  template<typename T> static ENABLE_IF(xdr_class<T>::value
-					|| xdr_container<T>::value)
+  template<typename T> static ENABLE_IF(xdr_traits<T>::is_class
+					|| xdr_traits<T>::is_container)
   apply(Printer &p, const char *field, const T &obj) { p(field, obj); }
 };
 
