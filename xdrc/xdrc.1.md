@@ -106,14 +106,15 @@ overloaded `operator()` that does different things for different
 types.  To implement an archive, you will need to support the
 following types:
 
-> * `uint8_t` (only for containers), `bool`, `std::int32_t`,
-  `std::uint32_t`, `std::int64_t`, `std::uint64_t`, `float`, `double`,
-  `xdr::xstring`
+> * `bool`, `std::int32_t`, `std::uint32_t`, `std::int64_t`,
+  `std::uint64_t`, `float`, `double`, `xdr::xstring`,
+  `xdr::xarray<uint8_t,N>`, `xdr::xvector<uint8_t,N>` (the latter are
+  specially not considered containers).
 
-> * The `std::array` and `xdr:xvector` containers of the above types.
+> * The `xdr::xarray`, `xdr:xvector`, and `xdr::pointer` containers of
+>   the above types (or their supertypes).
 
-> * Any field types that are themselves XDR structures with `save` and
->   `load` methods.
+> * Any field types that are themselves XDR structures.
 
 For debugging purposes and formats (such as JSON) that need access to
 field names, it is also possible for the `_Archive` type to receive

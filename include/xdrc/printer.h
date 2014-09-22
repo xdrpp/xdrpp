@@ -96,7 +96,7 @@ template<> struct archive_adapter<Printer> {
     else
       p(field, std::to_string(t));
   }
-  template<typename T> static ENABLE_IF(std::is_arithmetic<T>::value)
+  template<typename T> static ENABLE_IF(xdr_numeric<T>::value)
   apply(Printer &p, const char *field, T t) {
     p(field, std::to_string(t));
   };

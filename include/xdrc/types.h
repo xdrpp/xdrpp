@@ -61,19 +61,25 @@ archive(Archive &ar, const char *name, T &&t)
   archive_adapter<Archive>::apply(ar, name, std::forward<T>(t));
 }
 
+template<typename T> struct xdr_numeric : std::false_type {};
+template<> struct xdr_numeric<bool> : std::false_type {};
+template<> struct xdr_numeric<std::int32_t> : std::true_type {};
+template<> struct xdr_numeric<std::uint32_t> : std::true_type {};
+template<> struct xdr_numeric<std::int64_t> : std::true_type {};
+template<> struct xdr_numeric<std::uint64_t> : std::true_type {};
+template<> struct xdr_numeric<float> : std::true_type {};
+template<> struct xdr_numeric<double> : std::true_type {};
 
 //! \c value is \c true iff \c T is an XDR enum, in which case \c
 //! xdr_enum also contains a static method \c name translating an
 //! instance of the enum into a <tt>char *</tt> for pretty-printing.
 template<typename T> struct xdr_enum : std::false_type {};
 
-#if 0
 template<> struct xdr_enum<bool> : std::true_type {
   static constexpr const char *name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
 };
-#endif
 
 //! \c value is \c true iff \c T is an XDR struct or union type, in
 //! which case \c xdr_class also contains static methods \c save and
