@@ -42,17 +42,17 @@ main()
 
   ostringstream obuf;
   {
-    cereal::BinaryOutputArchive archive(obuf);
-    //cereal::JSONOutputArchive archive(obuf);
+    //cereal::BinaryOutputArchive archive(obuf);
+    cereal::JSONOutputArchive archive(obuf);
     archive(n1);
   }
 
-  //cout << obuf.str() << endl;
+  cout << obuf.str() << endl;
 
   {
     istringstream ibuf(obuf.str());
-    cereal::BinaryInputArchive archive(ibuf);
-    //cereal::JSONInputArchive archive(ibuf);
+    //cereal::BinaryInputArchive archive(ibuf);
+    cereal::JSONInputArchive archive(ibuf);
     archive(n2);
   }
 

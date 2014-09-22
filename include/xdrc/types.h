@@ -67,11 +67,13 @@ archive(Archive &ar, const char *name, T &&t)
 //! instance of the enum into a <tt>char *</tt> for pretty-printing.
 template<typename T> struct xdr_enum : std::false_type {};
 
+#if 0
 template<> struct xdr_enum<bool> : std::true_type {
   static constexpr const char *name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
 };
+#endif
 
 //! \c value is \c true iff \c T is an XDR struct or union type, in
 //! which case \c xdr_class also contains static methods \c save and

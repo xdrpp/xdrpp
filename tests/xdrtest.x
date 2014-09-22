@@ -29,8 +29,15 @@ struct numerics {
   opaque fix_cookie[4];
   int i32;
   int *ip;
+  bool b;
   double d;
   int iv<4>;
+  union switch (color arbitrary) {
+  case REDDEST:
+    opaque big<>;
+  case RED:
+    hyper medium;
+  } key;
 };
 
 union ContainsEnum switch (color c) {
