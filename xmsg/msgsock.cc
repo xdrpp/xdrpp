@@ -21,6 +21,8 @@ SeqSock::~SeqSock()
 {
   ps_.fd_cb(fd_, PollSet::ReadWrite);
   really_close(fd_);
+  if (destroyedp_)
+    *destroyedp_ = true;
 }
 
 void
@@ -34,7 +36,6 @@ void
 SeqSock::initcb()
 {
   if (rcb_) {
-    std::cerr << "setting rcb\n";
     ps_.fd_cb(fd_, PollSet::Read, [this](){ input(); });
   }
   else
@@ -51,7 +52,6 @@ SeqSock::input()
     iov[1].iov_base = nextlenp();
     iov[1].iov_len = sizeof nextlen_;
     ssize_t n = readv(fd_, iov, 2);
-    std::cerr << "read " << n << " bytes\n";
     if (n <= 0) {
       std::cerr << "rdmsg_->size() = " << rdmsg_->size()
 		<< ", rdpos_ = " << rdpos_
@@ -68,7 +68,13 @@ SeqSock::input()
     rdpos_ += n;
     if (rdpos_ >= rdmsg_->size()) {
       rdpos_ -= rdmsg_->size();
-      rcb_ (std::move(rdmsg_));
+
+      bool destroyed {false};
+      destroyedp_ = &destroyed;
+      rcb_(std::move(rdmsg_));
+      if (destroyed)
+	return;
+      destroyedp_ = nullptr;
     }
   }
   else if (rdpos_ < sizeof nextlen_) {
@@ -84,28 +90,34 @@ SeqSock::input()
     }
     rdpos_ += n;
   }
-  if (!rdmsg_ && rdpos_ == sizeof nextlen_) {
-    // XXX - deal with 0 size message
-    size_t len = nextlen();
-    if (len <= maxmsglen_) {
-      // Length comes from untrusted source; don't crash if can't alloc
-      try { rdmsg_ = MsgBuf(len); }
-      catch (const std::bad_alloc &) {
-	std::cerr << "SeqSock: allocation of " << len << "-byte message failed"
-		  << std::endl;
-      }
-    }
-    else {
-      std::cerr << "SeqSock: rejecting " << len << "-byte message (too long)"
+
+  if (rdmsg_ || rdpos_ < sizeof nextlen_)
+    return;
+  size_t len = nextlen();
+  if (!len) {
+    rdpos_ = 0;
+    rcb_(len);
+    return;
+  }
+
+  if (len <= maxmsglen_) {
+    // Length comes from untrusted source; don't crash if can't alloc
+    try { rdmsg_ = MsgBuf(len); }
+    catch (const std::bad_alloc &) {
+      std::cerr << "SeqSock: allocation of " << len << "-byte message failed"
 		<< std::endl;
-      ps_.fd_cb(fd_, PollSet::Read);
     }
-    if (rdmsg_)
-      rdpos_ = 0;
-    else {
-      errno = E2BIG;
-      rcb_(nullptr);
-    }
+  }
+  else {
+    std::cerr << "SeqSock: rejecting " << len << "-byte message (too long)"
+	      << std::endl;
+    ps_.fd_cb(fd_, PollSet::Read);
+  }
+  if (rdmsg_)
+    rdpos_ = 0;
+  else {
+    errno = E2BIG;
+    rcb_(nullptr);
   }
 }
 
@@ -162,7 +174,6 @@ SeqSock::output(bool cbset)
     }
   }
   ssize_t n = writev(fd_, v, i);
-  std::cerr << "wrote " << n << " bytes\n";
   if (n <= 0) {
     if (n != -1 || !eagain(errno)) {
       wfail_ = true;

@@ -12,31 +12,17 @@
 
 namespace xdr {
 
-constexpr uint32_t
-swap32(uint32_t v)
-{
-  return v << 24 | (v & 0xff00) << 8 | (v >> 8 & 0xff00) | v >> 24;
-}
-
-//! Byteswap 32-bit value on big-endian machines, do nothing on little
-//! endian.
-constexpr uint32_t
-swap32ifbe(uint32_t v)
-{
-  return xdr::is_big_endian ? swap32(v) : v;
-}
-
 class MsgBufImpl {
   //! Bytes in buf_ in little endian order
   const uint32_t lelen_;
   char buf_[1];
-  MsgBufImpl(size_t len) : lelen_(swap32ifbe(len)) {}
+  MsgBufImpl(size_t len) : lelen_(swap32le(len)) {}
 public:
   friend class MsgBuf;
 
   char *data() { return buf_; }
   const char *data() const { return buf_; }
-  size_t size() const { return swap32ifbe(lelen_); }
+  size_t size() const { return swap32le(lelen_); }
 
   //! Buffer prefixed by 4-byte length in little-endian
   const char *rawData() const { return reinterpret_cast<const char *>(this); }
@@ -50,7 +36,6 @@ public:
   //! Allocate a buffer of a particular size.  \throws std::bad_alloc
   //! if <tt>::operator new</tt> returns \c nullptr.
   MsgBuf(size_t len);
-  // XXX not sure why the default constructor is not delegated
   MsgBuf() = default;
 };
 
@@ -92,6 +77,7 @@ private:
   PollSet &ps_;
   const int fd_;
   const size_t maxmsglen_;
+  bool *destroyedp_ {nullptr};
 
   rcb_t rcb_;
   uint32_t nextlen_;
@@ -107,7 +93,7 @@ private:
     return err == EAGAIN || err == EWOULDBLOCK || err == EINTR;
   }
   char *nextlenp() { return reinterpret_cast<char *>(&nextlen_); }
-  uint32_t nextlen() const { return swap32ifbe(nextlen_); }
+  uint32_t nextlen() const { return swap32le(nextlen_); }
 
   void init();
   void initcb();
