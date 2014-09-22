@@ -9,7 +9,7 @@
 namespace xdr {
 
 std::string escape_string(const std::string &s);
-std::string hexdump(const std::uint8_t *data, size_t len);
+std::string hexdump(const void *data, size_t len);
 
 struct Printer {
   std::ostringstream buf_;

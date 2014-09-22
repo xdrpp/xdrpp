@@ -27,7 +27,18 @@ void
 SeqSock::init()
 {
   set_nonblock(fd_);
-  ps_.fd_cb(fd_, PollSet::Read, [this](){ input(); });
+  initcb();
+}
+
+void
+SeqSock::initcb()
+{
+  if (rcb_) {
+    std::cerr << "setting rcb\n";
+    ps_.fd_cb(fd_, PollSet::Read, [this](){ input(); });
+  }
+  else
+    ps_.fd_cb(fd_, PollSet::Read);
 }
 
 void
@@ -40,6 +51,7 @@ SeqSock::input()
     iov[1].iov_base = nextlenp();
     iov[1].iov_len = sizeof nextlen_;
     ssize_t n = readv(fd_, iov, 2);
+    std::cerr << "read " << n << " bytes\n";
     if (n <= 0) {
       std::cerr << "rdmsg_->size() = " << rdmsg_->size()
 		<< ", rdpos_ = " << rdpos_
@@ -73,6 +85,7 @@ SeqSock::input()
     rdpos_ += n;
   }
   if (!rdmsg_ && rdpos_ == sizeof nextlen_) {
+    // XXX - deal with 0 size message
     size_t len = nextlen();
     if (len <= maxmsglen_) {
       // Length comes from untrusted source; don't crash if can't alloc
@@ -116,7 +129,6 @@ SeqSock::pop_wbytes(size_t n)
 {
   if (n == 0)
     return;
-  std::cerr << "n " << n << ", wsize " << wsize_ << std::endl;
   assert (n <= wsize_);
   wsize_ -= n;
   size_t frontbytes = wqueue_.front()->rawSize() - wstart_;
@@ -136,8 +148,6 @@ SeqSock::pop_wbytes(size_t n)
 void
 SeqSock::output(bool cbset)
 {
-  std::cerr << "SeqSock::output\n";
-
   static constexpr size_t maxiov = 8;
   size_t i = 0;
   iovec v[maxiov];
@@ -152,6 +162,7 @@ SeqSock::output(bool cbset)
     }
   }
   ssize_t n = writev(fd_, v, i);
+  std::cerr << "wrote " << n << " bytes\n";
   if (n <= 0) {
     if (n != -1 || !eagain(errno)) {
       wfail_ = true;

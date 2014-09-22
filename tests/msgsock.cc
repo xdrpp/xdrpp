@@ -1,47 +1,63 @@
 
-#include <cstdio>
+#include <cassert>
 #include <cstring>
 #include <iostream>
 #include <sstream>
 #include <thread>
 #include <sys/socket.h>
 #include <sodium.h>
-#include "xdrc/msgsock.h"
+#include <xdrc/msgsock.h>
+
+#include <xdrc/printer.h>
 
 using namespace std;
 using namespace xdr;
 
 void
-getmsgbuf(MsgBuf b)
+echoserver(int fd)
 {
-  if (b)
-    cerr << this_thread::get_id() << " received " << b->size()
-	 << " bytes" << endl << b->data() << endl;
-  else
-    cerr << this_thread::get_id() << " received " << strerror(errno) << '\n';
+  PollSet ps;
+  bool done {false};
+  SeqSock ss(&ps, fd, nullptr);
+  int i = 0;
+
+  ss.setrcb([&done,&ss,&i](MsgBuf b) {
+      cerr << "echoing #" << ++i << " (" << b->size() << " bytes)" << endl;
+      if (b)
+	ss.putmsg(b);
+      else
+	done = true;
+    });
+
+  while (!done && ps.pending())
+    ps.poll();
 }
 
 void
-testsock(int fd)
+echoclient(int fd)
 {
   PollSet ps;
-  SeqSock ss (&ps, fd, getmsgbuf);
-#if 0
-  ostringstream oss;
-  oss << "I am " << this_thread::get_id() << " and my counter is "
-      << ++i << endl;
-  string s(oss.str());
-  MsgBuf b (s.size());
-  memcpy(b->data(), s.data(), s.size());
-  cerr << "sending: " << s << endl;
-  ss.putmsg(b);
-  cerr << "sent: " << s << endl;
-#else
-  MsgBuf b(1);
-  b->data()[0] = 'A';
-  ss.putmsg(b);
-#endif
-  while (ps.pending())
+  SeqSock ss { &ps, fd, nullptr };
+  unsigned int i = 1;
+
+  {
+    MsgBuf b (i);
+    ss.putmsg(b);
+  }
+  ss.setrcb([&i,&ss](MsgBuf b) {
+      assert(b->size() == i);
+      cerr << b->size() << ": " << hexdump(b->data(), b->size()) << std::endl;
+      for (unsigned j = 0; j < b->size(); j++) {
+	//assert(unsigned(b->data()[j]) == (unsigned(i) & 0xff));
+      }
+      ++i;
+      b = MsgBuf(i);
+      for (unsigned j = 0; j < i; j++)
+	b->data()[j] = i;
+      ss.putmsg(b);
+    });
+
+  while (i < 100 && ps.pending())
     ps.poll();
 }
 
@@ -54,8 +70,8 @@ main(int argc, char **argv)
     exit(1);
   }
 
-  thread t1 (testsock, fds[0]);
-  testsock(fds[1]);
+  thread t1 (echoclient, fds[0]);
+  echoserver(fds[1]);
   t1.join();
 
   return 0;

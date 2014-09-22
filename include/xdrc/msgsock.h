@@ -80,6 +80,11 @@ public:
   ~SeqSock();
   SeqSock &operator=(SeqSock &&) = delete;
 
+  template<typename T> void setrcb(T &&rcb) {
+    rcb_ = std::forward<T>(rcb);
+    initcb();
+  }
+
   size_t wsize() const { return wsize_; }
   void putmsg(MsgBuf &b);
 
@@ -105,6 +110,7 @@ private:
   uint32_t nextlen() const { return swap32ifbe(nextlen_); }
 
   void init();
+  void initcb();
   void input();
   void pop_wbytes(size_t n);
   void output(bool cbset);

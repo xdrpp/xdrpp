@@ -40,8 +40,9 @@ escape_string(const std::string &s)
 }
 
 std::string
-hexdump(const std::uint8_t *data, size_t len)
+hexdump(const void *_data, size_t len)
 {
+  const std::uint8_t *data = static_cast<const std::uint8_t *>(_data);
   std::ostringstream os;
   os.fill('0');
   os.setf(std::ios::hex, std::ios::basefield);
