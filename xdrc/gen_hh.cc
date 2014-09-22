@@ -195,8 +195,9 @@ gen(std::ostream &os, const rpc_struct &s)
   os << nl.close << "}";
 
   top_material
-    << "template<> struct xdr_class<" << cur_scope()
-    << "> : std::true_type {" << endl;
+    << "template<> struct xdr_traits<" << cur_scope()
+    << "> : xdr_traits_base {" << endl
+    << "  static constexpr bool is_class = true;" << endl;
   for (string decl :
     { string("  template<typename _Archive> static void\n"
 	     "  save(_Archive &_archive, const ")
@@ -233,9 +234,10 @@ gen(std::ostream &os, const rpc_enum &e)
     myscope += "::";
   string qt = myscope + e.id;
   top_material
-    << "template<> struct xdr_enum<"
-    << qt << "> : std::true_type {" << endl
-    << "  static const char *name("
+    << "template<> struct xdr_traits<"
+    << qt << "> : xdr_traits_base {" << endl
+    << "  static constexpr bool is_enum = true;" << endl
+    << "  static const char *enum_name("
     << qt << " _xdr_enum_val) {" << endl
     << "    switch (_xdr_enum_val) {" << endl;
   for (const rpc_const &c : e.tags)
@@ -484,8 +486,9 @@ gen(std::ostream &os, const rpc_union &u)
   }
 
   top_material
-    << "template<> struct xdr_class<" << cur_scope()
-    << "> : std::true_type {" << endl;
+    << "template<> struct xdr_traits<" << cur_scope()
+    << "> : xdr_traits_base {" << endl
+    << "  static constexpr bool is_class = true;" << endl;
   top_material
     << "  template<typename _Archive> static void" << endl
     << "  save(_Archive &_archive, const "

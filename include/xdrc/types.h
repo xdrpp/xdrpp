@@ -75,8 +75,6 @@ template<typename T> struct xdr_traits {
   static constexpr bool is_container = false;
   //! \c T is one of [u]int{32,64}_t, float, or double
   static constexpr bool is_numeric = false;
-  //! \c T is a xdr::xvector, xdr::pointer, xdr::xstring, or xdr::opaque_vec
-  static constexpr bool is_variable_size = false;
 };
 
 //! Default xdr_traits values for actual XDR types.
@@ -87,7 +85,6 @@ struct xdr_traits_base {
   static constexpr bool is_enum = false;
   static constexpr bool is_container = false;
   static constexpr bool is_numeric = false;
-  static constexpr bool is_variable_size = false;
 };
 
 #define XDR_NUMERIC(type, size)					\
@@ -116,7 +113,7 @@ static constexpr uint32_t XDR_MAX_LEN = 0xffffffff;
 template<typename T, bool variable> struct xdr_container_base
   : xdr_traits_base {
   static constexpr bool is_container = true;
-  static constexpr bool is_variable_size = variable;
+  static constexpr bool variable_length = variable;
   template<typename Archive> static void save(Archive &a, const T &t) {
     if (variable)
       archive(a, nullptr, uint32_t(t.size()));
@@ -167,6 +164,7 @@ template<typename T, uint32_t N> struct xdr_traits<xarray<T,N>>
 template<uint32_t N = XDR_MAX_LEN> using opaque_array = xarray<std::uint8_t,N>;
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
+  static constexpr bool variable_length = false;
 };
 
 
@@ -211,7 +209,7 @@ template<typename T, uint32_t N> struct xdr_traits<xvector<T,N>>
 template<uint32_t N = XDR_MAX_LEN> using opaque_vec = xvector<std::uint8_t, N>;
 template<uint32_t N> struct xdr_traits<opaque_vec<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
-  static constexpr bool is_variable_size = true;
+  static constexpr bool variable_length = true;
 };
 
 
@@ -267,7 +265,7 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
 
 template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
-  static constexpr bool is_variable_size = true;
+  static constexpr bool variable_length = true;
 };
 
 
