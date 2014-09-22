@@ -61,37 +61,76 @@ archive(Archive &ar, const char *name, T &&t)
   archive_adapter<Archive>::apply(ar, name, std::forward<T>(t));
 }
 
-template<typename T> struct xdr_numeric : std::false_type {};
-template<> struct xdr_numeric<bool> : std::false_type {};
-template<> struct xdr_numeric<std::int32_t> : std::true_type {};
-template<> struct xdr_numeric<std::uint32_t> : std::true_type {};
-template<> struct xdr_numeric<std::int64_t> : std::true_type {};
-template<> struct xdr_numeric<std::uint64_t> : std::true_type {};
-template<> struct xdr_numeric<float> : std::true_type {};
-template<> struct xdr_numeric<double> : std::true_type {};
+//! Metadata for all marshalable XDR types.
+template<typename T> struct xdr_traits {
+  //! \c T is a valid XDR type that can be serialized.
+  static constexpr bool valid = false;
+  //! \c T is an \c xstring, \c opaque_array, or \c opaque_vec.
+  static constexpr bool is_bytes = false;
+  //! \c T is an XDR struct or union (traits have load/save).
+  static constexpr bool is_class = false;
+  //! \c T is an XDR enum or bool (traits have enum_name).
+  static constexpr bool is_enum = false;
+  //! \c T is an xdr::pointer, xdr::xarray, or xdr::xvector (with load/save).
+  static constexpr bool is_container = false;
+  //! \c T is one of [u]int{32,64}_t, float, or double
+  static constexpr bool is_numeric = false;
+  //! \c T is a xdr::xvector, xdr::pointer, xdr::xstring, or xdr::opaque_vec
+  static constexpr bool is_variable_size = false;
+};
 
-//! \c value is \c true iff \c T is an XDR enum, in which case \c
-//! xdr_enum also contains a static method \c name translating an
-//! instance of the enum into a <tt>char *</tt> for pretty-printing.
-template<typename T> struct xdr_enum : std::false_type {};
+//! Default xdr_traits values for actual XDR types.
+struct xdr_traits_base {
+  static constexpr bool valid = true;
+  static constexpr bool is_bytes = false;
+  static constexpr bool is_class = false;
+  static constexpr bool is_enum = false;
+  static constexpr bool is_container = false;
+  static constexpr bool is_numeric = false;
+  static constexpr bool is_variable_size = false;
+};
 
-template<> struct xdr_enum<bool> : std::true_type {
-  static constexpr const char *name(uint32_t b) {
+#define XDR_NUMERIC(type, size)					\
+template<> struct xdr_traits<type> : xdr_traits_base {		\
+  static constexpr bool is_numeric = true;			\
+  static constexpr size_t serial_size(type) { return size; }	\
+}
+XDR_NUMERIC(std::int32_t, 4);
+XDR_NUMERIC(std::uint32_t, 4);
+XDR_NUMERIC(std::int64_t, 8);
+XDR_NUMERIC(std::uint64_t, 8);
+XDR_NUMERIC(float, 4);
+XDR_NUMERIC(double, 8);
+#undef XDR_NUMERIC
+
+template<> struct xdr_traits<bool> : xdr_traits_base {
+  static constexpr bool is_enum = true;
+  static constexpr size_t serial_size(uint32_t) { return 4; }
+  static constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
 };
 
-//! \c value is \c true iff \c T is an XDR struct or union type, in
-//! which case \c xdr_class also contains static methods \c save and
-//! \c load to traverse the fields of the structure.
-template<typename T> struct xdr_class : std::false_type {};
+struct xdr_class_base {
+  static constexpr bool valid = true;
+  static constexpr bool is_bytes = false;
+  static constexpr bool is_class = true;
+  static constexpr bool is_enum = false;
+  static constexpr bool is_container = false;
+  static constexpr bool is_numeric = false;
+  // is_variable_size depends on type
+};
 
-//! \c value is true for fixed-length array, variable-length array, or
-//! pointer.
-template<typename T> struct xdr_container : std::false_type {};
+struct xdr_bytes_base {
+  static constexpr bool valid = true;
+  static constexpr bool is_bytes = false;
+  static constexpr bool is_class = true;
+  static constexpr bool is_enum = false;
+  static constexpr bool is_container = false;
+  static constexpr bool is_numeric = false;
+  // is_variable_size depends on type
+};
 
-//! Type trait for XDR types containing bytes (string and opaque).
-template<typename T> struct xdr_bytes : std::false_type {};
 
 template<typename T> struct xdr_recursive_container : xdr_container<T> {
   template<typename Archive> static void save(Archive &a, const T &t) {
