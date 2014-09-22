@@ -17,6 +17,9 @@ main()
   b.variable = { 2, 4, 6, 8 };
 
   testns::numerics n1, n2;
+  n1.description = "\tsome random text\n";
+  n1.var_cookie = {1, 2, 3, 4};
+  //n1.fix_cookie.fill(0xc5);
   n1.i32 = 32;
   n1.d = 3.141592654;
   //n1.ip.activate() = 999;
@@ -41,6 +44,8 @@ main()
   }
 
   cout << xdr::xdr_to_string(n2);
+
+  cout << xdr::xdr_bytes<xdr::opaque_array<4>>::value << endl;
 
   return 0;
 }

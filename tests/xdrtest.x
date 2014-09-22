@@ -24,6 +24,9 @@ struct bytes {
 };
 
 struct numerics {
+  string description<>;
+  opaque var_cookie<4>;
+  opaque fix_cookie[4];
   int i32;
   int *ip;
   double d;
