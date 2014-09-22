@@ -16,18 +16,67 @@
 
 namespace xdr {
 
+#if 0
+template<typename Archive> struct cereal_adapter {
+  template<uint32_t N> static void
+    apply(Archive &ar, const char *field, xstring<N> &s) {
+    if (field)
+      ar(cereal::make_nvp(field, static_cast<std::string &>(s)));
+    else
+      ar(static_cast<std::string &>(s));
+  }
+  template<uint32_t N> static void
+    apply(Archive &ar, const char *field, const xstring<N> &s) {
+    if (field)
+      ar(cereal::make_nvp(field, static_cast<const std::string &>(s)));
+    else
+      ar(static_cast<const std::string &>(s));
+  }
+
+  template<typename T, uint32_t N> static void
+    apply(Archive &ar, const char *field, xarray<T, N> &a) {
+    if (field)
+      ar(cereal::make_nvp(field, static_cast<std::array<T, N> &>(a)));
+    else
+      ar(static_cast<std::array<T, N> &>(a));
+  }
+  template<typename T, uint32_t N> static void
+    apply(Archive &ar, const char *field, const std::array<T, N> &a) {
+    if (field)
+      ar(cereal::make_nvp(field, static_cast<const std::array<T, N> &>(a)));
+    else
+      ar(static_cast<const std::array<T, N> &>(a));
+  }
+
+  template<typename T, uint32_t N> static void
+    apply(Archive &ar, const char *field, xvector<T, N> &a) {
+    if (field)
+      ar(cereal::make_nvp(field, static_cast<std::vector<T> &>(a)));
+    else
+      ar(static_cast<std::vector<T> &>(a));
+  }
+  template<typename T, uint32_t N> static void
+    apply(Archive &ar, const char *field, const xvector<T> &a) {
+    if (field)
+      ar(cereal::make_nvp(field, static_cast<const std::vector<T> &>(a)));
+    else
+      ar(static_cast<const std::vector<T> &>(a));
+  }
+};
+#endif
+
 template<typename Archive, typename T> typename
-std::enable_if<xdr_class<T>::value>::type
+std::enable_if<xdr_recursive<T>::value>::type
 save(Archive &ar, const T &t)
 {
-  xdr_class<T>::save(ar, t);
+  xdr_recursive<T>::save(ar, t);
 }
 
 template<typename Archive, typename T> typename
-std::enable_if<xdr_class<T>::value>::type
+std::enable_if<xdr_recursive<T>::value>::type
 load(Archive &ar, T &t)
 {
-  xdr_class<T>::load(ar, t);
+  xdr_recursive<T>::load(ar, t);
 }
 
 template<typename Archive, typename T> typename

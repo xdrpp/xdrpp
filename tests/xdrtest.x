@@ -27,12 +27,7 @@ struct numerics {
   int i32;
   int *ip;
   double d;
-  int iv[4];
-  struct {
-    string juju<>;
-  } nester<>;
-  opaque hash[20];
-  opaque longone<>;
+  int iv<4>;
 };
 
 union ContainsEnum switch (color c) {

@@ -177,8 +177,8 @@ struct xvector : std::vector<T> {
     if (i >= N)
       throw xdr_overflow("attempt to access invalid position in xdr::xvector");
     if (i == this->size())
-      this->push_back();
-    return this->at(i);
+      this->emplace_back();
+    return (*this)[i];
   }
   void resize(uint32_t n) {
     check_size(n);
@@ -265,16 +265,16 @@ template<typename T> struct pointer : std::unique_ptr<T> {
     if (n > 1)
       throw xdr_overflow("xdr::pointer size must be 0 or 1");
   }
-  uint32_t size() const { return *this != false; }
+  uint32_t size() const { return *this ? 1 : 0; }
   T *begin() { return get(); }
-  const T *cbegin() const { return get(); }
+  const T *begin() const { return get(); }
   T *end() { return begin() + size(); }
-  T *cend() const { return begin() + size(); }
+  const T *end() const { return begin() + size(); }
   T &extend_at(uint32_t i) {
     if (i != 0)
       throw xdr_overflow("attempt to access position > 0 in xdr::pointer");
     if (!size())
-      reset(new T);
+      this->reset(new T);
     return **this;
   }
   void resize(uint32_t n) {
@@ -290,6 +290,11 @@ template<typename T> struct pointer : std::unique_ptr<T> {
     default:
       throw xdr_overflow("xdr::pointer::resize: valid sizes are 0 and 1");
     }
+  }
+  T &activate() {
+    if (!*this)
+      this->reset(new T);
+    return *this->get();
   }
 };
 

@@ -16,21 +16,31 @@ main()
   b.fixed.fill(0xc5);
   b.variable = { 2, 4, 6, 8 };
 
-  cout << xdr::xdr_to_string(b);
+  testns::numerics n1, n2;
+  n1.i32 = 32;
+  n1.d = 3.141592654;
+  //n1.ip.activate() = 999;
+  n1.iv.resize(4);
+  n1.iv[0] = 1;
+  n1.iv[1] = 2;
+  n1.iv[2] = 3;
+  n1.iv[3] = 4;
+
+  cout << xdr::xdr_to_string(n1);
 
   ostringstream obuf;
   {
     cereal::BinaryOutputArchive archive(obuf);
-    archive(b);
+    archive(n1);
   }
 
   {
     istringstream ibuf(obuf.str());
     cereal::BinaryInputArchive archive(ibuf);
-    archive(b2);
+    archive(n2);
   }
 
-  cout << xdr::xdr_to_string(b2);
+  cout << xdr::xdr_to_string(n2);
 
   return 0;
 }
