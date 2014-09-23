@@ -69,8 +69,10 @@ template<typename T> struct xdr_traits {
   static constexpr bool is_enum = false;
   //! \c T is an xdr::pointer, xdr::xarray, or xdr::xvector (with load/save).
   static constexpr bool is_container = false;
-  //! \c T is one of [u]int{32,64}_t, float, or double
+  //! \c T is one of [u]int{32,64}_t, float, or double.
   static constexpr bool is_numeric = false;
+  //! \c T has a fixed size.
+  static constexpr bool has_fixed_size = false;
 };
 
 //! Default xdr_traits values for actual XDR types.
@@ -81,14 +83,15 @@ struct xdr_traits_base {
   static constexpr bool is_enum = false;
   static constexpr bool is_container = false;
   static constexpr bool is_numeric = false;
-  static constexpr bool is_fixed_size = false;
+  static constexpr bool has_fixed_size = false;
 };
 
-#define XDR_NUMERIC(type, size)					\
-template<> struct xdr_traits<type> : xdr_traits_base {		\
-  static constexpr bool is_numeric = true;			\
-  static constexpr bool is_fixed_size = true;			\
-  static constexpr size_t serial_size(type) { return size; }	\
+#define XDR_NUMERIC(type, size)						\
+template<> struct xdr_traits<type> : xdr_traits_base {			\
+  static constexpr bool is_numeric = true;				\
+  static constexpr bool has_fixed_size = true;				\
+  static constexpr size_t fixed_size = true;				\
+  static constexpr size_t serial_size(type) { return fixed_size; }	\
 }
 XDR_NUMERIC(std::int32_t, 4);
 XDR_NUMERIC(std::uint32_t, 4);
@@ -100,14 +103,18 @@ XDR_NUMERIC(double, 8);
 
 template<> struct xdr_traits<bool> : xdr_traits_base {
   static constexpr bool is_enum = true;
-  static constexpr bool is_fixed_size = true;
-  static constexpr size_t serial_size(uint32_t) { return 4; }
+  static constexpr bool has_fixed_size = true;
+  static constexpr size_t fixed_size = 4;
+  static constexpr size_t serial_size(uint32_t) { return fixed_size; }
   static constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
 };
 
-static constexpr uint32_t XDR_MAX_LEN = 0xffffffff;
+//! Maximum length of vectors.  (The RFC says 0xffffffff, but out of
+//! paranoia for integer overflows we chose something that still fits
+//! in 32 bits when rounded up to a multiple of four.)
+static constexpr uint32_t XDR_MAX_LEN = 0xfffffffc;
 
 template<typename T, bool variable> struct xdr_container_base
   : xdr_traits_base {
@@ -157,7 +164,20 @@ template<typename T, uint32_t N> struct xarray
 };
 
 template<typename T, uint32_t N> struct xdr_traits<xarray<T,N>>
-  : xdr_container_base<xarray<T,N>, false> {};
+  : xdr_container_base<xarray<T,N>, false> {
+
+  static constexpr bool has_fixed_size = xdr_traits<T>::has_fixed_size;
+  static constexpr size_t fixed_size = N * xdr_traits<T>::fixed_size;
+
+  static typename std::enable_if<has_fixed_size, std::size_t>::type
+    serial_size(const xarray<T,N> &) { return fixed_size; }
+  static typename std::enable_if<!has_fixed_size, std::size_t>::type
+    serial_size(const xarray<T,N> &a) {
+    size_t s {0};
+    for (const auto &t : a)
+      s += xdr_traits<T>::serial_size(t);
+  }
+};
 
 //! XDR \c opaque is represented as std::uint8_t;
 template<uint32_t N = XDR_MAX_LEN> using opaque_array = xarray<std::uint8_t,N>;
