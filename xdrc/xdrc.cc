@@ -41,8 +41,8 @@ strip_directory(string in)
 {
   size_t r = in.rfind('/');
   if (r != string::npos)
-    return input_file.substr(r+1);
-  return in ;
+    return in.substr(r+1);
+  return in;
 }
 
 string
@@ -154,7 +154,8 @@ main(int argc, char **argv)
     output_file = strip_dot_x(input_file);
     if (output_file == input_file)
       usage();
-    output_file = strip_directory(output_file) + suffix;
+    output_file = strip_directory(output_file);
+    output_file += suffix;
   }
 
   if (output_file == "-")
