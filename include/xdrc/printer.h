@@ -8,6 +8,9 @@
 
 namespace xdr {
 
+//! Poor man's version of C++14 enable_if_t.
+#define ENABLE_IF(expr) typename std::enable_if<expr>::type
+
 std::string escape_string(const std::string &s);
 std::string hexdump(const void *data, size_t len);
 

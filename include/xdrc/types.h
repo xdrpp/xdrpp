@@ -10,15 +10,11 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <vector>
 
 namespace xdr {
 
 using std::uint32_t;
-
-//! Poor man's version of C++14 enable_if_t.
-#define ENABLE_IF(expr) typename std::enable_if<expr>::type
 
 //! Generic class of XDR unmarshaling errors.
 struct xdr_runtime_error : std::runtime_error {
@@ -85,11 +81,13 @@ struct xdr_traits_base {
   static constexpr bool is_enum = false;
   static constexpr bool is_container = false;
   static constexpr bool is_numeric = false;
+  static constexpr bool is_fixed_size = false;
 };
 
 #define XDR_NUMERIC(type, size)					\
 template<> struct xdr_traits<type> : xdr_traits_base {		\
   static constexpr bool is_numeric = true;			\
+  static constexpr bool is_fixed_size = true;			\
   static constexpr size_t serial_size(type) { return size; }	\
 }
 XDR_NUMERIC(std::int32_t, 4);
@@ -102,6 +100,7 @@ XDR_NUMERIC(double, 8);
 
 template<> struct xdr_traits<bool> : xdr_traits_base {
   static constexpr bool is_enum = true;
+  static constexpr bool is_fixed_size = true;
   static constexpr size_t serial_size(uint32_t) { return 4; }
   static constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
@@ -164,6 +163,9 @@ template<typename T, uint32_t N> struct xdr_traits<xarray<T,N>>
 template<uint32_t N = XDR_MAX_LEN> using opaque_array = xarray<std::uint8_t,N>;
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
+  static std::size_t serial_size(const opaque_array<N> &a) {
+    return std::size_t(4) + a.size();
+  }
   static constexpr bool variable_length = false;
 };
 
@@ -210,6 +212,9 @@ template<uint32_t N = XDR_MAX_LEN> using opaque_vec = xvector<std::uint8_t, N>;
 template<uint32_t N> struct xdr_traits<opaque_vec<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
   static constexpr bool variable_length = true;
+  static constexpr std::size_t serial_size(const opaque_array<N> &a) {
+    return std::size_t(N) + 3 & ~std::size_t(3);
+  }
 };
 
 
