@@ -178,20 +178,6 @@ gen(std::ostream &os, const rpc_struct &s)
 
   for(auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << ';';
-#if 0
-  os << endl;
-
-  for (string decl :
-    { "template<typename _Archive> void _xdr_save(_Archive &_archive) const {",
-	"template<typename _Archive> void _xdr_load(_Archive &_archive) {" } ) {
-    os << nl << decl;
-    ++nl;
-    for (size_t i = 0; i < s.decls.size(); ++i)
-      make_nvp(os, s.decls[i].id, i == 0, i + 1 == s.decls.size());
-    os << nl.close << "}";
-  }
-#endif
-  
   os << nl.close << "}";
 
   top_material

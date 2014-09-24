@@ -361,6 +361,30 @@ template<typename T> struct xdr_traits<pointer<T>>
   : xdr_container_base<pointer<T>, true> {};
 
 
+#if 0
+template<typename ...Fields> struct xdr_struct_base;
+template<> struct xdr_struct_base<> : xdr_traits_base {
+  static constexpr bool is_class = true;
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size = 0;
+  template<typename T> static constexpr std::size_t serial_size(const T&) {
+    return fixed_size;
+  }
+};
+template<typename T, typename F, typename ...Rest>
+struct xdr_struct_base<F T::*, Rest...> : xdr_struct_base<Rest...> {
+  using super = xdr_struct_base<Rest...>;
+  static constexpr bool has_fixed_size =
+    xdr_traits<F>::has_fixed_size && super::has_fixed_size;
+  static constexpr std::size_t fixed_size =
+    xdr_traits<F>::fixed_size + super::fixed_size;
+  static std::size_t serial_size(const T &t) {
+    return xdr_traits<F>::serial_size(t->*f) + super::serial_size(t);
+  }
+};
+#endif
+
+
 struct case_constructor_t {
   constexpr case_constructor_t() {}
   void operator()() const {}
