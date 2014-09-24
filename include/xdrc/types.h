@@ -386,8 +386,10 @@ struct xdr_struct_base<FP, Rest...> : xdr_struct_base<Rest...> {
   using field_traits = xdr_traits<typename FP::field_type>;
   static constexpr bool has_fixed_size =
     field_traits::has_fixed_size && super::has_fixed_size;
+#if 0 // XXX need fixed size when has_fixed_size
   static constexpr std::size_t fixed_size =
     field_traits::fixed_size + super::fixed_size;
+#endif
   static std::size_t serial_size(const typename FP::class_type &t) {
     return field_traits::serial_size(t.*field_traits::value)
       + super::serial_size(t);

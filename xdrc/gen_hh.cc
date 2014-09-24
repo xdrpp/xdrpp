@@ -176,13 +176,31 @@ gen(std::ostream &os, const rpc_struct &s)
   if (blank)
     os << endl;
 
-  for(auto &d : s.decls)
+  for (auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << ';';
   os << nl.close << "}";
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
-    << "> : xdr_traits_base {" << endl
+    //<< "> : xdr_traits_base {" << endl;
+    << ">" << endl
+    << "  : xdr_struct_base<";
+  bool first{true};
+  for (auto &d : s.decls) {
+    if (first)
+      first = false;
+    else
+      top_material << "," << endl << "                    ";
+    top_material
+      << "field_ptr<" << cur_scope() << "," << endl
+      << "                              decltype("
+      << cur_scope() << "::" << d.id << ")," << endl
+      << "                              &"
+      << cur_scope() << "::" << d.id << ">";
+  }
+
+  top_material
+    << "> {" << endl
     << "  static constexpr bool is_class = true;" << endl;
   for (string decl :
     { string("  template<typename _Archive> static void\n"
