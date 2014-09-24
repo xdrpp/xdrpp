@@ -361,7 +361,16 @@ template<typename T> struct xdr_traits<pointer<T>>
   : xdr_container_base<pointer<T>, true> {};
 
 
-#if 0
+//! Type-level representation of a pointer-to-member value.
+template<typename T, typename F, F T::*Ptr> struct field_ptr {
+  using class_type = T;
+  using field_type = F;
+  using value_type = F T::*;
+  static constexpr value_type value = Ptr;
+  static F &deref(T &t) { return t.*value; }
+  static const F &deref(const T &t) { return t.*value; }
+};
+
 template<typename ...Fields> struct xdr_struct_base;
 template<> struct xdr_struct_base<> : xdr_traits_base {
   static constexpr bool is_class = true;
@@ -371,18 +380,19 @@ template<> struct xdr_struct_base<> : xdr_traits_base {
     return fixed_size;
   }
 };
-template<typename T, typename F, typename ...Rest>
-struct xdr_struct_base<F T::*, Rest...> : xdr_struct_base<Rest...> {
+template<typename FP, typename ...Rest>
+struct xdr_struct_base<FP, Rest...> : xdr_struct_base<Rest...> {
   using super = xdr_struct_base<Rest...>;
+  using field_traits = xdr_traits<typename FP::field_type>;
   static constexpr bool has_fixed_size =
-    xdr_traits<F>::has_fixed_size && super::has_fixed_size;
+    field_traits::has_fixed_size && super::has_fixed_size;
   static constexpr std::size_t fixed_size =
-    xdr_traits<F>::fixed_size + super::fixed_size;
-  static std::size_t serial_size(const T &t) {
-    return xdr_traits<F>::serial_size(t->*f) + super::serial_size(t);
+    field_traits::fixed_size + super::fixed_size;
+  static std::size_t serial_size(const typename FP::class_type &t) {
+    return field_traits::serial_size(t.*field_traits::value)
+      + super::serial_size(t);
   }
 };
-#endif
 
 
 struct case_constructor_t {
