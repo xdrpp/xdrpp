@@ -458,7 +458,9 @@ template<typename Archive> struct case_save {
   Archive &ar_;
   const char *name_;
   constexpr case_save(Archive &ar, const char *name) : ar_(ar), name_(name) {}
-  void operator()() const {}
+  void operator()() const {
+    throw xdr_bad_discriminant("xdr::case_save: invalid discriminant");
+  }
   template<typename T> void operator()(const T *) const {}
   template<typename T, typename F> void operator()(const T *t, F T::*f) const {
     archive(ar_, name_, t->*f);
@@ -469,7 +471,9 @@ template<typename Archive> struct case_load {
   Archive &ar_;
   const char *name_;
   constexpr case_load(Archive &ar, const char *name) : ar_(ar), name_(name) {}
-  void operator()() const {}
+  void operator()() const {
+    throw xdr_bad_discriminant("xdr::case_load: invalid discriminant");
+  }
   template<typename T> void operator()(T *) const {}
   template<typename T, typename F> void operator()(T *t, F T::*f) const {
     archive(ar_, name_, t->*f);
