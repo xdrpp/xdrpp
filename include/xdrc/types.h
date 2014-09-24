@@ -423,6 +423,12 @@ template<typename Archive> struct case_load {
   }
 };
 
+struct case_serial_size {
+  constexpr case_serial_size() {}
+  void operator()() const {}
+  //template<typename T> void operator()(T *)
+};
+
 }
 
 #endif // !_XDRC_TYPES_H_HEADER_INCLUDED_

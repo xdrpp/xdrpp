@@ -237,6 +237,10 @@ gen(std::ostream &os, const rpc_enum &e)
     << "template<> struct xdr_traits<"
     << qt << "> : xdr_traits_base {" << endl
     << "  static constexpr bool is_enum = true;" << endl
+    << "  static constexpr bool has_fixed_size = true;" << endl
+    << "  static constexpr std::size_t fixed_size = 4;" << endl
+    << "  static constexpr std::size_t serial_size("
+    << qt << ") { return 4; }" << endl
     << "  static const char *enum_name("
     << qt << " _xdr_enum_val) {" << endl
     << "    switch (_xdr_enum_val) {" << endl;
@@ -488,7 +492,8 @@ gen(std::ostream &os, const rpc_union &u)
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
     << "> : xdr_traits_base {" << endl
-    << "  static constexpr bool is_class = true;" << endl;
+    << "  static constexpr bool is_class = true;" << endl
+    << "  static constexpr bool has_fixed_size = false;" << endl;
   top_material
     << "  template<typename _Archive> static void" << endl
     << "  save(_Archive &_archive, const "
