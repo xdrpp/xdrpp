@@ -367,8 +367,9 @@ template<typename T, typename F, F T::*Ptr> struct field_ptr {
   using field_type = F;
   using value_type = F T::*;
   static constexpr value_type value = Ptr;
-  static F &deref(T &t) { return t.*value; }
-  static const F &deref(const T &t) { return t.*value; }
+  constexpr field_ptr() {}
+  F &operator()(T &t) { return t.*value; }
+  const F &operator()(const T &t) { return t.*value; }
 };
 
 template<typename ...Fields> struct xdr_struct_base;

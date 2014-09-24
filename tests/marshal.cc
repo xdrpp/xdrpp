@@ -69,7 +69,6 @@ int
 main()
 {
   test_size();
-  return 0;
 
   testns::bytes b, b2;
   b.s = "Hello world\n";

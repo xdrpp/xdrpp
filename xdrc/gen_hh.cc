@@ -390,6 +390,26 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "const char *_xdr_field_name() const { return _xdr_field_name("
      << u.tagid << "_); }";
 
+  // _xdr_with_field_ptr
+  os << nl << "template<typename _F> static bool"
+     << nl << "_xdr_with_field_ptr(_F &_f, std::uint32_t _which) {"
+     << nl.open << pswitch(u, "_which");
+  for (const rpc_ufield &f : u.fields) {
+    for (string c : f.cases)
+      os << nl << map_case(c);
+    if (f.decl.type == "void")
+      os << nl << "  _f();";
+    else 
+      os << nl << "  _f(xdr::field_ptr<" << u.id << ", " << decl_type(f.decl)
+	 << ", &" << u.id << "::" << f.decl.id << "_>());"
+	 << nl << "  return true;";
+  }
+  os << nl << "}";
+  if (!u.hasdefault)
+    os << nl << "return false;";
+  os << nl.close << "}"
+     << endl;
+
   // _xdr_on_field_ptr
   os << nl << "template<typename F, typename T> static void"
      << nl << "_xdr_on_field_ptr(F &f, T &&t, std::uint32_t _which) {"
