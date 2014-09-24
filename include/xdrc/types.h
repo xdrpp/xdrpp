@@ -372,6 +372,27 @@ template<typename T, typename F, F T::*Ptr> struct field_ptr {
 };
 
 template<typename ...Fields> struct xdr_struct_base;
+
+template<typename FP, typename ...Fields>
+  struct _xdr_struct_base_fs : xdr_struct_base<Fields...> {
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size =
+    (xdr_traits<typename FP::field_type>::fixed_size
+     + xdr_struct_base<Fields...>::fixed_size);
+  static constexpr std::size_t serial_size(const typename FP::class_type &) {
+    return fixed_size;
+  }
+};
+template<typename FP, typename ...Fields>
+  struct _xdr_struct_base_vs : xdr_struct_base<Fields...> {
+  static constexpr bool has_fixed_size = false;
+  static std::size_t serial_size(const typename FP::class_type &t) {
+    using field_traits = xdr_traits<typename FP::field_type>;
+    return (field_traits::serial_size(t.*field_traits::value)
+	    + xdr_struct_base<Fields...>::serial_size(t));
+  }
+};
+
 template<> struct xdr_struct_base<> : xdr_traits_base {
   static constexpr bool is_class = true;
   static constexpr bool has_fixed_size = true;
@@ -380,21 +401,11 @@ template<> struct xdr_struct_base<> : xdr_traits_base {
     return fixed_size;
   }
 };
-template<typename FP, typename ...Rest>
-struct xdr_struct_base<FP, Rest...> : xdr_struct_base<Rest...> {
-  using super = xdr_struct_base<Rest...>;
-  using field_traits = xdr_traits<typename FP::field_type>;
-  static constexpr bool has_fixed_size =
-    field_traits::has_fixed_size && super::has_fixed_size;
-#if 0 // XXX need fixed size when has_fixed_size
-  static constexpr std::size_t fixed_size =
-    field_traits::fixed_size + super::fixed_size;
-#endif
-  static std::size_t serial_size(const typename FP::class_type &t) {
-    return field_traits::serial_size(t.*field_traits::value)
-      + super::serial_size(t);
-  }
-};
+template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
+  : std::conditional<(xdr_traits<typename FP::field_type>::has_fixed_size
+		      && xdr_struct_base<Rest...>::has_fixed_size),
+                     _xdr_struct_base_fs<FP, Rest...>,
+                     _xdr_struct_base_vs<FP, Rest...>>::type {};
 
 
 struct case_constructor_t {

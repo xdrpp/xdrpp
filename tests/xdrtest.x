@@ -1,12 +1,12 @@
 
+struct simple {
+  int field;
+};
+
 enum color {
   RED,
   REDDER,
   REDDEST
-};
-
-struct simple {
-  int field;
 };
 
 namespace testns {
