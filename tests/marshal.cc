@@ -12,49 +12,57 @@ using namespace std;
 
 template<typename T>
 typename std::enable_if<!xdr::xdr_traits<T>::has_fixed_size, std::size_t>::type
-psize(const char *name, const T &t)
+xdr_size(const T &t)
 {
   std::size_t r = xdr::xdr_traits<T>::serial_size(t);
-  cout << name << ": " << r << " [variable]" << endl;
   return r;
 }
 
 template<typename T>
 typename std::enable_if<xdr::xdr_traits<T>::has_fixed_size, std::size_t>::type
-psize(const char *name, const T &t)
+xdr_size(const T &t)
 {
   std::size_t r = xdr::xdr_traits<T>::fixed_size;
-  cout << name << ": " << xdr::xdr_traits<T>::fixed_size << " [fixed]" << endl;
   assert(xdr::xdr_traits<T>::fixed_size == xdr::xdr_traits<T>::serial_size(t));
   return r;
 }
 
-#define PSIZE(T) psize(#T,T)
+#define CHECK_SIZE(v, s)						\
+do {									\
+  size_t __s = xdr_size(v);						\
+  if (__s != s) {							\
+    cerr << #v << " has size " << __s << " shoudl have " << s << endl;	\
+    terminate();							\
+  }									\
+} while (0)
+
 
 void
 test_size()
 {
-  PSIZE(int32_t());
-  PSIZE(fix_4());
-  PSIZE(fix_12());
-  PSIZE(xdr::opaque_array<5>());
-  PSIZE(u_4_12(4));
-  PSIZE(u_4_12(12));
+  CHECK_SIZE(int32_t(), 4);
+  CHECK_SIZE(fix_4(), 4);
+  CHECK_SIZE(fix_12(), 12);
+  CHECK_SIZE(xdr::opaque_array<5>(), 8);
+  CHECK_SIZE(u_4_12(4), 8);
+  CHECK_SIZE(u_4_12(12), 16);
 
-  bool ok = false;
-  try { PSIZE(u_4_12(0)); }
-  catch (const xdr::xdr_bad_discriminant &) { ok = true; }
-  assert(ok);
+  {
+    bool ok = false;
+    try { CHECK_SIZE(u_4_12(0), 9999); }
+    catch (const xdr::xdr_bad_discriminant &) { ok = true; }
+    assert(ok);
+  }
 
   v12 v;
-  psize("v12 empty", v);
+  CHECK_SIZE(v, 4);
   v.emplace_back();
-  psize("v12 * 1", v);
+  CHECK_SIZE(v, 16);
   v.emplace_back();
-  psize("v12 * 2", v);
+  CHECK_SIZE(v, 28);
 
-  psize("xdtring 0", xdr::xstring<>());
-  psize("xstring 3", xdr::xstring<>("123"));
+  CHECK_SIZE(xdr::xstring<>(), 4);
+  CHECK_SIZE(xdr::xstring<>("123"), 8);
 }
 
 int
