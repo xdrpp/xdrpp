@@ -198,9 +198,10 @@ struct xdr_traits<xarray<T,N>> : xdr_container_base<xarray<T,N>, false> {
 template<uint32_t N = XDR_MAX_LEN> using opaque_array = xarray<std::uint8_t,N>;
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
-  static std::size_t serial_size(const opaque_array<N> &a) {
-    return std::size_t(4) + a.size();
-  }
+  static constexpr std::size_t has_fixed_size = true;
+  static constexpr std::size_t fixed_size =
+    std::size_t(N) + std::size_t(3) & ~std::size_t(3);
+  static std::size_t serial_size(const opaque_array<N> &) { return fixed_size; }
   static constexpr bool variable_length = false;
 };
 
@@ -246,10 +247,11 @@ template<typename T, uint32_t N> struct xdr_traits<xvector<T,N>>
 template<uint32_t N = XDR_MAX_LEN> using opaque_vec = xvector<std::uint8_t, N>;
 template<uint32_t N> struct xdr_traits<opaque_vec<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
-  static constexpr bool variable_length = true;
-  static constexpr std::size_t serial_size(const opaque_array<N> &a) {
-    return std::size_t(N) + 3 & ~std::size_t(3);
+  static constexpr bool has_fixed_size = false;;
+  static constexpr std::size_t serial_size(const opaque_vec<N> &a) {
+    return std::size_t(a.size()) + std::size_t(7) & ~std::size_t(3);
   }
+  static constexpr bool variable_length = true;
 };
 
 
@@ -305,6 +307,10 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
 
 template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
+  static constexpr bool has_fixed_size = false;;
+  static constexpr std::size_t serial_size(const xstring<N> &a) {
+    return std::size_t(a.size()) + std::size_t(7) & ~std::size_t(3);
+  }
   static constexpr bool variable_length = true;
 };
 
@@ -424,9 +430,13 @@ template<typename Archive> struct case_load {
 };
 
 struct case_serial_size {
-  constexpr case_serial_size() {}
-  void operator()() const {}
-  //template<typename T> void operator()(T *)
+  size_t size;
+  case_serial_size() {}
+  void operator()() { size = 4; }
+  template<typename T> void operator()(const T *) { size = 4; }
+  template<typename T, typename F> void operator()(const T *t, F T::*f) {
+    size = std::size_t(4) + xdr_traits<F>::serial_size(t->*f);
+  }
 };
 
 }

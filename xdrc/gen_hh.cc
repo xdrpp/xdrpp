@@ -493,7 +493,13 @@ gen(std::ostream &os, const rpc_union &u)
     << "template<> struct xdr_traits<" << cur_scope()
     << "> : xdr_traits_base {" << endl
     << "  static constexpr bool is_class = true;" << endl
-    << "  static constexpr bool has_fixed_size = false;" << endl;
+    << "  static constexpr bool has_fixed_size = false;" << endl
+    << "  static std::size_t serial_size(const " << cur_scope()
+    << " &o) {" << endl
+    << "    case_serial_size ss;" << endl
+    << "    o._xdr_on_field_ptr(ss, &o, o._xdr_discriminant());" << endl
+    << "    return ss.size;" << endl
+    << "  }" << endl;
   top_material
     << "  template<typename _Archive> static void" << endl
     << "  save(_Archive &_archive, const "
