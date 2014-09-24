@@ -116,15 +116,19 @@ template<> struct xdr_traits<bool> : xdr_traits_base {
 //! in 32 bits when rounded up to a multiple of four.)
 static constexpr uint32_t XDR_MAX_LEN = 0xfffffffc;
 
-template<typename T, bool variable> struct xdr_container_base
-  : xdr_traits_base {
+template<typename T, bool variable,
+	 bool VFixed = xdr_traits<typename T::value_type>::has_fixed_size>
+struct xdr_container_base : xdr_traits_base {
+  using value_type = typename T::value_type;
   static constexpr bool is_container = true;
   static constexpr bool variable_length = variable;
+  static constexpr bool has_fixed_size = false;
+
   template<typename Archive> static void save(Archive &a, const T &t) {
     if (variable)
       archive(a, nullptr, uint32_t(t.size()));
-    for (const typename T::value_type &o : t)
-      archive(a, nullptr, o);
+    for (const value_type &v : t)
+      archive(a, nullptr, v);
   }
   template<typename Archive> static void load(Archive &a, T &t) {
     uint32_t n;
@@ -139,6 +143,27 @@ template<typename T, bool variable> struct xdr_container_base
     for (uint32_t i = 0; i < n; ++i)
       archive(a, nullptr, t.extend_at(i));
   }
+  static std::size_t serial_size(const T &t) {
+    std::size_t s = variable ? 4 : 0;
+    for (const value_type &v : t)
+      s += xdr_traits<value_type>::serial_size(v);
+    return s;
+  }
+};
+
+template<typename T> struct xdr_container_base<T, true, true>
+  : xdr_container_base<T, false, false> {
+  static std::size_t serial_size(const T &t) {
+    return 4 + t.size() * xdr_traits<typename T::value_type>::fixed_size;
+  }
+};
+
+template<typename T> struct xdr_container_base<T, false, true>
+  : xdr_container_base<T, false, false> {
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size =
+    T::size() * xdr_traits<typename T::value_type>::fixed_size;
+  static std::size_t serial_size(const T &) { return fixed_size; }
 };
 
 
@@ -163,20 +188,10 @@ template<typename T, uint32_t N> struct xarray
   }
 };
 
-template<typename T, uint32_t N> struct xdr_traits<xarray<T,N>>
-  : xdr_container_base<xarray<T,N>, false> {
-
+template<typename T, uint32_t N>
+struct xdr_traits<xarray<T,N>> : xdr_container_base<xarray<T,N>, false> {
   static constexpr bool has_fixed_size = xdr_traits<T>::has_fixed_size;
   static constexpr size_t fixed_size = N * xdr_traits<T>::fixed_size;
-
-  static typename std::enable_if<has_fixed_size, std::size_t>::type
-    serial_size(const xarray<T,N> &) { return fixed_size; }
-  static typename std::enable_if<!has_fixed_size, std::size_t>::type
-    serial_size(const xarray<T,N> &a) {
-    size_t s {0};
-    for (const auto &t : a)
-      s += xdr_traits<T>::serial_size(t);
-  }
 };
 
 //! XDR \c opaque is represented as std::uint8_t;
