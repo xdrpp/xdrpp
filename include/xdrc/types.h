@@ -27,7 +27,7 @@ struct xdr_overflow : xdr_runtime_error {
 };
 
 //! Attempt to set invalid value for a union discriminant.
-struct xdr_bad_value : xdr_runtime_error {
+struct xdr_bad_discriminant : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
 };
 
@@ -90,7 +90,7 @@ struct xdr_traits_base {
 template<> struct xdr_traits<type> : xdr_traits_base {			\
   static constexpr bool is_numeric = true;				\
   static constexpr bool has_fixed_size = true;				\
-  static constexpr size_t fixed_size = true;				\
+  static constexpr size_t fixed_size = size;				\
   static constexpr size_t serial_size(type) { return fixed_size; }	\
 }
 XDR_NUMERIC(std::int32_t, 4);
@@ -200,7 +200,7 @@ template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
   static constexpr std::size_t has_fixed_size = true;
   static constexpr std::size_t fixed_size =
-    std::size_t(N) + std::size_t(3) & ~std::size_t(3);
+    (std::size_t(N) + std::size_t(3)) & ~std::size_t(3);
   static std::size_t serial_size(const opaque_array<N> &) { return fixed_size; }
   static constexpr bool variable_length = false;
 };
@@ -249,7 +249,7 @@ template<uint32_t N> struct xdr_traits<opaque_vec<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
   static constexpr bool has_fixed_size = false;;
   static constexpr std::size_t serial_size(const opaque_vec<N> &a) {
-    return std::size_t(a.size()) + std::size_t(7) & ~std::size_t(3);
+    return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
   }
   static constexpr bool variable_length = true;
 };
@@ -309,7 +309,7 @@ template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
   static constexpr bool has_fixed_size = false;;
   static constexpr std::size_t serial_size(const xstring<N> &a) {
-    return std::size_t(a.size()) + std::size_t(7) & ~std::size_t(3);
+    return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
   }
   static constexpr bool variable_length = true;
 };
@@ -434,10 +434,10 @@ struct case_construct_from {
   void operator()() const {}
   template<typename T> void operator()(T &&) const {}
   template<typename T, typename F> void operator()(const T &t, F T::*f) const {
-    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F{t.*f};
+    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F(t.*f);
   }
   template<typename T, typename F> void operator()(T &&t, F T::*f) const {
-    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F{std::move(t.*f)};
+    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F(std::move(t.*f));
   }
 };
 
@@ -479,7 +479,9 @@ template<typename Archive> struct case_load {
 struct case_serial_size {
   size_t size;
   case_serial_size() {}
-  void operator()() { size = 4; }
+  void operator()() {
+    throw xdr_bad_discriminant("xdr::case_serial_size: invalid discriminant");
+  }
   template<typename T> void operator()(const T *) { size = 4; }
   template<typename T, typename F> void operator()(const T *t, F T::*f) {
     size = std::size_t(4) + xdr_traits<F>::serial_size(t->*f);

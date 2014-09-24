@@ -1,4 +1,23 @@
 
+struct fix_4 {
+  int i;
+};
+
+struct fix_12 {
+  int i;
+  double d;
+};
+
+union u_4_12 switch (int which) {
+ case 4:
+   fix_4 f4;
+ case 12:
+   fix_12 f12;
+};
+
+typedef fix_12 v12<>;
+
+
 struct simple {
   int field;
 };

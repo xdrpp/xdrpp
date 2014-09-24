@@ -352,7 +352,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "                       bool _xdr_validate = true) {"
      << nl.open << "int _xdr_fnum = _xdr_field_number(_xdr_d);"
      << nl << "if (_xdr_fnum < 0 && _xdr_validate)"
-     << nl << "  throw xdr::xdr_bad_value(\"bad value of "
+     << nl << "  throw xdr::xdr_bad_discriminant(\"bad value of "
      << u.tagid << " in " << u.id << "\");"
      << nl << "if (_xdr_fnum != _xdr_field_number(" << u.tagid << "_)) {"
      << nl.open << "this->~" << u.id << "();"
@@ -402,7 +402,7 @@ gen(std::ostream &os, const rpc_union &u)
     else
       os << nl << "  f(std::forward<T>(t), &"
 	 << u.id << "::" << f.decl.id << "_);";
-    os << nl << "  break;";
+    os << nl << "  return;";
   }
   os << nl << "}";
   if (!u.hasdefault)
