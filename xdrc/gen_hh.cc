@@ -391,8 +391,8 @@ gen(std::ostream &os, const rpc_union &u)
      << u.tagid << "_); }";
 
   // _xdr_with_field_ptr
-  os << nl << "template<typename _F> static bool"
-     << nl << "_xdr_with_field_ptr(_F &_f, std::uint32_t _which) {"
+  os << nl << "template<typename _F, typename...A> static bool"
+     << nl << "_xdr_with_field_ptr(_F &_f, std::uint32_t _which, A...a) {"
      << nl.open << pswitch(u, "_which");
   for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
@@ -401,7 +401,8 @@ gen(std::ostream &os, const rpc_union &u)
       os << nl << "  _f();";
     else 
       os << nl << "  _f(xdr::field_ptr<" << u.id << ", " << decl_type(f.decl)
-	 << ", &" << u.id << "::" << f.decl.id << "_>());"
+	 << ", &" << u.id << "::" << f.decl.id << "_>(),"
+	 << nl << "     std::forward<A>(a)...);"
 	 << nl << "  return true;";
   }
   os << nl << "}";

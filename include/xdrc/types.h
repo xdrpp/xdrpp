@@ -368,8 +368,9 @@ template<typename T, typename F, F T::*Ptr> struct field_ptr {
   using value_type = F T::*;
   static constexpr value_type value = Ptr;
   constexpr field_ptr() {}
-  F &operator()(T &t) { return t.*value; }
-  const F &operator()(const T &t) { return t.*value; }
+  F &operator()(T &t) const { return t.*value; }
+  const F &operator()(const T &t) const { return t.*value; }
+  F &operator()(T &&t) const { return std::move(t.*value); }
 };
 
 template<typename ...Fields> struct xdr_struct_base;
@@ -408,6 +409,25 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
                      _xdr_struct_base_fs<FP, Rest...>,
                      _xdr_struct_base_vs<FP, Rest...>>::type {};
 
+struct field_constructor_t {
+  void operator()() const {}
+
+  template<typename FP> void
+  operator()(FP fp, typename FP::class_type &t) const {
+    new (&fp(t)) typename FP::field_type;
+  }
+};
+constexpr field_constructor_t field_constructor;
+
+struct field_destructor_t {
+  void operator()() const {}
+
+  template<typename FP> void
+  operator()(FP fp, typename FP::class_type &t) const {
+    using field_type = typename FP::field_type;
+    fp(t).~field_type();
+  }
+};
 
 struct case_constructor_t {
   constexpr case_constructor_t() {}
