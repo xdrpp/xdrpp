@@ -429,7 +429,8 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << u.id << "(" << u.id << " &&_source) : "
      << u.tagid << "_(_source." << u.tagid << "_) {"
      << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this, std::move(_source));"
+     << u.tagid << "_, *this,"
+     << nl << "                  std::move(_source));"
      << nl.close << "}";
 
   // Destructor
@@ -440,28 +441,31 @@ gen(std::ostream &os, const rpc_union &u)
   // Assignment
   os << nl << u.id << " &operator=(const " << u.id << " &_source) {"
      << nl.open << "if (_xdr_field_number(" << u.tagid
-     << "_) == _xdr_field_number(_source." << u.tagid << "_))"
+     << "_) "
+     << nl << "    == _xdr_field_number(_source." << u.tagid << "_))"
      << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
      << u.tagid << "_, *this, _source);"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
-     << nl << "  _xdr_with_mem_ptr(xdr::field_constructor, "
+     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this, _source);"
      << nl.close << "}"
      << nl << u.tagid << "_ = _source." << u.tagid << "_;"
      << nl << "return *this;"
      << nl.close << "}";
   os << nl << u.id << " &operator=(" << u.id << " &&_source) {"
-     << nl.open << "if (_xdr_field_number(" << u.tagid
-     << "_) == _xdr_field_number(_source." << u.tagid << "_))"
+     << nl.open << "if (_xdr_field_number(" << u.tagid << "_)"
+     << nl << "     == _xdr_field_number(_source." << u.tagid << "_))"
      << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
-     << u.tagid << "_, *this, std::move(_source));"
+     << u.tagid << "_, *this,"
+     << nl << "                    std::move(_source));"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
-     << nl << "  _xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this, std::move(_source));"
+     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this,"
+     << nl << "                  std::move(_source));"
      << nl.close << "}"
      << nl << u.tagid << "_ = _source." << u.tagid << "_;"
      << nl << "return *this;"
