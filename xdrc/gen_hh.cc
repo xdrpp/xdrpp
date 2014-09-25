@@ -333,7 +333,6 @@ gen(std::ostream &os, const rpc_union &u)
       blank = true;
   if (blank)
     os << endl;
-  os << nl << "friend struct xdr::xdr_traits<" << u.id << ">;";
   os << nl.outdent << "private:"
      << nl << "std::uint32_t " << u.tagid << "_;"
      << nl << "union {";
@@ -345,30 +344,12 @@ gen(std::ostream &os, const rpc_union &u)
 
   os << nl.outdent << "public:";
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
-    " \"union discriminant must be 4 bytes\");";
-
-  // _xdr_discriminant
-  //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
-  os << nl << "std::uint32_t _xdr_discriminant() const { return "
-     << u.tagid << "_; }";
-  os << nl << "void _xdr_discriminant(std::uint32_t d,"
-     << " bool validate = true) {"
-     << nl.open << "int fnum = _xdr_field_number(d);"
-     << nl << "if (fnum < 0 && validate)"
-     << nl << "  throw xdr::xdr_bad_discriminant(\"bad value of "
-     << u.tagid << " in " << u.id << "\");"
-     << nl << "if (fnum != _xdr_field_number(" << u.tagid << "_)) {"
-     << nl.open << "this->~" << u.id << "();"
-     << nl << u.tagid << "_ = d;"
-     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this);"
-     << nl.close << "}"
-     << nl.close << "}" << endl;
+    " \"union discriminant must be 4 bytes\");" << endl;
 
   // _xdr_field_number
   os << nl
-     << "static constexpr int _xdr_field_number(std::uint32_t _which) {";
-  union_function(os, u, "_which", [](const rpc_ufield *uf) {
+     << "static constexpr int _xdr_field_number(std::uint32_t which) {";
+  union_function(os, u, "which", [](const rpc_ufield *uf) {
       using std::to_string;
       if (uf)
 	return to_string(uf->fieldno);
@@ -377,28 +358,10 @@ gen(std::ostream &os, const rpc_union &u)
     });
   os << nl << "}";
 
-#if 0
-  // _xdr_field_name
-  os << nl
-     << "static constexpr const char *_xdr_field_name(std::uint32_t _which) {";
-  union_function(os, u, "_which", [](const rpc_ufield *uf) {
-      using std::to_string;
-      if (uf && uf->decl.type != "void")
-	return string("\"") + uf->decl.id + "\"";
-      else
-	return string("nullptr");
-    });
-  os << nl << "}";
-
-  // _xdr_field_name
-  os << nl << "const char *_xdr_field_name() const { return _xdr_field_name("
-     << u.tagid << "_); }";
-#endif
-
   // _xdr_with_mem_ptr
   os << nl << "template<typename _F, typename...A> static bool"
-     << nl << "_xdr_with_mem_ptr(_F &_f, std::uint32_t _which, A&&...a) {"
-     << nl.open << pswitch(u, "_which");
+     << nl << "_xdr_with_mem_ptr(_F &_f, std::uint32_t which, A&&...a) {"
+     << nl.open << pswitch(u, "which");
   for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
       os << nl << map_case(c);
@@ -415,24 +378,42 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl.close << "}"
      << endl;
 
+  // _xdr_discriminant
+  //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
+  os << nl << "std::uint32_t _xdr_discriminant() const { return "
+     << u.tagid << "_; }";
+  os << nl << "void _xdr_discriminant(std::uint32_t which,"
+     << " bool validate = true) {"
+     << nl.open << "int fnum = _xdr_field_number(which);"
+     << nl << "if (fnum < 0 && validate)"
+     << nl << "  throw xdr::xdr_bad_discriminant(\"bad value of "
+     << u.tagid << " in " << u.id << "\");"
+     << nl << "if (fnum != _xdr_field_number(" << u.tagid << "_)) {"
+     << nl.open << "this->~" << u.id << "();"
+     << nl << u.tagid << "_ = which;"
+     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this);"
+     << nl.close << "}"
+     << nl.close << "}";
+
   // Default constructor
-  os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
-     << map_type(u.tagtype) << "{}) : " << u.tagid << "_(_t) {"
+  os << nl << u.id << "(" << map_type(u.tagtype) << " which = "
+     << map_type(u.tagtype) << "{}) : " << u.tagid << "_(which) {"
      << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this);"
      << nl.close << "}";
 
   // Copy/move constructor
-  os << nl << u.id << "(const " << u.id << " &_source) : "
-     << u.tagid << "_(_source." << u.tagid << "_) {"
+  os << nl << u.id << "(const " << u.id << " &source) : "
+     << u.tagid << "_(source." << u.tagid << "_) {"
      << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this, _source);"
+     << u.tagid << "_, *this, source);"
      << nl.close << "}";
-  os << nl << u.id << "(" << u.id << " &&_source) : "
-     << u.tagid << "_(_source." << u.tagid << "_) {"
+  os << nl << u.id << "(" << u.id << " &&source) : "
+     << u.tagid << "_(source." << u.tagid << "_) {"
      << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this,"
-     << nl << "                  std::move(_source));"
+     << nl << "                  std::move(source));"
      << nl.close << "}";
 
   // Destructor
@@ -441,35 +422,35 @@ gen(std::ostream &os, const rpc_union &u)
      << u.tagid << "_, *this); }";
 
   // Assignment
-  os << nl << u.id << " &operator=(const " << u.id << " &_source) {"
+  os << nl << u.id << " &operator=(const " << u.id << " &source) {"
      << nl.open << "if (_xdr_field_number(" << u.tagid
      << "_) "
-     << nl << "    == _xdr_field_number(_source." << u.tagid << "_))"
+     << nl << "    == _xdr_field_number(source." << u.tagid << "_))"
      << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
-     << u.tagid << "_, *this, _source);"
+     << u.tagid << "_, *this, source);"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this, _source);"
+     << u.tagid << "_, *this, source);"
      << nl.close << "}"
-     << nl << u.tagid << "_ = _source." << u.tagid << "_;"
+     << nl << u.tagid << "_ = source." << u.tagid << "_;"
      << nl << "return *this;"
      << nl.close << "}";
-  os << nl << u.id << " &operator=(" << u.id << " &&_source) {"
+  os << nl << u.id << " &operator=(" << u.id << " &&source) {"
      << nl.open << "if (_xdr_field_number(" << u.tagid << "_)"
-     << nl << "     == _xdr_field_number(_source." << u.tagid << "_))"
+     << nl << "     == _xdr_field_number(source." << u.tagid << "_))"
      << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
      << u.tagid << "_, *this,"
-     << nl << "                    std::move(_source));"
+     << nl << "                    std::move(source));"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this,"
-     << nl << "                  std::move(_source));"
+     << nl << "                  std::move(source));"
      << nl.close << "}"
-     << nl << u.tagid << "_ = _source." << u.tagid << "_;"
+     << nl << u.tagid << "_ = source." << u.tagid << "_;"
      << nl << "return *this;"
      << nl.close << "}";
   os << endl;
@@ -511,13 +492,19 @@ gen(std::ostream &os, const rpc_union &u)
 
   top_material
     << "  static constexpr const char *union_field_name(std::uint32_t which) {";
-  union_function(top_material, u, "which", [](const rpc_ufield *uf) {
-      using std::to_string;
-      if (uf && uf->decl.type != "void")
-	return string("\"") + uf->decl.id + "\"";
-      else
-	return string("nullptr");
-    });
+
+  {
+    int olevel = nl.level_;
+    nl.level_ = 2;
+    union_function(top_material, u, "which", [](const rpc_ufield *uf) {
+	using std::to_string;
+	if (uf && uf->decl.type != "void")
+	  return string("\"") + uf->decl.id + "\"";
+	else
+	  return string("nullptr");
+      });
+    nl.level_ = olevel;
+  }
   top_material
     << endl << "  }" << endl
     << "  static const char *union_field_name(const union_type &u) {" << endl
