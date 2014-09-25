@@ -61,7 +61,8 @@ cur_ns()
     return "";
   string out;
   for (const auto &ns : namespaces) {
-    out += "::";
+    if (!out.empty())
+      out += "::";
     out += ns;
   }
   return out;
