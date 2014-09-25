@@ -454,7 +454,7 @@ constexpr field_archive_t field_archive;
 
 struct field_size_t {
   template<typename FP> void
-  operator()(FP fp, typename FP::class_type &t, std::size_t &size) const {
+  operator()(FP fp, const typename FP::class_type &t, std::size_t &size) const {
     size = xdr_traits<typename FP::field_type>::serial_size(fp(t));
   }
 };

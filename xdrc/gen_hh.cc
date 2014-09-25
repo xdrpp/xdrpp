@@ -392,7 +392,7 @@ gen(std::ostream &os, const rpc_union &u)
 
   // _xdr_with_field_ptr
   os << nl << "template<typename _F, typename...A> static bool"
-     << nl << "_xdr_with_field_ptr(_F &_f, std::uint32_t _which, A...a) {"
+     << nl << "_xdr_with_field_ptr(_F &_f, std::uint32_t _which, A&&...a) {"
      << nl.open << pswitch(u, "_which");
   for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
@@ -521,9 +521,12 @@ gen(std::ostream &os, const rpc_union &u)
     << "  static constexpr bool has_fixed_size = false;" << endl
     << "  static std::size_t serial_size(const " << cur_scope()
     << " &o) {" << endl
-    << "    case_serial_size ss;" << endl
-    << "    o._xdr_on_field_ptr(ss, &o, o._xdr_discriminant());" << endl
-    << "    return ss.size;" << endl
+    << "    std::size_t size = 0;" << endl
+    << "    if (!o._xdr_with_field_ptr(field_size, o._xdr_discriminant(),"
+    << " o, size))" << endl
+    << "      throw xdr_bad_discriminant(\"bad value of " << u.tagid
+    << " in " << cur_scope() << "\");" << endl
+    << "    return size + 4;" << endl
     << "  }" << endl;
   top_material
     << "  template<typename _Archive> static void" << endl
