@@ -358,8 +358,10 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "if (_xdr_fnum != _xdr_field_number(" << u.tagid << "_)) {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = _xdr_d;"
-     << nl << "_xdr_on_field_ptr(xdr::case_constructor, this, "
-     << u.tagid << "_);"
+    //<< nl << "_xdr_on_field_ptr(xdr::case_constructor, this, "
+    //<< u.tagid << "_);"
+     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this);"
      << nl.close << "}"
      << nl.close << "}" << endl;
 
@@ -391,9 +393,9 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "const char *_xdr_field_name() const { return _xdr_field_name("
      << u.tagid << "_); }";
 
-  // _xdr_with_field_ptr
+  // _xdr_with_mem_ptr
   os << nl << "template<typename _F, typename...A> static bool"
-     << nl << "_xdr_with_field_ptr(_F &_f, std::uint32_t _which, A&&...a) {"
+     << nl << "_xdr_with_mem_ptr(_F &_f, std::uint32_t _which, A&&...a) {"
      << nl.open << pswitch(u, "_which");
   for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
@@ -401,9 +403,8 @@ gen(std::ostream &os, const rpc_union &u)
     if (f.decl.type == "void")
       os << nl << "  return true;";
     else 
-      os << nl << "  _f(xdr::field_ptr<" << u.id << ", " << decl_type(f.decl)
-	 << ", &" << u.id << "::" << f.decl.id << "_>(),"
-	 << nl << "     std::forward<A>(a)...);"
+      os << nl << "  _f(&" << u.id << "::" << f.decl.id
+	 << "_, std::forward<A>(a)...);"
 	 << nl << "  return true;";
   }
   os << nl << "}";
@@ -412,85 +413,59 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl.close << "}"
      << endl;
 
-  // _xdr_on_field_ptr
-  os << nl << "template<typename F, typename T> static void"
-     << nl << "_xdr_on_field_ptr(F &f, T &&t, std::uint32_t _which) {"
-     << nl.open << pswitch(u, "_which");
-  for (const rpc_ufield &f : u.fields) {
-    for (string c : f.cases)
-      os << nl << map_case(c);
-    if (f.decl.type == "void")
-      os << nl << "  f(std::forward<T>(t));";
-    else
-      os << nl << "  f(std::forward<T>(t), &"
-	 << u.id << "::" << f.decl.id << "_);";
-    os << nl << "  return;";
-  }
-  os << nl << "}";
-  if (!u.hasdefault)
-    os << nl << "f();";
-  os << nl.close << "}"
-     << endl;
-
   // Default constructor
   os << nl << u.id << "(" << map_type(u.tagtype) << " _t = "
      << map_type(u.tagtype) << "{}) : " << u.tagid << "_(_t) {"
-     << nl.open << "_xdr_on_field_ptr(xdr::case_constructor, this, "
-     << u.tagid << "_);"
+     << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this);"
      << nl.close << "}";
 
   // Copy/move constructor
   os << nl << u.id << "(const " << u.id << " &_source) : "
      << u.tagid << "_(_source." << u.tagid << "_) {"
-     << nl.open << "xdr::case_construct_from _dest{this};"
-     << nl << "_xdr_on_field_ptr(_dest, _source, " << u.tagid << "_);"
+     << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this, _source);"
      << nl.close << "}";
   os << nl << u.id << "(" << u.id << " &&_source) : "
      << u.tagid << "_(_source." << u.tagid << "_) {"
-     << nl.open << "xdr::case_construct_from _dest{this};"
-     << nl << "_xdr_on_field_ptr(_dest, std::move(_source), "
-     << u.tagid << "_);"
+     << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this, std::move(_source));"
      << nl.close << "}";
 
   // Destructor
   os << nl << "~" << u.id
-     << "() { _xdr_on_field_ptr(xdr::case_destroyer, this, "
-     << u.tagid << "_); }";
+     << "() { _xdr_with_mem_ptr(xdr::field_destructor, "
+     << u.tagid << "_, *this); }";
 
   // Assignment
   os << nl << u.id << " &operator=(const " << u.id << " &_source) {"
      << nl.open << "if (_xdr_field_number(" << u.tagid
-     << "_) == _xdr_field_number(_source." << u.tagid << "_)) {"
-     << nl << "  xdr::case_assign_from _dest{this};"
-     << nl << "  _xdr_on_field_ptr(_dest, _source, " << u.tagid << "_);"
-     << nl << "}"
+     << "_) == _xdr_field_number(_source." << u.tagid << "_))"
+     << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
+     << u.tagid << "_, *this, _source);"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
-     << nl << "xdr::case_construct_from _dest{this};"
-     << nl << "_xdr_on_field_ptr(_dest, _source, " << u.tagid << "_);"
+     << nl << "  _xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this, _source);"
      << nl.close << "}"
      << nl << u.tagid << "_ = _source." << u.tagid << "_;"
      << nl << "return *this;"
      << nl.close << "}";
   os << nl << u.id << " &operator=(" << u.id << " &&_source) {"
      << nl.open << "if (_xdr_field_number(" << u.tagid
-     << "_) == _xdr_field_number(_source." << u.tagid << "_)) {"
-     << nl << "  xdr::case_assign_from _dest{this};"
-     << nl << "  _xdr_on_field_ptr(_dest, std::move(_source), "
-     << u.tagid << "_);"
-     << nl << "}"
+     << "_) == _xdr_field_number(_source." << u.tagid << "_))"
+     << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
+     << u.tagid << "_, *this, std::move(_source));"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
-     << nl << "xdr::case_construct_from _dest{this};"
-     << nl << "_xdr_on_field_ptr(_dest, std::move(_source), "
-     << u.tagid << "_);"
+     << nl << "  _xdr_with_mem_ptr(xdr::field_constructor, "
+     << u.tagid << "_, *this, std::move(_source));"
      << nl.close << "}"
      << nl << u.tagid << "_ = _source." << u.tagid << "_;"
      << nl << "return *this;"
      << nl.close << "}";
-
   os << endl;
 
   // Tag getter/setter
@@ -515,8 +490,6 @@ gen(std::ostream &os, const rpc_union &u)
 	 << nl.close << "}";
   }
 
-#if 0
-  // Sadly, clang++ dumps core with this version
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
     << "> : xdr_traits_base {" << endl
@@ -525,35 +498,23 @@ gen(std::ostream &os, const rpc_union &u)
     << "  static std::size_t serial_size(const " << cur_scope()
     << " &o) {" << endl
     << "    std::size_t size = 0;" << endl
-    << "    if (!o._xdr_with_field_ptr(field_size, o._xdr_discriminant(),"
+    << "    if (!o._xdr_with_mem_ptr(field_size, o._xdr_discriminant(),"
     << " o, size))" << endl
     << "      throw xdr_bad_discriminant(\"bad value of " << u.tagid
     << " in " << cur_scope() << "\");" << endl
     << "    return size + 4;" << endl
     << "  }" << endl;
-#else
-  top_material
-    << "template<> struct xdr_traits<" << cur_scope()
-    << "> : xdr_traits_base {" << endl
-    << "  static constexpr bool is_class = true;" << endl
-    << "  static constexpr bool has_fixed_size = false;" << endl
-    << "  static std::size_t serial_size(const " << cur_scope()
-    << " &o) {" << endl
-    << "    case_serial_size ss;" << endl
-    << "    o._xdr_on_field_ptr(ss, &o, o._xdr_discriminant());" << endl
-    << "    return ss.size;" << endl
-    << "  }" << endl;
-#endif
   top_material
     << "  template<typename _Archive> static void" << endl
     << "  save(_Archive &_archive, const "
     << cur_scope() << " &_xdr_obj) {" << endl
     << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_obj."
     << u.tagid << "());" << endl
-    << "    xdr::case_save<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
+    << "    _xdr_obj._xdr_with_mem_ptr(field_archiver, _xdr_obj."
+    << u.tagid << "()," << endl
+    << "                               _archive, _xdr_obj," << endl
+    << "                               _xdr_obj._xdr_field_name());"
     << endl
-    << "    _xdr_obj._xdr_on_field_ptr(_cs, &_xdr_obj, _xdr_obj."
-    << u.tagid << "());" << endl
     << "  }" << endl;
   top_material
     << "  template<typename _Archive> static void" << endl
@@ -562,10 +523,11 @@ gen(std::ostream &os, const rpc_union &u)
     << "    " << cur_scope() << "::_xdr_discriminant_t _xdr_which;" << endl
     << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_which);" << endl
     << "    _xdr_obj." << u.tagid << "(_xdr_which);" << endl
-    << "    xdr::case_load<_Archive> _cs{_archive, _xdr_obj._xdr_field_name()};"
+    << "    _xdr_obj._xdr_with_mem_ptr(field_archiver, _xdr_obj."
+    << u.tagid << "()," << endl
+    << "                               _archive, _xdr_obj," << endl
+    << "                               _xdr_obj._xdr_field_name());"
     << endl
-    << "    _xdr_obj._xdr_on_field_ptr(_cs, &_xdr_obj, _xdr_obj."
-    << u.tagid << "());" << endl
     << "  }" << endl;
   top_material
     << "};" << endl;

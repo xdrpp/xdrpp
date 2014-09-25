@@ -367,7 +367,6 @@ template<typename T, typename F, F T::*Ptr> struct field_ptr {
   using field_type = F;
   using value_type = F T::*;
   static constexpr value_type value = Ptr;
-  constexpr field_ptr() {}
   F &operator()(T &t) const { return t.*value; }
   const F &operator()(const T &t) const { return t.*value; }
   F &operator()(T &&t) const { return std::move(t.*value); }
@@ -409,146 +408,76 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
                      _xdr_struct_base_fs<FP, Rest...>,
                      _xdr_struct_base_vs<FP, Rest...>>::type {};
 
+//! Dereference a pointer to a member of type \c F of a class of type
+//! \c T, preserving reference types.  Hence applying to an lvalue
+//! reference \c T returns an lvalue reference \c F, while an rvalue
+//! reference \c T produces an rvalue reference \c F.
+template<typename T, typename F> inline F &
+mem(T &t, F T::*mp)
+{
+  return t.*mp;
+}
+template<typename T, typename F> inline const F &
+mem(const T &t, F T::*mp)
+{
+  return t.*mp;
+}
+template<typename T, typename F> inline F &&
+mem(T &&t, F T::*mp)
+{
+  return std::move(t.*mp);
+}
+
 struct field_constructor_t {
   constexpr field_constructor_t() {}
-  template<typename FP> void
-  operator()(FP fp, typename FP::class_type &t) const {
-    new (&fp(t)) typename FP::field_type;
+  template<typename T, typename F> void operator()(F T::*mp, T &t) const {
+    new (&(t.*mp)) F;
   }
-  template<typename FP, typename TT> void
-  operator()(FP fp, typename FP::class_type &t, TT &&tt) const {
-    new (&fp(t)) typename FP::field_type (fp(std::forward<TT>(tt)));
+  template<typename T, typename F, typename TT> void
+  operator()(F T::*mp, T &t, TT &&tt) const {
+    new (&(t.*mp)) F (mem(std::forward<TT>(tt), mp));
   }
 };
 constexpr field_constructor_t field_constructor;
 
 struct field_destructor_t {
   constexpr field_destructor_t() {}
-  template<typename FP> void
-  operator()(FP fp, typename FP::class_type &t) const {
-    using field_type = typename FP::field_type;
-    fp(t).~field_type();
-  }
+  template<typename T, typename F> void
+  operator()(F T::*mp, T &t) const { mem(t, mp).~F(); }
 };
 constexpr field_destructor_t field_destructor;
 
 struct field_assigner_t {
   constexpr field_assigner_t() {}
-  template<typename FP, typename TT> void
-  operator()(FP fp, typename FP::class_type &t, TT &&tt) const {
-    fp(t) = fp(std::forward<TT>(tt));
+  template<typename T, typename F, typename TT> void
+  operator()(F T::*mp, T &t, TT &&tt) const {
+    mem(t, mp) = mem(std::forward<TT>(tt), mp);
   }
 };
 constexpr field_assigner_t field_assigner;
 
 struct field_archiver_t {
   constexpr field_archiver_t() {}
-  template<typename FP, typename Archive> void
-  operator()(FP fp, Archive &ar, typename FP::class_type &t,
-	     const char *name) const {
-    archive(ar, name, fp(t));
+
+  template<typename F, typename T, typename Archive> void
+  operator()(F T::*mp, Archive &ar, T &t, const char *name) const {
+    archive(ar, name, mem(t, mp));
   }
-  template<typename FP, typename Archive> void
-  operator()(FP fp, Archive &ar, const typename FP::class_type &t,
-	     const char *name) const {
-    archive(ar, name, fp(t));
+  template<typename F, typename T, typename Archive> void
+  operator()(F T::*mp, Archive &ar, const T &t, const char *name) const {
+    archive(ar, name, mem(t, mp));
   }
 };
 constexpr field_archiver_t field_archiver;
 
 struct field_size_t {
   constexpr field_size_t() {}
-  template<typename FP> void
-  operator()(FP fp, const typename FP::class_type &t, std::size_t &size) const {
-    size = xdr_traits<typename FP::field_type>::serial_size(fp(t));
+  template<typename F, typename T> void
+  operator()(F T::*mp, const T &t, std::size_t &size) const {
+    size = xdr_traits<F>::serial_size(mem(t, mp));
   }
 };
 constexpr field_size_t field_size;
-
-
-struct case_constructor_t {
-  constexpr case_constructor_t() {}
-  void operator()() const {}
-  template<typename T> void operator()(T *) const {}
-  template<typename T, typename F> void operator()(T *t, F T::*f) const {
-    new (static_cast<void *>(std::addressof(t->*f))) F{};
-  }
-};
-constexpr case_constructor_t case_constructor;
-
-struct case_destroyer_t {
-  constexpr case_destroyer_t() {}
-  void operator()() const {}
-  template<typename T> void operator()(T *) const {}
-  template<typename T, typename F> void operator()(T *t, F T::*f) const {
-    (t->*f).~F();
-  }
-};
-constexpr case_destroyer_t case_destroyer;
-
-struct case_construct_from {
-  void *dest_;
-  constexpr case_construct_from(void *dest) : dest_(dest) {}
-  void operator()() const {}
-  template<typename T> void operator()(T &&) const {}
-  template<typename T, typename F> void operator()(const T &t, F T::*f) const {
-    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F(t.*f);
-  }
-  template<typename T, typename F> void operator()(T &&t, F T::*f) const {
-    new (static_cast<void *>(&(static_cast<T*>(dest_)->*f))) F(std::move(t.*f));
-  }
-};
-
-struct case_assign_from {
-  void *dest_;
-  constexpr case_assign_from(void *dest) : dest_(dest) {}
-  void operator()() const {}
-  template<typename T> void operator()(T &&) const {}
-  template<typename T, typename F> void operator()(const T &t, F T::*f) const {
-    static_cast<T*>(dest_)->*f = t.*f;
-  }
-  template<typename T, typename F> void operator()(T &&t, F T::*f) const {
-    static_cast<T*>(dest_)->*f = std::move(t.*f);
-  }
-};
-
-template<typename Archive> struct case_save {
-  Archive &ar_;
-  const char *name_;
-  constexpr case_save(Archive &ar, const char *name) : ar_(ar), name_(name) {}
-  void operator()() const {
-    throw xdr_bad_discriminant("xdr::case_save: invalid discriminant");
-  }
-  template<typename T> void operator()(const T *) const {}
-  template<typename T, typename F> void operator()(const T *t, F T::*f) const {
-    archive(ar_, name_, t->*f);
-  }
-};
-
-template<typename Archive> struct case_load {
-  Archive &ar_;
-  const char *name_;
-  constexpr case_load(Archive &ar, const char *name) : ar_(ar), name_(name) {}
-  void operator()() const {
-    throw xdr_bad_discriminant("xdr::case_load: invalid discriminant");
-  }
-  template<typename T> void operator()(T *) const {}
-  template<typename T, typename F> void operator()(T *t, F T::*f) const {
-    archive(ar_, name_, t->*f);
-  }
-};
-
-struct case_serial_size {
-  size_t size;
-  case_serial_size() {}
-  void operator()() {
-    throw xdr_bad_discriminant("xdr::case_serial_size: invalid discriminant");
-  }
-  template<typename T> void operator()(const T *) { size = 4; }
-  template<typename T, typename F> void operator()(const T *t, F T::*f) {
-    size = std::size_t(4) + xdr_traits<F>::serial_size(t->*f);
-  }
-};
 
 }
 
