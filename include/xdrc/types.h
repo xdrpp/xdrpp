@@ -63,7 +63,11 @@ template<typename T> struct xdr_traits {
   static constexpr bool valid = false;
   //! \c T is an \c xstring, \c opaque_array, or \c opaque_vec.
   static constexpr bool is_bytes = false;
-  //! \c T is an XDR struct or union (traits have load/save).
+  //! \c T is an XDR struct.
+  static constexpr bool is_struct = false;
+  //! \c T is an XDR union.
+  static constexpr bool is_union = false;
+  //! \c T is an XDR struct or union.
   static constexpr bool is_class = false;
   //! \c T is an XDR enum or bool (traits have enum_name).
   static constexpr bool is_enum = false;

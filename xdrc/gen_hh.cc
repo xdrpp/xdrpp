@@ -202,7 +202,8 @@ gen(std::ostream &os, const rpc_struct &s)
 
   top_material
     << "> {" << endl
-    << "  static constexpr bool is_class = true;" << endl;
+    << "  static constexpr bool is_class = true;" << endl
+    << "  static constexpr bool is_struct = true;" << endl;
   for (string decl :
     { string("  template<typename _Archive> static void\n"
 	     "  save(_Archive &_archive, const ")
@@ -332,6 +333,7 @@ gen(std::ostream &os, const rpc_union &u)
       blank = true;
   if (blank)
     os << endl;
+  os << nl << "friend struct xdr::xdr_traits<" << u.id << ">;";
   os << nl.outdent << "private:"
      << nl << "std::uint32_t " << u.tagid << "_;"
      << nl << "union {";
@@ -358,8 +360,6 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "if (_xdr_fnum != _xdr_field_number(" << u.tagid << "_)) {"
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = _xdr_d;"
-    //<< nl << "_xdr_on_field_ptr(xdr::case_constructor, this, "
-    //<< u.tagid << "_);"
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this);"
      << nl.close << "}"
@@ -498,14 +498,41 @@ gen(std::ostream &os, const rpc_union &u)
     << "template<> struct xdr_traits<" << cur_scope()
     << "> : xdr_traits_base {" << endl
     << "  static constexpr bool is_class = true;" << endl
-    << "  static constexpr bool has_fixed_size = false;" << endl
+    << "  static constexpr bool is_union = true;" << endl
+    << "  static constexpr bool has_fixed_size = false;" << endl;
+
+  top_material
+    << "  using union_type = " << cur_scope() << ";" << endl
+    << "  using discriminant_type = decltype(std::declval<union_type>()."
+    << u.tagid << "());" << endl
+    << "  static std::uint32_t union_discriminant(const union_type &u) {"
+    << endl
+    << "    return u." << u.tagid << "_;" << endl
+    << "  }" << endl
+    << "  static void union_discriminant(union_type &u, std::uint32_t d,"
+    << endl
+    << "                                 bool validate = true) {" << endl
+    << "    int fnum = union_type::_xdr_field_number(d);" << endl
+    << "    if (fnum < 0 && validate)" << endl
+    << "      throw xdr::xdr_bad_discriminant(\"bad value of "
+    << u.tagid << " in " << u.id << "\");" << endl
+    << "    if (fnum != union_type::_xdr_field_number(union_discriminant(u))) {"
+    << endl
+    << "      u.~union_type();" << endl
+    << "      u." << u.tagid << "_ = d;" << endl
+    << "      union_type::_xdr_with_mem_ptr(xdr::field_constructor, d, u);"
+    << endl
+    << "    }" << endl
+    << "  }" << endl;
+
+  top_material
     << "  static std::size_t serial_size(const " << cur_scope()
     << " &o) {" << endl
     << "    std::size_t size = 0;" << endl
     << "    if (!o._xdr_with_mem_ptr(field_size, o._xdr_discriminant(),"
     << " o, size))" << endl
     << "      throw xdr_bad_discriminant(\"bad value of " << u.tagid
-    << " in " << cur_scope() << "\");" << endl
+    << " in " << u.id << "\");" << endl
     << "    return size + 4;" << endl
     << "  }" << endl;
   top_material
@@ -514,11 +541,12 @@ gen(std::ostream &os, const rpc_union &u)
     << cur_scope() << " &_xdr_obj) {" << endl
     << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_obj."
     << u.tagid << "());" << endl
-    << "    _xdr_obj._xdr_with_mem_ptr(field_archiver, _xdr_obj."
+    << "    if (!_xdr_obj._xdr_with_mem_ptr(field_archiver, _xdr_obj."
     << u.tagid << "()," << endl
-    << "                               _archive, _xdr_obj," << endl
-    << "                               _xdr_obj._xdr_field_name());"
-    << endl
+    << "                                    _archive, _xdr_obj," << endl
+    << "                                    _xdr_obj._xdr_field_name()))"
+    << endl << "      throw xdr_bad_discriminant(\"bad value of "
+    << u.tagid << " in " << u.id << "\");" << endl
     << "  }" << endl;
   top_material
     << "  template<typename _Archive> static void" << endl
