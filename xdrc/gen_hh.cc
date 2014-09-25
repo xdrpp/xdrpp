@@ -348,18 +348,18 @@ gen(std::ostream &os, const rpc_union &u)
     " \"union discriminant must be 4 bytes\");";
 
   // _xdr_discriminant
-  os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
+  //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
   os << nl << "std::uint32_t _xdr_discriminant() const { return "
      << u.tagid << "_; }";
-  os << nl << "void _xdr_discriminant(std::uint32_t _xdr_d,"
-     << nl << "                       bool _xdr_validate = true) {"
-     << nl.open << "int _xdr_fnum = _xdr_field_number(_xdr_d);"
-     << nl << "if (_xdr_fnum < 0 && _xdr_validate)"
+  os << nl << "void _xdr_discriminant(std::uint32_t d,"
+     << " bool validate = true) {"
+     << nl.open << "int fnum = _xdr_field_number(d);"
+     << nl << "if (fnum < 0 && validate)"
      << nl << "  throw xdr::xdr_bad_discriminant(\"bad value of "
      << u.tagid << " in " << u.id << "\");"
-     << nl << "if (_xdr_fnum != _xdr_field_number(" << u.tagid << "_)) {"
+     << nl << "if (fnum != _xdr_field_number(" << u.tagid << "_)) {"
      << nl.open << "this->~" << u.id << "();"
-     << nl << u.tagid << "_ = _xdr_d;"
+     << nl << u.tagid << "_ = d;"
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this);"
      << nl.close << "}"
@@ -377,6 +377,7 @@ gen(std::ostream &os, const rpc_union &u)
     });
   os << nl << "}";
 
+#if 0
   // _xdr_field_name
   os << nl
      << "static constexpr const char *_xdr_field_name(std::uint32_t _which) {";
@@ -392,6 +393,7 @@ gen(std::ostream &os, const rpc_union &u)
   // _xdr_field_name
   os << nl << "const char *_xdr_field_name() const { return _xdr_field_name("
      << u.tagid << "_); }";
+#endif
 
   // _xdr_with_mem_ptr
   os << nl << "template<typename _F, typename...A> static bool"
@@ -480,6 +482,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.open << "_xdr_discriminant(_xdr_d, _xdr_validate);"
      << nl.close << "}" << endl;
 
+  // Union fields
   for (const auto &f : u.fields) {
     if (f.decl.type == "void")
       continue;
@@ -499,12 +502,29 @@ gen(std::ostream &os, const rpc_union &u)
     << "> : xdr_traits_base {" << endl
     << "  static constexpr bool is_class = true;" << endl
     << "  static constexpr bool is_union = true;" << endl
-    << "  static constexpr bool has_fixed_size = false;" << endl;
+    << "  static constexpr bool has_fixed_size = false;" << endl << endl;
 
   top_material
     << "  using union_type = " << cur_scope() << ";" << endl
     << "  using discriminant_type = decltype(std::declval<union_type>()."
-    << u.tagid << "());" << endl
+    << u.tagid << "());" << endl << endl;
+
+  top_material
+    << "  static constexpr const char *union_field_name(std::uint32_t which) {";
+  union_function(top_material, u, "which", [](const rpc_ufield *uf) {
+      using std::to_string;
+      if (uf && uf->decl.type != "void")
+	return string("\"") + uf->decl.id + "\"";
+      else
+	return string("nullptr");
+    });
+  top_material
+    << endl << "  }" << endl
+    << "  static const char *union_field_name(const union_type &u) {" << endl
+    << "    return union_field_name(u._xdr_discriminant());" << endl
+    << "  }" << endl << endl;
+
+#if 0
     << "  static std::uint32_t union_discriminant(const union_type &u) {"
     << endl
     << "    return u." << u.tagid << "_;" << endl
@@ -524,41 +544,40 @@ gen(std::ostream &os, const rpc_union &u)
     << endl
     << "    }" << endl
     << "  }" << endl;
+#endif
 
   top_material
     << "  static std::size_t serial_size(const " << cur_scope()
-    << " &o) {" << endl
+    << " &obj) {" << endl
     << "    std::size_t size = 0;" << endl
-    << "    if (!o._xdr_with_mem_ptr(field_size, o._xdr_discriminant(),"
-    << " o, size))" << endl
+    << "    if (!obj._xdr_with_mem_ptr(field_size, obj._xdr_discriminant(),"
+    << " obj, size))" << endl
     << "      throw xdr_bad_discriminant(\"bad value of " << u.tagid
     << " in " << u.id << "\");" << endl
     << "    return size + 4;" << endl
     << "  }" << endl;
   top_material
-    << "  template<typename _Archive> static void" << endl
-    << "  save(_Archive &_archive, const "
-    << cur_scope() << " &_xdr_obj) {" << endl
-    << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_obj."
+    << "  template<typename Archive> static void" << endl
+    << "  save(Archive &ar, const "
+    << cur_scope() << " &obj) {" << endl
+    << "    xdr::archive(ar, \"" << u.tagid << "\", obj."
     << u.tagid << "());" << endl
-    << "    if (!_xdr_obj._xdr_with_mem_ptr(field_archiver, _xdr_obj."
-    << u.tagid << "()," << endl
-    << "                                    _archive, _xdr_obj," << endl
-    << "                                    _xdr_obj._xdr_field_name()))"
-    << endl << "      throw xdr_bad_discriminant(\"bad value of "
+    << "    if (!obj._xdr_with_mem_ptr(field_archiver, obj."
+    << u.tagid << "(), ar, obj," << endl
+    << "                               union_field_name(obj)))" << endl
+    << "      throw xdr_bad_discriminant(\"bad value of "
     << u.tagid << " in " << u.id << "\");" << endl
     << "  }" << endl;
   top_material
-    << "  template<typename _Archive> static void" << endl
-    << "  load(_Archive &_archive, "
-    << cur_scope() << " &_xdr_obj) {" << endl
-    << "    " << cur_scope() << "::_xdr_discriminant_t _xdr_which;" << endl
-    << "    xdr::archive(_archive, \"" << u.tagid << "\", _xdr_which);" << endl
-    << "    _xdr_obj." << u.tagid << "(_xdr_which);" << endl
-    << "    _xdr_obj._xdr_with_mem_ptr(field_archiver, _xdr_obj."
-    << u.tagid << "()," << endl
-    << "                               _archive, _xdr_obj," << endl
-    << "                               _xdr_obj._xdr_field_name());"
+    << "  template<typename Archive> static void" << endl
+    << "  load(Archive &ar, "
+    << cur_scope() << " &obj) {" << endl
+    << "    discriminant_type which;" << endl
+    << "    xdr::archive(ar, \"" << u.tagid << "\", which);" << endl
+    << "    obj." << u.tagid << "(which);" << endl
+    << "    obj._xdr_with_mem_ptr(field_archiver, obj."
+    << u.tagid << "(), ar, obj," << endl
+    << "                          union_field_name(which));"
     << endl
     << "  }" << endl;
   top_material
