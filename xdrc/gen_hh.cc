@@ -398,7 +398,7 @@ gen(std::ostream &os, const rpc_union &u)
     for (string c : f.cases)
       os << nl << map_case(c);
     if (f.decl.type == "void")
-      os << nl << "  _f();";
+      os << nl << "  return true;";
     else 
       os << nl << "  _f(xdr::field_ptr<" << u.id << ", " << decl_type(f.decl)
 	 << ", &" << u.id << "::" << f.decl.id << "_>(),"

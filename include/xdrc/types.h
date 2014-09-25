@@ -410,24 +410,56 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
                      _xdr_struct_base_vs<FP, Rest...>>::type {};
 
 struct field_constructor_t {
-  void operator()() const {}
-
   template<typename FP> void
   operator()(FP fp, typename FP::class_type &t) const {
     new (&fp(t)) typename FP::field_type;
+  }
+  template<typename FP, typename TT> void
+  operator()(FP fp, typename FP::class_type &t, TT &&tt) const {
+    new (&fp(t)) typename FP::field_type (fp(std::forward<TT>(tt)));
   }
 };
 constexpr field_constructor_t field_constructor;
 
 struct field_destructor_t {
-  void operator()() const {}
-
   template<typename FP> void
   operator()(FP fp, typename FP::class_type &t) const {
     using field_type = typename FP::field_type;
     fp(t).~field_type();
   }
 };
+constexpr field_destructor_t field_destructor;
+
+struct field_assigner_t {
+  template<typename FP, typename TT> void
+  operator()(FP fp, typename FP::class_type &t, TT &&tt) const {
+    fp(t) = fp(std::forward<TT>(tt));
+  }
+};
+constexpr field_assigner_t field_assigner;
+
+struct field_archive_t {
+  template<typename FP, typename Archive> void
+  operator()(FP fp, Archive &ar, typename FP::class_type &t,
+	     const char *name) const {
+    archive(ar, name, fp(t));
+  }
+  template<typename FP, typename Archive> void
+  operator()(FP fp, Archive &ar, const typename FP::class_type &t,
+	     const char *name) const {
+    archive(ar, name, fp(t));
+  }
+};
+constexpr field_archive_t field_archive;
+
+struct field_size_t {
+  template<typename FP> void
+  operator()(FP fp, typename FP::class_type &t, std::size_t &size) const {
+    size = xdr_traits<typename FP::field_type>::serial_size(fp(t));
+  }
+};
+constexpr field_size_t field_size;
+
 
 struct case_constructor_t {
   constexpr case_constructor_t() {}
