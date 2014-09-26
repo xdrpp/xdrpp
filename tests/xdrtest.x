@@ -15,17 +15,7 @@ union u_4_12 switch (int which) {
    fix_12 f12;
 };
 
-struct test_struct {
-  int x<5>;
-};
-
-
 typedef fix_12 v12<>;
-
-
-struct simple {
-  int field;
-};
 
 enum color {
   RED,
@@ -48,10 +38,16 @@ struct bytes {
 };
 
 struct numerics {
-  string description<>;
-  opaque var_cookie<4>;
-  opaque fix_cookie[4];
-  int i32;
+  bool b;
+  int i1;
+  unsigned i2;
+  hyper i3;
+  unsigned hyper i4;
+  float f1;
+  double f2;
+  other_color e1;
+  
+#if 0
   int *ip;
   bool b;
   double d;
@@ -62,6 +58,7 @@ struct numerics {
   case ::RED:
     hyper medium;
   } key;
+#endif
 };
 
 union ContainsEnum switch (color c) {

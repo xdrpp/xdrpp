@@ -204,10 +204,12 @@ xdr_to_msg(const Args &...args)
 
 /* XXX - Not really useful, since we have to unmarshal header then body */
 template<typename T> T &
-msg_to_xdr(const msg_ptr &m, T &t)
+xdr_from_msg(const msg_ptr &m, T &t)
 {
   xdr_get g (m);
   archive(g, nullptr, t);
+  if (g.p_ != g.e_)
+    throw xdr_runtime_error("xdr_from_message did not consume whole message");
   return t;
 }
 

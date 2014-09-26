@@ -70,12 +70,53 @@ main()
 {
   test_size();
 
-  testns::bytes b, b2;
-  b.s = "Hello world\n";
-  b.fixed.fill(0xc5);
-  b.variable = { 2, 4, 6, 8 };
+  testns::bytes b1, b2;
+  b1.s = "Hello world\n";
+  b1.fixed.fill(0xc5);
+  b1.variable = { 2, 4, 6, 8 };
+  
+  xdr::xdr_from_msg(xdr::xdr_to_msg(b1), b2);
+  assert(b1.s == b2.s);
+  assert(b1.fixed == b2.fixed);
+  assert(b1.variable == b2.variable);
 
   testns::numerics n1, n2;
+  n1.b = true;
+  n2.b = false;
+  n1.i1 = 0x7eeeeeee;
+  n1.i2 = 0xffffffff;
+  n1.i3 = UINT64_C(0x7ddddddddddddddd);
+  n1.i4 = UINT64_C(0xfccccccccccccccc);
+  n1.f1 = 3.141592654;
+  n1.f2 = 2.71828182846;
+  n1.e1 = testns::REDDER;
+  n2.e1 = testns::REDDEST;
+
+  {
+    unique_ptr<double> dp1 (new double (3.141592653));
+    uint64_t x = xdr::xdr_reinterpret<uint64_t>(*dp1);
+    assert (!memcmp(&x, dp1.get(), sizeof(x)));
+    x = xdr::xdr_traits<double>::to_uint(*dp1);
+    assert (memcmp(&x, dp1.get(), sizeof(x)) == 0);
+    unique_ptr<double> dp2 (new double (1.23456789));
+    *dp2 = xdr::xdr_traits<double>::from_uint(x);
+    assert (!memcmp(&x, dp2.get(), sizeof(x)));
+    assert (*dp1 == *dp2);
+  }
+
+  xdr::xdr_from_msg(xdr::xdr_to_msg(n1), n2);
+  assert(n1.b == n2.b);
+  assert(n1.i1 == n2.i1);
+  assert(n1.i2 == n2.i2);
+  assert(n1.i3 == n2.i3);
+  assert(n1.i4 == n2.i4);
+  assert(n1.f1 == n2.f1);
+  assert(n1.f2 == n2.f2);
+  assert(n1.e1 == n2.e1);
+
+  return 0;
+
+#if 0
   n1.i32 = 32;
   n1.d = 3.141592654;
   n1.description = "\tsome random text\n";
@@ -87,6 +128,7 @@ main()
   n1.iv[1] = 2;
   n1.iv[2] = 3;
   n1.iv[3] = 4;
+#endif
 
   cout << xdr::xdr_to_string(n1);
 
@@ -111,7 +153,7 @@ main()
   testns::numerics n3;
   xdr::msg_ptr m = xdr::xdr_to_msg(n2);
   cout << "got message\n";
-  cout << xdr::xdr_to_string(xdr::msg_to_xdr(m, n3));
+  cout << xdr::xdr_to_string(xdr::xdr_from_msg(m, n3));
 
 #if 0
   using x = xdr::opaque_array<5>;

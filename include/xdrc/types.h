@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include <iostream>
+
 namespace xdr {
 
 using std::uint32_t;
@@ -123,7 +125,9 @@ template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   static constexpr std::size_t fixed_size = sizeof(uint_type);
   static constexpr std::size_t serial_size(type) { return fixed_size; }
   static uint_type to_uint(type t) { return t; }
-  static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
+  static type from_uint(uint_type u) {
+    return reinterpret_cast<type &>(u);
+  }
 };
 template<> struct xdr_traits<std::int32_t>
   : xdr_integral_base<std::int32_t, std::uint32_t> {};
@@ -144,7 +148,7 @@ template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
   static constexpr std::size_t fixed_size = sizeof(uint_type);
   static constexpr std::size_t serial_size(type) { return fixed_size; }
 
-  static type to_uint(type t) { return xdr_reinterpret<uint_type>(t); }
+  static uint_type to_uint(type t) { return xdr_reinterpret<uint_type>(t); }
   static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
 };
 template<> struct xdr_traits<float> : xdr_fp_base<float, std::uint32_t> {};
