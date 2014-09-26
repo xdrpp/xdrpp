@@ -76,6 +76,10 @@ struct marshal_swap : marshal_base {
 };
 
 template<typename Base> struct xdr_generic_put : Base {
+  using Base::put32;
+  using Base::put64;
+  using Base::putBytes;
+
   std::uint32_t *p_;
   std::uint32_t *const e_;
 
@@ -83,7 +87,8 @@ template<typename Base> struct xdr_generic_put : Base {
   xdr_generic_put(msg_ptr &m) : p_(m->begin()), e_(m->end()) {}
 
   void check(std::size_t n) const {
-    if (reinterpret_cast<char *>(e_) - reinterpret_cast<char *>(p_) < n)
+    if (n > std::size_t(reinterpret_cast<char *>(e_)
+			- reinterpret_cast<char *>(p_)))
       throw xdr_overflow("insufficient buffer space in xdr_generic_put");
   }
 
@@ -99,7 +104,7 @@ template<typename Base> struct xdr_generic_put : Base {
   operator()(const T &t) {
     if (xdr_traits<T>::variable_length) {
       check(4 + t.size());
-      put32(t.size());
+      put32(p_, t.size());
     }
     else
       check(t.size());
@@ -112,6 +117,10 @@ template<typename Base> struct xdr_generic_put : Base {
 };
 
 template<typename Base> struct xdr_generic_get : Base {
+  using Base::get32;
+  using Base::get64;
+  using Base::getBytes;
+
   const std::uint32_t *p_;
   const std::uint32_t *const e_;
 
@@ -167,6 +176,7 @@ xdr_to_msg(const T &t)
   msg_ptr m (msg_buf::alloc(xdr_size(t)));
   xdr_put p (m);
   archive(p, nullptr, t);
+  assert(p.p_ == p.e_);
   return m;
 }
 

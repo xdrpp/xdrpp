@@ -62,6 +62,7 @@ test_size()
 
   CHECK_SIZE(xdr::xstring<>(), 4);
   CHECK_SIZE(xdr::xstring<>("123"), 8);
+  CHECK_SIZE((xdr::xvector<int32_t,5>()), 4);
 }
 
 int
@@ -105,10 +106,12 @@ main()
     archive(n2);
   }
 
-
-
   cout << xdr::xdr_to_string(n2);
 
+  testns::numerics n3;
+  xdr::msg_ptr m = xdr::xdr_to_msg(n2);
+  cout << "got message\n";
+  cout << xdr::xdr_to_string(xdr::msg_to_xdr(m, n3));
 
 #if 0
   using x = xdr::opaque_array<5>;

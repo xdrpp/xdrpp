@@ -15,6 +15,11 @@ union u_4_12 switch (int which) {
    fix_12 f12;
 };
 
+struct test_struct {
+  int x<5>;
+};
+
+
 typedef fix_12 v12<>;
 
 

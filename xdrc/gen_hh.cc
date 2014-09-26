@@ -465,9 +465,10 @@ gen(std::ostream &os, const rpc_union &u)
   // Tag getter/setter
   os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
      << map_type(u.tagtype) << "(" << u.tagid << "_); }";
-  os << nl << "void " << u.tagid << "(" << u.tagtype
+  os << nl << u.id << " &" << u.tagid << "(" << u.tagtype
      << " _xdr_d, bool _xdr_validate = true) {"
      << nl.open << "_xdr_discriminant(_xdr_d, _xdr_validate);"
+     << nl << "return *this;"
      << nl.close << "}" << endl;
 
   // Union fields

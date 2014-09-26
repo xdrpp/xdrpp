@@ -102,6 +102,19 @@ struct xdr_traits_base {
   static constexpr bool has_fixed_size = false;
 };
 
+template<typename To, typename From> To
+xdr_reinterpret(From f)
+{
+  static_assert(sizeof(To) == sizeof(From),
+		"xdr_reinterpret with different sized objects");
+  union {
+    From from;
+    To to;
+  };
+  from = f;
+  return to;
+}
+
 template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   using type = T;
   using uint_type = U;
@@ -110,7 +123,7 @@ template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   static constexpr std::size_t fixed_size = sizeof(uint_type);
   static constexpr std::size_t serial_size(type) { return fixed_size; }
   static uint_type to_uint(type t) { return t; }
-  static type from_uint(uint_type u) { return reinterpret_cast<type>(u); }
+  static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
 };
 template<> struct xdr_traits<std::int32_t>
   : xdr_integral_base<std::int32_t, std::uint32_t> {};
@@ -124,12 +137,15 @@ template<> struct xdr_traits<std::uint64_t>
 template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
   using type = T;
   using uint_type = U;
+  static_assert(sizeof(type) == sizeof(uint_type),
+		"Cannot reinterpret between float and int of different size");
   static constexpr bool is_numeric = true;
   static constexpr bool has_fixed_size = true;
   static constexpr std::size_t fixed_size = sizeof(uint_type);
   static constexpr std::size_t serial_size(type) { return fixed_size; }
-  static uint_type to_uint(type t) { return reinterpret_cast<uint_type &>(t); }
-  static type from_uint(uint_type u) { return reinterpret_cast<type &>(u); }
+
+  static type to_uint(type t) { return xdr_reinterpret<uint_type>(t); }
+  static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
 };
 template<> struct xdr_traits<float> : xdr_fp_base<float, std::uint32_t> {};
 template<> struct xdr_traits<double> : xdr_fp_base<double, std::uint64_t> {};
@@ -138,6 +154,7 @@ template<> struct xdr_traits<double> : xdr_fp_base<double, std::uint64_t> {};
 template<> struct xdr_traits<bool> : xdr_integral_base<bool, std::uint32_t> {
   static constexpr bool is_enum = true;
   static constexpr bool is_numeric = false;
+  static type from_uint(uint_type u) { return u; }
   static constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
@@ -184,7 +201,7 @@ struct xdr_container_base : xdr_traits_base {
 };
 
 template<typename T> struct xdr_container_base<T, true, true>
-  : xdr_container_base<T, false, false> {
+  : xdr_container_base<T, true, false> {
   static std::size_t serial_size(const T &t) {
     return 4 + t.size() * xdr_traits<typename T::value_type>::fixed_size;
   }
@@ -204,6 +221,7 @@ template<typename T, uint32_t N> struct xarray
   : std::array<T, size_t(N)> {
   using array = std::array<T, size_t(N)>;
   using array::array;
+  static constexpr std::size_t size() { return N; }
   static void validate() {}
   static void check_size(uint32_t i) {
     if (i != N)
@@ -420,8 +438,7 @@ template<typename FP, typename ...Fields>
   struct _xdr_struct_base_vs : xdr_struct_base<Fields...> {
   static constexpr bool has_fixed_size = false;
   static std::size_t serial_size(const typename FP::class_type &t) {
-    using field_traits = xdr_traits<typename FP::field_type>;
-    return (field_traits::serial_size(t.*field_traits::value)
+    return (xdr_size(t.*(FP::value))
 	    + xdr_struct_base<Fields...>::serial_size(t));
   }
 };
