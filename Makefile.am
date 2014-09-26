@@ -9,7 +9,7 @@ xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/scan.ll	\
 xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
-BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc
+BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc xmsg/rpc_msg.hh
 
 lib_LIBRARIES = xmsg/libxmsg.a
 xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
