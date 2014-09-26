@@ -12,8 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <iostream>
-
 namespace xdr {
 
 using std::uint32_t;
@@ -174,7 +172,8 @@ template<typename T, bool variable,
 struct xdr_container_base : xdr_traits_base {
   using value_type = typename T::value_type;
   static constexpr bool is_container = true;
-  static constexpr bool variable_length = variable;
+  //! Container has variable number of elements
+  static constexpr bool variable_nelem = variable;
   static constexpr bool has_fixed_size = false;
 
   template<typename Archive> static void save(Archive &a, const T &t) {
@@ -253,7 +252,7 @@ template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr std::size_t fixed_size =
     (std::size_t(N) + std::size_t(3)) & ~std::size_t(3);
   static std::size_t serial_size(const opaque_array<N> &) { return fixed_size; }
-  static constexpr bool variable_length = false;
+  static constexpr bool variable_nelem = false;
 };
 
 
@@ -302,7 +301,7 @@ template<uint32_t N> struct xdr_traits<opaque_vec<N>> : xdr_traits_base {
   static constexpr std::size_t serial_size(const opaque_vec<N> &a) {
     return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
   }
-  static constexpr bool variable_length = true;
+  static constexpr bool variable_nelem = true;
 };
 
 
@@ -362,7 +361,7 @@ template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
   static constexpr std::size_t serial_size(const xstring<N> &a) {
     return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
   }
-  static constexpr bool variable_length = true;
+  static constexpr bool variable_nelem = true;
 };
 
 

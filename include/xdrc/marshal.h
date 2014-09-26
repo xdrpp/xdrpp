@@ -3,6 +3,7 @@
 #ifndef _XDRC_MARSHAL_H_HEADER_INCLUDED_
 #define _XDRC_MARSHAL_H_HEADER_INCLUDED_ 1
 
+#include <cstring>
 #include <xdrc/endian.h>
 #include <xdrc/msgbuf.h>
 #include <xdrc/types.h>
@@ -21,7 +22,7 @@ struct marshal_base {
 
   static void getBytes(const std::uint32_t *&pr, void *buf, std::size_t len) {
     const char *p = reinterpret_cast<const char *>(pr);
-    memcpy(buf, p, len);
+    std::memcpy(buf, p, len);
     p += len;
     while (len & 3) {
       ++len;
@@ -32,7 +33,7 @@ struct marshal_base {
   }
   static void putBytes(std::uint32_t *&pr, const void *buf, std::size_t len) {
     char *p = reinterpret_cast<char *>(pr);
-    memcpy(p, buf, len);
+    std::memcpy(p, buf, len);
     p += len;
     while (len & 3) {
       ++len;
@@ -102,7 +103,7 @@ template<typename Base> struct xdr_generic_put : Base {
 
   template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
   operator()(const T &t) {
-    if (xdr_traits<T>::variable_length) {
+    if (xdr_traits<T>::variable_nelem) {
       check(4 + t.size());
       put32(p_, t.size());
     }
@@ -144,7 +145,7 @@ template<typename Base> struct xdr_generic_get : Base {
   template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
   operator()(T &t) {
     std::size_t size;
-    if (xdr_traits<T>::variable_length) {
+    if (xdr_traits<T>::variable_nelem) {
       check(4);
       size = get32(p_);
       check(size);
