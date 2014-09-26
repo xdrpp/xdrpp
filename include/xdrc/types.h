@@ -129,11 +129,9 @@ template<> struct xdr_traits<float> : xdr_fp_base<float, std::uint32_t> {};
 template<> struct xdr_traits<double> : xdr_fp_base<double, std::uint64_t> {};
 
 
-template<> struct xdr_traits<bool> : xdr_traits_base {
+template<> struct xdr_traits<bool> : xdr_integral_base<bool, std::uint32_t> {
   static constexpr bool is_enum = true;
-  static constexpr bool has_fixed_size = true;
-  static constexpr size_t fixed_size = 4;
-  static constexpr size_t serial_size(uint32_t) { return fixed_size; }
+  static constexpr bool is_numeric = false;
   static constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }

@@ -3,11 +3,8 @@
 #ifndef _XDRC_MARSHAL_H_HEADER_INCLUDED_
 #define _XDRC_MARSHAL_H_HEADER_INCLUDED_ 1
 
-#include <cstdint>
-#include <ostream>
-#include <type_traits>
-#include <sys/uio.h>
 #include <xdrc/endian.h>
+#include <xdrc/msgbuf.h>
 #include <xdrc/types.h>
 
 namespace xdr {
@@ -18,6 +15,7 @@ struct marshal_base {
       std::uint64_t u64;
       std::uint32_t u32[2];
     };
+    u64conv() = default;
     u64conv(std::uint64_t u) : u64(u) {}
   };
 
@@ -51,6 +49,14 @@ struct marshal_noswap : marshal_base {
     *p++ = u.u32[0];
     *p++ = u.u32[1];
   }
+
+  static std::uint32_t get32(const std::uint32_t *&p) { return *p++; }
+  static std::uint64_t get64(const std::uint32_t *&p) {
+    u64conv u;
+    u.u32[0] = *p++;
+    u.u32[1] = *p++;
+    return u.u64;
+  }
 };
 
 struct marshal_swap : marshal_base {
@@ -61,6 +67,25 @@ struct marshal_swap : marshal_base {
     *p++ = swap32(u.u32[1]);
     *p++ = swap32(u.u32[0]);
   }
+  static std::uint32_t get32(const std::uint32_t *&p) { return swap32(*p++); }
+  static std::uint64_t get64(const std::uint32_t *&p) {
+    u64conv u;
+    u.u32[1] = swap32(*p++);
+    u.u32[0] = swap32(*p++);
+    return u.u64;
+  }
+};
+
+template<typename Base> struct put : Base {
+  std::uint32_t *p_;
+
+#if 0
+  template<typename T> typename std::enable_if<xdr_traits<T>::is_enum>>::type
+  operator()(T t) { put32(p_, t); }
+  template<typename T> typename std::enable_if<xdr_traits<T>::is_enum>>::type
+  operator()(T t) { put32(p_, t); }
+#endif
+
 };
 
 #if WORDS_BIGENDIAN
