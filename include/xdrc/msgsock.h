@@ -24,7 +24,7 @@ public:
   const char *data() const { return buf_; }
   size_t size() const { return swap32le(lelen_); }
 
-  //! Buffer prefixed by 4-byte length in little-endian
+  //! Buffer prefixed by 4-byte length in big-endian
   const char *rawData() const { return reinterpret_cast<const char *>(this); }
   //! Size of 4-byte length plus data
   size_t rawSize() const { return sizeof(lelen_) + size(); }

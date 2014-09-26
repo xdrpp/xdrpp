@@ -12,166 +12,65 @@
 
 namespace xdr {
 
-template<size_t Bytes> struct _xdr_uint_helper {};
-template<> struct _xdr_uint_helper<4> { using type = std::uint32_t; };
-template<> struct _xdr_uint_helper<8> { using type = std::uint64_t; };
-template<size_t Bytes> using xdr_uint = typename _xdr_uint_helper<Bytes>::type;
+struct marshal_base {
+  struct u64conv {
+    union {
+      std::uint64_t u64;
+      std::uint32_t u32[2];
+    };
+    u64conv(std::uint64_t u) : u64(u) {}
+  };
 
-constexpr xdr_uint<4>
-to_uint(bool b)
-{
-  return b;
-}
-template<typename T> constexpr typename
-std::enable_if<std::is_integral<T>::value, xdr_uint<sizeof(T)>>::type
-to_uint(T t)
-{
-  return t;
-}
-template<typename T> inline typename
-std::enable_if<std::is_floating_point<T>::value, xdr_uint<sizeof(T)>>::type
-to_uint(T t)
-{
-  return reinterpret_cast<xdr_uint<sizeof(T)> &>(t);
-}
-
-constexpr bool
-from_uint(xdr_uint<4> u)
-{
-  return u;
-}
-template<typename T> constexpr typename
-std::enable_if<std::is_same<T, xdr_uint<sizeof(T)>>::value, T>::type
-from_uint(T u)
-{
-  return u;
-}
-template<typename T> inline typename
-std::enable_if<std::is_arithmetic<T>::value
-               && !std::is_same<T, xdr_uint<sizeof(T)>>::value, T>::type
-from_uint(xdr_uint<sizeof(T)> u)
-{
-  return reinterpret_cast<T &>(u);
-}
-
-
-
-template<typename T> struct uint_conv {
-  static constexpr bool valid = false;
-};
-template<> struct uint_conv<bool> {
-  static constexpr bool valid = true;
-  using type = bool;
-  using uint_type = std::uint32_t;
-  static constexpr uint_type conv(bool v) { return v; }
-  static constexpr bool unconv(uint_type v) { return v; }
-};
-
-//! \hideinitializer
-#define DEF_UINT_CONV(in, out)				\
-template<> struct uint_conv<in> {			\
-  static constexpr bool valid = true;			\
-  using type = in;					\
-  using uint_type = out;				\
-  static constexpr uint_type conv(in v) { return v; }	\
-  static in unconv(uint_type v) {			\
-    return reinterpret_cast<in &>(v);			\
-  }							\
-}
-DEF_UINT_CONV(std::int32_t, std::uint32_t);
-DEF_UINT_CONV(std::uint32_t, std::uint32_t);
-DEF_UINT_CONV(std::int64_t, std::uint32_t);
-DEF_UINT_CONV(std::uint64_t, std::uint64_t);
-#undef DEF_UINT_CONV
-
-//! \hideinitializer
-#define DEF_UINT_CONV(in, out)						\
-template<> struct uint_conv<in> {					\
-  static constexpr bool valid = true;					\
-  using type = in;							\
-  using uint_type = out;						\
-  static uint_type conv(in v) { return reinterpret_cast<out &>(v); }	\
-  static in unconv(uint_type u) { return reinterpret_cast<in &>(u); }	\
-}
-DEF_UINT_CONV(float, std::uint32_t);
-DEF_UINT_CONV(double, std::uint64_t);
-#undef DEF_UINT_CONV
-
-template<typename D, typename T> inline typename std::enable_if<
-  sizeof(typename uint_conv<T>::uint_type) == 4>::type 
-xdr_put(D &d, T t)
-{
-  d.putU32(uint_conv<T>::conv(t));
-}
-
-template<typename D, typename T> inline typename std::enable_if<
-  sizeof(typename uint_conv<T>::uint_type) == 8>::type 
-xdr_put(D &d, T t)
-{
-  d.putU64(uint_conv<T>::conv(t));
-}
-
-template<typename D, std::uint32_t N> inline void
-xdr_put(D &d, const xstring<N> &s)
-{
-  d.validate();
-  d.put32(s.size());
-  d.putBytes(s.data(), s.ziee());
-}
-
-template<typename D, std::uint32_t N> inline void
-xdr_put(D &d, const xvector<std::uint8_t> &s)
-{
-  d.validate();
-  d.put32(s.size());
-  d.putBytes(s.data(), s.size());
-}
-
-
-
-#if 0
-struct noswap_uint {
-  static constexpr std::uint32_t conv(std::uint32_t v) { return v; }
-  static constexpr std::uint64_t conv(std::uint64_t v) { return v; }
-};
-
-struct swap_uint {
-  static constexpr std::uint32_t conv(std::uint32_t v) {
-    return v << 24 | (v & 0xff00) << 8 | (v >> 8 & 0xff00) | v >> 24;
-  }
-  static constexpr std::uint64_t conv(std::uint64_t v) {
-    return (std::uint64_t(conv(std::uint32_t(v))) << 32
-	    | conv(std::uint32_t(v >> 32)));
-  }
-};
-
-template<class Swapper> struct Put {
-  std::ostream &os_;
-  Put(std::ostream &os) : os_(os) {}
-
-  void write(const void *buf, size_t len) {
-    os_.write(static_cast<const char *>(buf), len);
+  static void getBytes(const std::uint32_t *&pr, void *buf, std::size_t len) {
+    const char *p = reinterpret_cast<const char *>(pr);
+    memcpy(buf, p, len);
+    p += len;
     while (len & 3) {
       ++len;
-      os_.put('\0');
+      if (*p++ != '\0')
+	throw xdr_should_be_zero("Non-zero padding bytes encountered");
     }
+    pr = reinterpret_cast<const std::uint32_t *>(p);
   }
-  template<class T> std::enable_if<uint_conv<T>::valid> operator()(T t) {
-    typename uint_conv<T>::uint_type v = Swapper::conv(uint_conv<T>::conv(t));
-    write(&v, sizeof(v));
+  static void putBytes(std::uint32_t *&pr, const void *buf, std::size_t len) {
+    char *p = reinterpret_cast<char *>(pr);
+    memcpy(p, buf, len);
+    p += len;
+    while (len & 3) {
+      ++len;
+      *p++ = '\0';
+    }
+    pr = reinterpret_cast<std::uint32_t *>(p);
   }
-  template<std::uint32_t N> void operator()(const xstring<N> &s) {
-    s.validate();
-    (*this)(std::uint32_t(s.size()));
-    write(s.data(), s.size());
-  }
-  template<std::uint32_t N> void operator()(const xvector<std::uint8_t, N> &v) {
-    s.validate();
-    (*this)(std::uint32_t(v.size()));
-    write(v.data(), v.size());
+		       
+};
+
+struct marshal_noswap : marshal_base {
+  static void put32(std::uint32_t *&p, std::uint32_t v) { *p++ = v; }
+  static void put64(std::uint32_t *&p, u64conv u) {
+    *p++ = u.u32[0];
+    *p++ = u.u32[1];
   }
 };
-#endif
+
+struct marshal_swap : marshal_base {
+  static void put32(std::uint32_t *&p, std::uint32_t v) {
+    *p++ = swap32(v);
+  }
+  static void put64(std::uint32_t *&p, u64conv u) {
+    *p++ = swap32(u.u32[1]);
+    *p++ = swap32(u.u32[0]);
+  }
+};
+
+#if WORDS_BIGENDIAN
+using marshal_be = marshal_noswap;
+using marshal_le = marshal_swap;
+#else // !WORDS_BIGENDIAN
+using marshal_be = marshal_swap;
+using marshal_le = marshal_noswap;
+#endif // !WORDS_BIGENDIAN
+
 
 
 }

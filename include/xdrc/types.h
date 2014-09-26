@@ -31,10 +31,16 @@ struct xdr_bad_discriminant : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
 };
 
+//! Padding bytes that should have contained zero don't.
+struct xdr_should_be_zero : xdr_runtime_error {
+  using xdr_runtime_error::xdr_runtime_error;
+};
+
 //! Attempt to access wrong field of a union.
 struct xdr_wrong_union : std::logic_error {
   using std::logic_error::logic_error;
 };
+
 
 //! This is used to apply an archive to a field.  It is designed as a
 //! template class that can be specialized to various archive formats,

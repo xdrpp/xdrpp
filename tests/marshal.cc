@@ -4,6 +4,7 @@
 #include <sstream>
 #include <xdrc/cereal.h>
 #include <xdrc/printer.h>
+#include <xdrc/marshal.h>
 #include <cereal/archives/binary.hpp>
 #include <cereal/archives/json.hpp>
 #include "xdrtest.hh"
