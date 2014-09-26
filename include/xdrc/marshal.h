@@ -170,16 +170,39 @@ using xdr_put = xdr_generic_put<marshal_swap>;
 using xdr_get = xdr_generic_get<marshal_swap>;
 #endif // !WORDS_BIGENDIAN
 
-template<typename T> msg_ptr
-xdr_to_msg(const T &t)
+inline std::size_t
+xdr_argpack_size()
 {
-  msg_ptr m (msg_buf::alloc(xdr_size(t)));
+  return 0;
+}
+template<typename T, typename...Args> inline std::size_t
+xdr_argpack_size(const T &t, const Args &...a)
+{
+  return xdr_size(t) + xdr_argpack_size(a...);
+}
+
+template<typename Archive> inline void
+xdr_argpack_archive(Archive &)
+{
+}
+template<typename Archive, typename T, typename...Args> inline void
+xdr_argpack_archive(Archive &ar, T &&t, Args &&...args)
+{
+  archive(ar, nullptr, std::forward<T>(t));
+  xdr_argpack_archive(ar, std::forward<Args>(args)...);
+}
+
+template<typename...Args> msg_ptr
+xdr_to_msg(const Args &...args)
+{
+  msg_ptr m (msg_buf::alloc(xdr_argpack_size(args...)));
   xdr_put p (m);
-  archive(p, nullptr, t);
+  xdr_argpack_archive(p, args...);
   assert(p.p_ == p.e_);
   return m;
 }
 
+/* XXX - Not really useful, since we have to unmarshal header then body */
 template<typename T> T &
 msg_to_xdr(const msg_ptr &m, T &t)
 {

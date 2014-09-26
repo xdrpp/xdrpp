@@ -29,7 +29,7 @@ public:
   const void *rawData() const { return &buf_[1]; }
   std::size_t rawSize() const { return std::size_t(4) + size(); }
 
-  static msg_buf *alloc(std::uint32_t s) {
+  static msg_buf *alloc(std::size_t s) {
     assert(s < 0x80000000 && !(s&3));
     void *raw = operator new(offsetof(msg_buf, buf_[(s + std::size_t(11))>>2]));
     msg_buf *b = new (raw) msg_buf;
