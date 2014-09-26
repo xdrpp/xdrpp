@@ -90,20 +90,38 @@ struct xdr_traits_base {
   static constexpr bool has_fixed_size = false;
 };
 
-#define XDR_NUMERIC(type, size)						\
-template<> struct xdr_traits<type> : xdr_traits_base {			\
-  static constexpr bool is_numeric = true;				\
-  static constexpr bool has_fixed_size = true;				\
-  static constexpr size_t fixed_size = size;				\
-  static constexpr size_t serial_size(type) { return fixed_size; }	\
-}
-XDR_NUMERIC(std::int32_t, 4);
-XDR_NUMERIC(std::uint32_t, 4);
-XDR_NUMERIC(std::int64_t, 8);
-XDR_NUMERIC(std::uint64_t, 8);
-XDR_NUMERIC(float, 4);
-XDR_NUMERIC(double, 8);
-#undef XDR_NUMERIC
+template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
+  using type = T;
+  using uint_type = U;
+  static constexpr bool is_numeric = true;
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size = sizeof(uint_type);
+  static constexpr std::size_t serial_size(type) { return fixed_size; }
+  static uint_type to_uint(type t) { return t; }
+  static type from_uint(uint_type u) { return reinterpret_cast<type>(u); }
+};
+template<> struct xdr_traits<std::int32_t>
+  : xdr_integral_base<std::int32_t, std::uint32_t> {};
+template<> struct xdr_traits<std::uint32_t>
+  : xdr_integral_base<std::uint32_t, std::uint32_t> {};
+template<> struct xdr_traits<std::int64_t>
+  : xdr_integral_base<std::int64_t, std::uint64_t> {};
+template<> struct xdr_traits<std::uint64_t>
+  : xdr_integral_base<std::uint64_t, std::uint64_t> {};
+
+template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
+  using type = T;
+  using uint_type = U;
+  static constexpr bool is_numeric = true;
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size = sizeof(uint_type);
+  static constexpr std::size_t serial_size(type) { return fixed_size; }
+  static uint_type to_uint(type t) { return reinterpret_cast<uint_type &>(t); }
+  static type from_uint(uint_type u) { return reinterpret_cast<type &>(u); }
+};
+template<> struct xdr_traits<float> : xdr_fp_base<float, std::uint32_t> {};
+template<> struct xdr_traits<double> : xdr_fp_base<double, std::uint64_t> {};
+
 
 template<> struct xdr_traits<bool> : xdr_traits_base {
   static constexpr bool is_enum = true;
