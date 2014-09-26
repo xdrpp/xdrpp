@@ -57,6 +57,7 @@ std::ostringstream top_material;
 string
 cur_ns()
 {
+#if 0
   if (namespaces.empty())
     return "";
   string out;
@@ -66,15 +67,25 @@ cur_ns()
     out += ns;
   }
   return out;
+#else
+  string out;
+  for (const auto &ns : namespaces)
+    out += string("::") + ns;
+  return out.empty() ? "::" : out;
+#endif
 }
 
 string
 cur_scope()
 {
-  if (scope.empty())
-    return cur_ns();
-  else
-    return cur_ns() + "::" + scope.back();
+  string out;
+  if (!namespaces.empty())
+    out = cur_ns();
+  if (!scope.empty()) {
+    out += "::";
+    out += scope.back();
+  }
+  return out;
 }
 
 string
@@ -183,7 +194,6 @@ gen(std::ostream &os, const rpc_struct &s)
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
-    //<< "> : xdr_traits_base {" << endl;
     << ">" << endl
     << "  : xdr_struct_base<";
   bool first{true};
@@ -205,16 +215,16 @@ gen(std::ostream &os, const rpc_struct &s)
     << "  static constexpr bool is_class = true;" << endl
     << "  static constexpr bool is_struct = true;" << endl;
   for (string decl :
-    { string("  template<typename _Archive> static void\n"
-	     "  save(_Archive &_archive, const ")
-	+ cur_scope() + " &_xdr_obj) {",
-      string("  template<typename _Archive> static void\n"
-	     "  load(_Archive &_archive, ")
-	+ cur_scope() + " &_xdr_obj) {" } ) {
+    { string("  template<typename Archive> static void\n"
+	     "  save(Archive &ar, const ")
+	+ cur_scope() + " &obj) {",
+      string("  template<typename Archive> static void\n"
+	     "  load(Archive &ar, ")
+	+ cur_scope() + " &obj) {" } ) {
     top_material << decl << endl;
     for (size_t i = 0; i < s.decls.size(); ++i)
-      top_material << "    archive(_archive, \""
-		   << s.decls[i].id << "\", _xdr_obj."
+      top_material << "    archive(ar, \""
+		   << s.decls[i].id << "\", obj."
 		   << s.decls[i].id << ");" << endl;
     top_material << "  }" << endl;;
   }
@@ -248,8 +258,8 @@ gen(std::ostream &os, const rpc_enum &e)
     << "  static constexpr std::size_t serial_size("
     << qt << ") { return 4; }" << endl
     << "  static const char *enum_name("
-    << qt << " _xdr_enum_val) {" << endl
-    << "    switch (_xdr_enum_val) {" << endl;
+    << qt << " val) {" << endl
+    << "    switch (val) {" << endl;
   for (const rpc_const &c : e.tags)
     top_material << "    case " << myscope + c.id << ":" << endl
 		 << "      return \"" << c.id << "\";" << endl;
