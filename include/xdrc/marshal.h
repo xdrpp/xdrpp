@@ -77,7 +77,10 @@ struct marshal_swap : marshal_base {
 
 template<typename Base> struct xdr_generic_put : Base {
   std::uint32_t *p_;
-  std::uint32_t *e_;
+  std::uint32_t *const e_;
+
+  xdr_generic_put() = default;
+  xdr_generic_put(msg_ptr &m) : p_(m->begin()), e_(m->end()) {}
 
   void check(std::size_t n) const {
     if (reinterpret_cast<char *>(e_) - reinterpret_cast<char *>(p_) < n)
@@ -110,7 +113,10 @@ template<typename Base> struct xdr_generic_put : Base {
 
 template<typename Base> struct xdr_generic_get : Base {
   const std::uint32_t *p_;
-  const std::uint32_t *e_;
+  const std::uint32_t *const e_;
+
+  xdr_generic_get() = default;
+  xdr_generic_get(const msg_ptr &m) : p_(m->begin()), e_(m->end()) {}
 
   void check(std::uint32_t n) const {
     if (reinterpret_cast<const char *>(e_)
@@ -152,8 +158,25 @@ using xdr_put = xdr_generic_put<marshal_noswap>;
 using xdr_get = xdr_generic_get<marshal_noswap>;
 #else // !WORDS_BIGENDIAN
 using xdr_put = xdr_generic_put<marshal_swap>;
-using xdr_gut = xdr_generic_get<marshal_swap>;
+using xdr_get = xdr_generic_get<marshal_swap>;
 #endif // !WORDS_BIGENDIAN
+
+template<typename T> msg_ptr
+xdr_to_msg(const T &t)
+{
+  msg_ptr m (msg_buf::alloc(xdr_size(t)));
+  xdr_put p (m);
+  archive(p, nullptr, t);
+  return m;
+}
+
+template<typename T> T &
+msg_to_xdr(const msg_ptr &m, T &t)
+{
+  xdr_get g (m);
+  archive(g, nullptr, t);
+  return t;
+}
 
 }
 

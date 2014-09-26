@@ -85,6 +85,12 @@ template<typename T> struct xdr_traits {
   static constexpr bool has_fixed_size = false;
 };
 
+template<typename T> std::size_t
+xdr_size(const T&t)
+{
+  return xdr_traits<T>::serial_size(t);
+}
+
 //! Default xdr_traits values for actual XDR types.
 struct xdr_traits_base {
   static constexpr bool valid = true;
@@ -439,17 +445,17 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 //! reference \c T returns an lvalue reference \c F, while an rvalue
 //! reference \c T produces an rvalue reference \c F.
 template<typename T, typename F> inline F &
-mem(T &t, F T::*mp)
+member(T &t, F T::*mp)
 {
   return t.*mp;
 }
 template<typename T, typename F> inline const F &
-mem(const T &t, F T::*mp)
+member(const T &t, F T::*mp)
 {
   return t.*mp;
 }
 template<typename T, typename F> inline F &&
-mem(T &&t, F T::*mp)
+member(T &&t, F T::*mp)
 {
   return std::move(t.*mp);
 }
@@ -461,7 +467,7 @@ struct field_constructor_t {
   }
   template<typename T, typename F, typename TT> void
   operator()(F T::*mp, T &t, TT &&tt) const {
-    new (&(t.*mp)) F (mem(std::forward<TT>(tt), mp));
+    new (&(t.*mp)) F (member(std::forward<TT>(tt), mp));
   }
 };
 constexpr field_constructor_t field_constructor;
@@ -469,7 +475,7 @@ constexpr field_constructor_t field_constructor;
 struct field_destructor_t {
   constexpr field_destructor_t() {}
   template<typename T, typename F> void
-  operator()(F T::*mp, T &t) const { mem(t, mp).~F(); }
+  operator()(F T::*mp, T &t) const { member(t, mp).~F(); }
 };
 constexpr field_destructor_t field_destructor;
 
@@ -477,7 +483,7 @@ struct field_assigner_t {
   constexpr field_assigner_t() {}
   template<typename T, typename F, typename TT> void
   operator()(F T::*mp, T &t, TT &&tt) const {
-    mem(t, mp) = mem(std::forward<TT>(tt), mp);
+    member(t, mp) = member(std::forward<TT>(tt), mp);
   }
 };
 constexpr field_assigner_t field_assigner;
@@ -487,11 +493,11 @@ struct field_archiver_t {
 
   template<typename F, typename T, typename Archive> void
   operator()(F T::*mp, Archive &ar, T &t, const char *name) const {
-    archive(ar, name, mem(t, mp));
+    archive(ar, name, member(t, mp));
   }
   template<typename F, typename T, typename Archive> void
   operator()(F T::*mp, Archive &ar, const T &t, const char *name) const {
-    archive(ar, name, mem(t, mp));
+    archive(ar, name, member(t, mp));
   }
 };
 constexpr field_archiver_t field_archiver;
@@ -500,7 +506,7 @@ struct field_size_t {
   constexpr field_size_t() {}
   template<typename F, typename T> void
   operator()(F T::*mp, const T &t, std::size_t &size) const {
-    size = xdr_traits<F>::serial_size(mem(t, mp));
+    size = xdr_traits<F>::serial_size(member(t, mp));
   }
 };
 constexpr field_size_t field_size;

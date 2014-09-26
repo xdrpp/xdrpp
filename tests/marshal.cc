@@ -13,24 +13,22 @@ using namespace std;
 
 template<typename T>
 typename std::enable_if<!xdr::xdr_traits<T>::has_fixed_size, std::size_t>::type
-xdr_size(const T &t)
+xdr_getsize(const T &t)
 {
-  std::size_t r = xdr::xdr_traits<T>::serial_size(t);
-  return r;
+  return xdr::xdr_size(t);
 }
 
 template<typename T>
 typename std::enable_if<xdr::xdr_traits<T>::has_fixed_size, std::size_t>::type
-xdr_size(const T &t)
+xdr_getsize(const T &t)
 {
-  std::size_t r = xdr::xdr_traits<T>::fixed_size;
-  assert(xdr::xdr_traits<T>::fixed_size == xdr::xdr_traits<T>::serial_size(t));
-  return r;
+  assert(xdr::xdr_traits<T>::fixed_size == xdr::xdr_size(t));
+  return xdr::xdr_traits<T>::fixed_size;
 }
 
 #define CHECK_SIZE(v, s)						\
 do {									\
-  size_t __s = xdr_size(v);						\
+  size_t __s = xdr_getsize(v);						\
   if (__s != s) {							\
     cerr << #v << " has size " << __s << " shoudl have " << s << endl;	\
     terminate();							\
