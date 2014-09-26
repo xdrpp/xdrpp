@@ -243,10 +243,7 @@ template<typename T, uint32_t N> struct xarray
 };
 
 template<typename T, uint32_t N>
-struct xdr_traits<xarray<T,N>> : xdr_container_base<xarray<T,N>, false> {
-  static constexpr bool has_fixed_size = xdr_traits<T>::has_fixed_size;
-  static constexpr size_t fixed_size = N * xdr_traits<T>::fixed_size;
-};
+struct xdr_traits<xarray<T,N>> : xdr_container_base<xarray<T,N>, false> {};
 
 //! XDR \c opaque is represented as std::uint8_t;
 template<uint32_t N = XDR_MAX_LEN> using opaque_array = xarray<std::uint8_t,N>;

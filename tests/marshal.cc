@@ -105,6 +105,7 @@ main()
   }
 
   xdr::xdr_from_msg(xdr::xdr_to_msg(n1), n2);
+  assert(xdr::xdr_to_string(n1) == xdr::xdr_to_string(n2));
   assert(n1.b == n2.b);
   assert(n1.i1 == n2.i1);
   assert(n1.i2 == n2.i2);
@@ -114,7 +115,52 @@ main()
   assert(n1.f2 == n2.f2);
   assert(n1.e1 == n2.e1);
 
-  return 0;
+  testns::uniontest u1, u2;
+  u1.ip.activate() = 0x12349876;
+  u1.key.arbitrary(REDDEST);
+  u1.key.big() = { 5, 4, 3, 2, 1, 0, 0, 0, 255 };
+
+  {
+    xdr::msg_ptr m (xdr::xdr_to_msg(u1));
+    xdr::xdr_from_msg(m, u2);
+    assert(xdr::xdr_to_string(u1) == xdr::xdr_to_string(u2));
+  }
+
+  assert(*u1.ip == *u2.ip);
+  assert(u1.key.arbitrary() == u2.key.arbitrary());
+  assert(u1.key.big() == u2.key.big());
+  {
+    bool ok = false;
+    try { u2.key.medium() = 7777; }
+    catch (const xdr::xdr_wrong_union &) { ok = true; }
+    assert (ok);
+  }
+
+  {
+    testns::containertest ct1, ct2;
+
+    ct1.uvec = { u_4_12(4), u_4_12(12), u_4_12(4), u_4_12(4) };
+    ct1.sarr[0] = "hello";
+    ct1.sarr[1] = "world";
+
+    xdr::msg_ptr m (xdr::xdr_to_msg(ct1));
+    xdr::xdr_from_msg(m, ct2);
+    assert(xdr::xdr_to_string(ct1) == xdr::xdr_to_string(ct2));
+
+    assert(ct1.uvec.at(0).f4().i == ct2.uvec.at(0).f4().i);
+    assert(ct1.uvec.at(1).f12().i == ct2.uvec.at(1).f12().i);
+    assert(ct1.uvec.at(1).f12().d == ct2.uvec.at(1).f12().d);
+    assert(ct1.uvec.at(2).f4().i == ct2.uvec.at(2).f4().i);
+    assert(ct1.uvec.at(3).f4().i == ct2.uvec.at(3).f4().i);
+    for (unsigned i = 0; i < 2; i++)
+      assert(ct1.sarr.at(i) == ct2.sarr.at(i));
+
+    testns::containertest1 ct3;
+    bool ok = false;
+    try { xdr::xdr_from_msg(m, ct3); }
+    catch (const xdr::xdr_overflow &) { ok = true; }
+    assert(ok);
+  }
 
 #if 0
   n1.i32 = 32;
@@ -128,7 +174,6 @@ main()
   n1.iv[1] = 2;
   n1.iv[2] = 3;
   n1.iv[3] = 4;
-#endif
 
   cout << xdr::xdr_to_string(n1);
 
@@ -161,6 +206,7 @@ main()
   cout << boolalpha;
   cout << has_non_member_save<x, cereal::BinaryOutputArchive>::value << endl;
   cout << has_non_member_load<x, cereal::BinaryInputArchive>::value << endl;
+#endif
 #endif
 
   return 0;

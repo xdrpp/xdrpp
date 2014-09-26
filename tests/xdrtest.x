@@ -46,19 +46,28 @@ struct numerics {
   float f1;
   double f2;
   other_color e1;
+};
   
-#if 0
+struct uniontest {
   int *ip;
-  bool b;
-  double d;
-  int iv<4>;
   union switch (color arbitrary) {
   case ::REDDEST:
     opaque big<>;
   case ::RED:
     hyper medium;
   } key;
-#endif
+};
+
+typedef string bigstr<>;
+
+struct containertest {
+  u_4_12 uvec<>;
+  bigstr sarr[2];
+};
+
+struct containertest1 {
+  u_4_12 uvec<2>;
+  bigstr sarr[2];
 };
 
 union ContainsEnum switch (color c) {

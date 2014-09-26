@@ -110,7 +110,7 @@ template<> struct archive_adapter<Printer> {
 };
 
 template<typename T> std::string
-xdr_to_string(const T &t, int indent = 0, const char *name = nullptr)
+xdr_to_string(const T &t, const char *name = nullptr, int indent = 0)
 {
   Printer p;
   p(name, t);
