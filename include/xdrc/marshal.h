@@ -40,7 +40,6 @@ struct marshal_base {
     }
     pr = reinterpret_cast<std::uint32_t *>(p);
   }
-		       
 };
 
 struct marshal_noswap : marshal_base {
@@ -76,27 +75,85 @@ struct marshal_swap : marshal_base {
   }
 };
 
-template<typename Base> struct put : Base {
+template<typename Base> struct xdr_generic_put : Base {
   std::uint32_t *p_;
+  std::uint32_t *e_;
 
-#if 0
-  template<typename T> typename std::enable_if<xdr_traits<T>::is_enum>>::type
-  operator()(T t) { put32(p_, t); }
-  template<typename T> typename std::enable_if<xdr_traits<T>::is_enum>>::type
-  operator()(T t) { put32(p_, t); }
-#endif
+  void check(std::size_t n) const {
+    if (reinterpret_cast<char *>(e_) - reinterpret_cast<char *>(p_) < n)
+      throw xdr_overflow("insufficient buffer space in xdr_generic_put");
+  }
 
+  template<typename T> typename std::enable_if<
+    std::is_same<std::uint32_t, typename xdr_traits<T>::uint_type>::value>::type
+  operator()(T t) { check(4); put32(p_, xdr_traits<T>::to_uint(t)); }
+
+  template<typename T> typename std::enable_if<
+    std::is_same<std::uint64_t, typename xdr_traits<T>::uint_type>::value>::type
+  operator()(T t) { check(8); put64(p_, xdr_traits<T>::to_uint(t)); }
+
+  template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
+  operator()(const T &t) {
+    if (xdr_traits<T>::variable_length) {
+      check(4 + t.size());
+      put32(t.size());
+    }
+    else
+      check(t.size());
+    putBytes(p_, t.data(), t.size());
+  }
+
+  template<typename T> typename std::enable_if<
+    xdr_traits<T>::is_class || xdr_traits<T>::is_container>::type
+  operator()(const T &t) { xdr_traits<T>::save(*this, t); }
+};
+
+template<typename Base> struct xdr_generic_get : Base {
+  const std::uint32_t *p_;
+  const std::uint32_t *e_;
+
+  void check(std::uint32_t n) const {
+    if (reinterpret_cast<const char *>(e_)
+	- reinterpret_cast<const char *>(p_) < n)
+      throw xdr_overflow("insufficient buffer space in xdr_generic_get");
+  }
+
+  template<typename T> typename std::enable_if<
+    std::is_same<std::uint32_t, typename xdr_traits<T>::uint_type>::value>::type
+  operator()(T &t) { check(4); t = xdr_traits<T>::from_uint(get32(p_)); }
+
+  template<typename T> typename std::enable_if<
+    std::is_same<std::uint64_t, typename xdr_traits<T>::uint_type>::value>::type
+  operator()(T &t) { check(8); t = xdr_traits<T>::from_uint(get64(p_)); }
+
+  template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
+  operator()(T &t) {
+    std::size_t size;
+    if (xdr_traits<T>::variable_length) {
+      check(4);
+      size = get32(p_);
+      check(size);
+      t.resize(size);
+    }
+    else {
+      size = t.size();
+      check(size);
+    }
+    getBytes(p_, t.data(), size);
+  }
+
+  template<typename T> typename std::enable_if<
+    xdr_traits<T>::is_class || xdr_traits<T>::is_container>::type
+  operator()(T &t) { xdr_traits<T>::load(*this, t); }
 };
 
 #if WORDS_BIGENDIAN
-using marshal_be = marshal_noswap;
-using marshal_le = marshal_swap;
+using xdr_put = xdr_generic_put<marshal_noswap>;
+using xdr_get = xdr_generic_get<marshal_noswap>;
 #else // !WORDS_BIGENDIAN
-using marshal_be = marshal_swap;
-using marshal_le = marshal_noswap;
+using xdr_put = xdr_generic_put<marshal_swap>;
+using xdr_gut = xdr_generic_get<marshal_swap>;
 #endif // !WORDS_BIGENDIAN
-
-
 
 }
 

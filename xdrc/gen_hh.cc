@@ -250,13 +250,10 @@ gen(std::ostream &os, const rpc_enum &e)
     myscope += "::";
   string qt = myscope + e.id;
   top_material
-    << "template<> struct xdr_traits<"
-    << qt << "> : xdr_traits_base {" << endl
+    << "template<> struct xdr_traits<" << qt << ">" << endl
+    << "  : xdr_integral_base<" << qt << ", std::uint32_t> {" << endl
     << "  static constexpr bool is_enum = true;" << endl
-    << "  static constexpr bool has_fixed_size = true;" << endl
-    << "  static constexpr std::size_t fixed_size = 4;" << endl
-    << "  static constexpr std::size_t serial_size("
-    << qt << ") { return 4; }" << endl
+    << "  static constexpr bool is_numeric = false;" << endl
     << "  static const char *enum_name("
     << qt << " val) {" << endl
     << "    switch (val) {" << endl;

@@ -1,8 +1,9 @@
 // -*- C++ -*-
 
-#ifndef _MSGBUF_H_
-#define _MSGBUF_H_ 1
+#ifndef _XDRC_MSGBUF_H_HEADER_INCLUDED_
+#define _XDRC_MSGBUF_H_HEADER_INCLUDED_ 1
 
+#include <cassert>
 #include <cstdint>
 #include <memory>
 #include <stddef.h>
@@ -12,27 +13,33 @@
 
 namespace xdr {
 
-class MsgBuf {
-protected:
-  MsgBuf(std::uint32_t s) : size(s) {}
+class msg_buf {
+  std::uint32_t buf_[2];
+  msg_buf() = default;
 public:
-  const std::uint32_t size;
-  std::uint32_t marshaled_size;
-  std::uint32_t data[1];
+  std::uint32_t size() const { return buf_[0]; }
+  //! Field for holding size in network byte order
+  std::uint32_t &be_size() { return buf_[1]; }
+  void *data() { return &buf_[2]; }
+  const void *data() const { return &buf_[2]; }
 
-  const void *rawData() const { return &marshaled_size; }
-  const std::size_t rawSize() const { return std::size_t(4) + size; }
+  //! rawData includes the marshalled_size.
+  void *rawData() { return &buf_[1]; }
+  const void *rawData() const { return &buf_[1]; }
+  std::size_t rawSize() const { return std::size_t(4) + size(); }
 
-  static MsgBuf *alloc(std::uint32_t s) {
-    void *raw = operator new(offsetof(MsgBuf, data[(s + std::size_t(3))>>2]));
-    MsgBuf *b = new (raw) MsgBuf(s);
-    b->marshaled_size = swap32le(s);
+  static msg_buf *alloc(std::uint32_t s) {
+    assert(s < 0x80000000);
+    void *raw = operator new(offsetof(msg_buf, buf_[(s + std::size_t(11))>>2]));
+    msg_buf *b = new (raw) msg_buf;
+    b->buf_[0] = s;
+    b->buf_[1] = swap32le(s);
     return b;
   }
 };
 
-using MsgPtr = std::unique_ptr<MsgBuf>;
+using msg_ptr = std::unique_ptr<msg_buf>;
 
 }
 
-#endif // !_MSGBUF_H_
+#endif // !_XDRC_MSGBUF_H_HEADER_INCLUDED_
