@@ -42,11 +42,14 @@ fi
 AM_CONDITIONAL([USE_CEREAL], [test yes = "$USE_CEREAL"])
 AC_MSG_RESULT(${USE_CEREAL:-no})
 
+test -z "$XDRC" -a "x$cross_compiling" != xyes \
+     && XDRC='$(top_builddir)/xdrc/xdrc$(EXEEXT)'
 if test -z "$XDRC"; then
-   AS_IF([test yes = "$cross_compiling"], [XDRC=xdrc]
-         [XDRC='$(top_builddir)/xdrc/xdrc$(EXEEXT)'])
+   AC_PATH_PROG(XDRC, [xdrc])
+   if test -z "$XDRC"; then
+      AC_MSG_ERROR(Need native xdrc when cross compiling)
+   fi
 fi
-AC_SUBST(XDRC)
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile include/xdrc/endian.h])

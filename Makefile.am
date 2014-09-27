@@ -39,8 +39,6 @@ tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
 
-XDRC = $(top_builddir)/xdrc/xdrc$(EXEEXT)
-
 SUFFIXES = .x .hh
 .x.hh:
 	$(XDRC) -hh -o $@ $<
