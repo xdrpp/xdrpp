@@ -5,7 +5,7 @@
 
 #include <cstring>
 #include <xdrc/endian.h>
-#include <xdrc/msgbuf.h>
+#include <xdrc/message.h>
 #include <xdrc/types.h>
 
 namespace xdr {
@@ -85,7 +85,12 @@ template<typename Base> struct xdr_generic_put : Base {
   std::uint32_t *const e_;
 
   xdr_generic_put() = default;
-  xdr_generic_put(msg_ptr &m) : p_(m->begin()), e_(m->end()) {}
+  xdr_generic_put(msg_ptr &m)
+    : p_(static_cast<std::uint32_t *>(m->data())),
+      e_(static_cast<std::uint32_t *>(m->end())) {
+    // Assertion failure rather than exception, because we generated message.
+    assert(!(m->size() & 3));
+  }
 
   void check(std::size_t n) const {
     if (n > std::size_t(reinterpret_cast<char *>(e_)
@@ -126,7 +131,13 @@ template<typename Base> struct xdr_generic_get : Base {
   const std::uint32_t *const e_;
 
   xdr_generic_get() = default;
-  xdr_generic_get(const msg_ptr &m) : p_(m->begin()), e_(m->end()) {}
+  xdr_generic_get(const msg_ptr &m)
+    : p_(static_cast<std::uint32_t *>(m->data())),
+      e_(static_cast<std::uint32_t *>(m->end())) {
+    if (m->size() & 3)
+      throw xdr_bad_message_size("xdr_generic_get: message size not"
+				 " multiple of 4");
+  }
 
   void check(std::uint32_t n) const {
     if (reinterpret_cast<const char *>(e_)
@@ -196,7 +207,7 @@ xdr_argpack_archive(Archive &ar, T &&t, Args &&...args)
 template<typename...Args> msg_ptr
 xdr_to_msg(const Args &...args)
 {
-  msg_ptr m (msg_buf::alloc(xdr_argpack_size(args...)));
+  msg_ptr m (message_t::alloc(xdr_argpack_size(args...)));
   xdr_put p (m);
   xdr_argpack_archive(p, args...);
   assert(p.p_ == p.e_);

@@ -21,7 +21,7 @@ nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
 	include/xdrc/clear.h include/xdrc/marshal.h		\
 	include/xdrc/printer.h include/xdrc/rpc_msg.hh		\
-	include/xdrc/msgbuf.h
+	include/xdrc/message.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
