@@ -455,7 +455,10 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
   : std::conditional<(xdr_traits<typename FP::field_type>::has_fixed_size
 		      && xdr_struct_base<Rest...>::has_fixed_size),
                      _xdr_struct_base_fs<FP, Rest...>,
-                     _xdr_struct_base_vs<FP, Rest...>>::type {};
+                     _xdr_struct_base_vs<FP, Rest...>>::type {
+  using field_info = FP;
+  using next_field = xdr_struct_base<Rest...>;
+};
 
 //! Dereference a pointer to a member of type \c F of a class of type
 //! \c T, preserving reference types.  Hence applying to an lvalue

@@ -9,7 +9,8 @@ xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/scan.ll	\
 xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
-BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc xmsg/rpc_msg.hh
+BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
+	include/xdrc/rpc_msg.hh
 
 lib_LIBRARIES = xmsg/libxmsg.a
 xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
@@ -18,8 +19,9 @@ xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
-	include/xdrc/marshal.h include/xdrc/printer.h		\
-	include/xdrc/clear.h
+	include/xdrc/clear.h include/xdrc/marshal.h		\
+	include/xdrc/printer.h include/xdrc/rpc_msg.hh		\
+	include/xdrc/msgbuf.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
@@ -38,8 +40,9 @@ SUFFIXES = .x .hh
 .x.hh:
 	$(top_builddir)/xdrc/xdrc$(EXEEXT) -hh -o $@ $<
 $(top_builddir)/tests/xdrtest.hh: $(top_builddir)/xdrc/xdrc$(EXEEXT)
+$(top_builddir)/include/xdrc/rpc_msg.hh: $(top_builddir)/xdrc/xdrc$(EXEEXT)
 
-CLEANFILES = *~ */*~ .gitignore~ tests/xdrtest.hh
+CLEANFILES = *~ */*~ .gitignore~ tests/xdrtest.hh include/xdrc/rpc_msg.hh
 
 $(srcdir)/xdrc/xdrc.1: $(srcdir)/xdrc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/xdrc/xdrc.1.md -o $(srcdir)/xdrc/xdrc.1
@@ -53,6 +56,7 @@ maintainer-clean-local:
 
 man_MANS = xdrc/xdrc.1
 EXTRA_DIST = .gitignore xdrc/xdrc.1 xdrc/xdrc.1.md	\
-	include/xdrc/endian.h.in
+	include/xdrc/endian.h.in include/xdrc/rpc_msg.x	\
+	tests/xdrtest.x
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 	$(srcdir)/xdrc/xdrc.1
