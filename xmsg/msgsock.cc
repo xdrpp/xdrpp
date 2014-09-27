@@ -19,7 +19,7 @@ MsgBuf::MsgBuf(size_t len)
 
 SeqSock::~SeqSock()
 {
-  ps_.fd_cb(fd_, PollSet::ReadWrite);
+  ps_.fd_cb(fd_, pollset::ReadWrite);
   really_close(fd_);
   if (destroyedp_)
     *destroyedp_ = true;
@@ -36,10 +36,10 @@ void
 SeqSock::initcb()
 {
   if (rcb_) {
-    ps_.fd_cb(fd_, PollSet::Read, [this](){ input(); });
+    ps_.fd_cb(fd_, pollset::Read, [this](){ input(); });
   }
   else
-    ps_.fd_cb(fd_, PollSet::Read);
+    ps_.fd_cb(fd_, pollset::Read);
 }
 
 void
@@ -111,7 +111,7 @@ SeqSock::input()
   else {
     std::cerr << "SeqSock: rejecting " << len << "-byte message (too long)"
 	      << std::endl;
-    ps_.fd_cb(fd_, PollSet::Read);
+    ps_.fd_cb(fd_, pollset::Read);
   }
   if (rdmsg_)
     rdpos_ = 0;
@@ -185,9 +185,9 @@ SeqSock::output(bool cbset)
   pop_wbytes(n);
 
   if (wsize_ && !cbset)
-    ps_.fd_cb(fd_, PollSet::Write, [this](){ output(true); });
+    ps_.fd_cb(fd_, pollset::Write, [this](){ output(true); });
   else if (!wsize_ && cbset)
-    ps_.fd_cb(fd_, PollSet::Write);
+    ps_.fd_cb(fd_, pollset::Write);
 }
 
 }

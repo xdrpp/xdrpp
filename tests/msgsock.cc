@@ -16,7 +16,7 @@ using namespace xdr;
 void
 echoserver(int fd)
 {
-  PollSet ps;
+  pollset ps;
   bool done {false};
   SeqSock ss(&ps, fd, nullptr);
   int i = 0;
@@ -36,7 +36,7 @@ echoserver(int fd)
 void
 echoclient(int fd)
 {
-  PollSet ps;
+  pollset ps;
   SeqSock ss { &ps, fd, nullptr };
   unsigned int i = 1;
 

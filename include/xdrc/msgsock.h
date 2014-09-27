@@ -57,7 +57,7 @@ class SeqSock {
 public:
   using rcb_t = std::function<void(MsgBuf)>;
 
-  template<typename T> SeqSock(PollSet *ps, int fd, T &&rcb,
+  template<typename T> SeqSock(pollset *ps, int fd, T &&rcb,
 			       size_t maxmsglen = 0x100000)
     : ps_(*ps), fd_(fd), maxmsglen_(maxmsglen), rcb_(std::forward<T>(rcb)) {
     init();
@@ -74,7 +74,7 @@ public:
   void putmsg(MsgBuf &b);
 
 private:
-  PollSet &ps_;
+  pollset &ps_;
   const int fd_;
   const size_t maxmsglen_;
   bool *destroyedp_ {nullptr};

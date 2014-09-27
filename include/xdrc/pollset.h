@@ -29,7 +29,7 @@ void set_close_on_exec(int fd);
 //! Keep closing a file descriptor until you don't get \c EINTR.
 void really_close(int fd);
 
-class PollSet {
+class pollset {
 public:
   using cb_t = std::function<void()>;
 private:
@@ -52,33 +52,33 @@ public:
 
 private:
   // File descriptor callback information
-  struct FdState {
+  struct fd_state {
     cb_t rcb;
     cb_t wcb;
     int idx {-1};		// Index in pollfds_
     bool roneshot;
     bool woneshot;
-    ~FdState();			// Sanity check no active callbacks
+    ~fd_state();			// Sanity check no active callbacks
   };
 
-  enum class WakeType : std::uint8_t {
+  enum class wake_type : std::uint8_t {
     Normal = 0,
     Signal = 1
   };
   
   // State for asynchronous tasks
-  template<typename R> struct AsyncTask {
-    PollSet *ps_;
+  template<typename R> struct async_task {
+    pollset *ps_;
     std::function<R()> work_;
     std::function<void(R)> cb_;
     std::unique_ptr<R> rp_;
 
     void start() {
       rp_.reset(new R { work_() });
-      ps_->inject_cb(std::bind(&AsyncTask::done, this));
+      ps_->inject_cb(std::bind(&async_task::done, this));
     }
     void done() {
-      std::unique_ptr<AsyncTask> self {this};
+      std::unique_ptr<async_task> self {this};
       ps_->nasync_--;
       cb_(std::move(*rp_));
     }
@@ -89,7 +89,7 @@ private:
 
   // File descriptor callback state
   std::vector<pollfd> pollfds_;
-  std::unordered_map<int, FdState> state_;
+  std::unordered_map<int, fd_state> state_;
 
   // Timeout callback state
   std::multimap<std::int64_t, cb_t> time_cbs_;
@@ -103,12 +103,12 @@ private:
   // Signal callback state
   static constexpr int num_sig = 32;
   static std::mutex signal_owners_lock;
-  static PollSet *signal_owners[num_sig];
+  static pollset *signal_owners[num_sig];
   static volatile std::sig_atomic_t signal_flags[num_sig];
   bool signal_pending_{false};
   std::map<int, cb_t> signal_cbs_;
 
-  void wake(WakeType wt);
+  void wake(wake_type wt);
   void run_pending_asyncs();
   void inject_cb_vec(std::vector<cb_t>::iterator b,
 		     std::vector<cb_t>::iterator e);
@@ -121,8 +121,8 @@ private:
   static void erase_signal_cb(int);
 
 public:
-  PollSet();
-  ~PollSet();
+  pollset();
+  ~pollset();
 
   //! Go through one round of checking all file descriptors.  \arg \c
   //! timeout is a timeout in milliseconds (or -1 to wait forever).
@@ -145,7 +145,7 @@ public:
   //! Cause PollSet::poll to return if it is sleeping.  Unlike most
   //! other methods, \c wake is safe to call from a signal handler or
   //! a different thread.
-  void wake() { wake(WakeType::Normal); }
+  void wake() { wake(wake_type::Normal); }
 
   //! Set a read or write callback on a particular file descriptor.
   //! \arg \c fd is the file descriptor.  \arg \c op specifies the
@@ -190,11 +190,11 @@ public:
   //! the same type \c R.
   template<typename Work, typename CB> void async(Work &&work, CB &&cb) {
     using R = decltype(work());
-    AsyncTask<R> *a = new AsyncTask<R> {
+    async_task<R> *a = new async_task<R> {
       this, std::forward<Work>(work), std::forward<CB>(cb), nullptr
     };
     ++nasync_;
-    std::thread(&AsyncTask<R>::start, a).detach();
+    std::thread(&async_task<R>::start, a).detach();
   }
 
   //! Number of milliseconds since an arbitrary but fixed time, used
@@ -209,7 +209,7 @@ public:
     iterator i_;
     Timeout(iterator i) : i_(i) {}
     Timeout &operator=(iterator i) { i_ = i; return *this; }
-    friend class PollSet;
+    friend class pollset;
   };
 
   //! Set a callback to run a certain number of milliseconds from now.
