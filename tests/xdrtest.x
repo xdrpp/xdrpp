@@ -77,4 +77,11 @@ union ContainsEnum switch (color c) {
    enum { ONE, TWO } num;
 };
 
+program xdrtest_prog {
+  version xdrtest {
+    void null(void) = 1;
+    ContainsEnum nonnull(u_4_12) = 2;
+  } = 1;
+} = 0x20000000;
+
 }

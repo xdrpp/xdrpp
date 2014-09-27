@@ -583,6 +583,43 @@ gen(std::ostream &os, const rpc_union &u)
   scope.pop_back();
 }
 
+void
+gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
+{
+  os << endl;
+  os << nl << "struct " << v.id << " {"
+     << nl.open << "static constexpr std::uint32_t prog = " << u.id << ";"
+     << nl << "static constexpr std::uint32_t vers = " << v.val << ";"
+     << nl << "enum class proc : std::uint32_t {";
+  for (const rpc_proc &proc : v.procs)
+    os << nl << "  " << proc.id << " = " << proc.val << ",";
+  os << nl << "};";
+
+  os << nl.close << "};";
+}
+
+void
+gen(std::ostream &os, const rpc_program &u)
+{
+  string guard("_xdr_defined_");
+  for (const string &ns : namespaces) {
+    guard += ns;
+    guard += "__";
+  }
+  guard += u.id;
+
+  os << "#ifdef " << guard
+     << nl << "static_assert(" << u.id << " == " << u.val
+     << ", \"conflicting values for " << u.id << "\");"
+     << nl << "#else // !" << guard
+     << nl << "#define " << guard << " 1"
+     << nl << "constexpr std::uint32_t " << u.id << " = " << u.val << ";"
+     << nl << "#endif // !" << guard;
+
+  for (const rpc_vers &v : u.vers)
+    gen_vers(os, u, v);
+}
+
 }
 
 void
@@ -633,7 +670,7 @@ gen_hh(std::ostream &os)
 	 << decl_type(*s.stypedef) << ';';
       break;
     case rpc_sym::PROGRAM:
-      /* need some action */
+      gen(os, *s.sprogram);
       break;
     case rpc_sym::LITERAL:
       os << *s.sliteral;
