@@ -18,11 +18,11 @@ echoserver(int fd)
 {
   pollset ps;
   bool done {false};
-  SeqSock ss(&ps, fd, nullptr);
+  msg_sock ss(&ps, fd, nullptr);
   int i = 0;
 
-  ss.setrcb([&done,&ss,&i](MsgBuf b) {
-      cerr << "echoing #" << ++i << " (" << b->size() << " bytes)" << endl;
+  ss.setrcb([&done,&ss,&i](msg_ptr b) {
+      cerr << "echoing #" << i++ << " (" << b->size() << " bytes)" << endl;
       if (b)
 	ss.putmsg(b);
       else
@@ -37,23 +37,23 @@ void
 echoclient(int fd)
 {
   pollset ps;
-  SeqSock ss { &ps, fd, nullptr };
-  unsigned int i = 1;
+  msg_sock ss { &ps, fd, nullptr };
+  unsigned int i = 0;
 
   {
-    MsgBuf b (i);
+    msg_ptr b (message_t::alloc(i));
     ss.putmsg(b);
   }
-  ss.setrcb([&i,&ss](MsgBuf b) {
+  ss.setrcb([&i,&ss](msg_ptr b) {
+      assert(b);
       assert(b->size() == i);
       cerr << b->size() << ": " << hexdump(b->data(), b->size()) << std::endl;
       for (unsigned j = 0; j < b->size(); j++) {
-	//assert(unsigned(b->data()[j]) == (unsigned(i) & 0xff));
+	assert(unsigned(b->data()[j]) == b->size());
       }
       ++i;
-      b = MsgBuf(i);
-      for (unsigned j = 0; j < i; j++)
-	b->data()[j] = i;
+      b = message_t::alloc(i);
+      memset(b->data(), i, i);
       ss.putmsg(b);
     });
 

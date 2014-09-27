@@ -6,7 +6,7 @@
 #include <xdrc/printer.h>
 #include <cereal/archives/binary.hpp>
 #include <cereal/archives/json.hpp>
-#include "xdrtest.hh"
+#include "tests/xdrtest.hh"
 
 
 

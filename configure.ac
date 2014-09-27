@@ -35,6 +35,19 @@ AC_C_BIGENDIAN
 AC_C_BIGENDIAN(IS_BIG_ENDIAN=1, IS_BIG_ENDIAN=0)
 AC_SUBST(IS_BIG_ENDIAN)
 
+AC_MSG_CHECKING(for cereal in include/cereal)
+if test -d include/cereal -o -d "$ac_top_srcdir/cereal"; then
+   USE_CEREAL=yes
+fi
+AM_CONDITIONAL([USE_CEREAL], [test yes = "$USE_CEREAL"])
+AC_MSG_RESULT(${USE_CEREAL:-no})
+
+if test -z "$XDRC"; then
+   AS_IF([test yes = "$cross_compiling"], [XDRC=xdrc]
+         [XDRC='$(top_builddir)/xdrc/xdrc$(EXEEXT)'])
+fi
+AC_SUBST(XDRC)
+
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile include/xdrc/endian.h])
 AC_OUTPUT

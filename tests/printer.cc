@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <iostream>
 #include <xdrc/printer.h>
-#include "xdrtest.hh"
+#include "tests/xdrtest.hh"
 
 using namespace std;
 using namespace xdr;

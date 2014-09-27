@@ -4,7 +4,7 @@
 #include <xdrc/clear.h>
 #include <xdrc/marshal.h>
 #include <xdrc/printer.h>
-#include "xdrtest.hh"
+#include "tests/xdrtest.hh"
 
 using namespace std;
 

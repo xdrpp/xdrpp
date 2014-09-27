@@ -7,37 +7,10 @@
 //! non-blocking sockets.
 
 #include <deque>
+#include <xdrc/message.h>
 #include <xdrc/pollset.h>
-#include <xdrc/endian.h>
 
 namespace xdr {
-
-class MsgBufImpl {
-  //! Bytes in buf_ in little endian order
-  const uint32_t lelen_;
-  char buf_[1];
-  MsgBufImpl(size_t len) : lelen_(swap32le(len)) {}
-public:
-  friend class MsgBuf;
-
-  char *data() { return buf_; }
-  const char *data() const { return buf_; }
-  size_t size() const { return swap32le(lelen_); }
-
-  //! Buffer prefixed by 4-byte length in big-endian
-  const char *rawData() const { return reinterpret_cast<const char *>(this); }
-  //! Size of 4-byte length plus data
-  size_t rawSize() const { return sizeof(lelen_) + size(); }
-};
-
-class MsgBuf : public std::unique_ptr<MsgBufImpl> {
-public:
-  using std::unique_ptr<MsgBufImpl>::unique_ptr;
-  //! Allocate a buffer of a particular size.  \throws std::bad_alloc
-  //! if <tt>::operator new</tt> returns \c nullptr.
-  MsgBuf(size_t len);
-  MsgBuf() = default;
-};
 
 /** \brief Send and receive a series of delimited messages on a stream
  * socket.
@@ -53,17 +26,17 @@ public:
  * really be fixed to read at least a little bit more data
  * speculatively and reduce the number of system calls.
  */
-class SeqSock {
+class msg_sock {
 public:
-  using rcb_t = std::function<void(MsgBuf)>;
+  using rcb_t = std::function<void(msg_ptr)>;
 
-  template<typename T> SeqSock(pollset *ps, int fd, T &&rcb,
+  template<typename T> msg_sock(pollset *ps, int fd, T &&rcb,
 			       size_t maxmsglen = 0x100000)
     : ps_(*ps), fd_(fd), maxmsglen_(maxmsglen), rcb_(std::forward<T>(rcb)) {
     init();
   }
-  ~SeqSock();
-  SeqSock &operator=(SeqSock &&) = delete;
+  ~msg_sock();
+  msg_sock &operator=(msg_sock &&) = delete;
 
   template<typename T> void setrcb(T &&rcb) {
     rcb_ = std::forward<T>(rcb);
@@ -71,7 +44,7 @@ public:
   }
 
   size_t wsize() const { return wsize_; }
-  void putmsg(MsgBuf &b);
+  void putmsg(msg_ptr &b);
 
 private:
   pollset &ps_;
@@ -81,10 +54,10 @@ private:
 
   rcb_t rcb_;
   uint32_t nextlen_;
-  MsgBuf rdmsg_;
+  msg_ptr rdmsg_;
   size_t rdpos_ {0};
 
-  std::deque<MsgBuf> wqueue_;
+  std::deque<msg_ptr> wqueue_;
   size_t wsize_ {0};
   size_t wstart_ {0};
   bool wfail_ {false};

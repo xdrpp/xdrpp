@@ -9,15 +9,7 @@
 
 namespace xdr {
 
-MsgBuf::MsgBuf(size_t len)
-{
-  if (void *p = ::operator new(offsetof(MsgBufImpl, buf_[len])))
-    reset(new (p) MsgBufImpl(len));
-  else
-    throw std::bad_alloc();
-}
-
-SeqSock::~SeqSock()
+msg_sock::~msg_sock()
 {
   ps_.fd_cb(fd_, pollset::ReadWrite);
   really_close(fd_);
@@ -26,14 +18,14 @@ SeqSock::~SeqSock()
 }
 
 void
-SeqSock::init()
+msg_sock::init()
 {
   set_nonblock(fd_);
   initcb();
 }
 
 void
-SeqSock::initcb()
+msg_sock::initcb()
 {
   if (rcb_) {
     ps_.fd_cb(fd_, pollset::Read, [this](){ input(); });
@@ -43,7 +35,7 @@ SeqSock::initcb()
 }
 
 void
-SeqSock::input()
+msg_sock::input()
 {
   if (rdmsg_) {
     iovec iov[2];
@@ -57,7 +49,7 @@ SeqSock::input()
 		<< ", rdpos_ = " << rdpos_
 		<< ", iov[0].iov_len = " << iov[0].iov_len
 		<< std::endl;
-      std::cerr << "SeqSock::input: " << std::strerror(errno) << std::endl;
+      std::cerr << "msg_sock::input: " << std::strerror(errno) << std::endl;
       if (n < 0 && eagain(errno))
 	return;
       if (n == 0)
@@ -96,20 +88,20 @@ SeqSock::input()
   size_t len = nextlen();
   if (!len) {
     rdpos_ = 0;
-    rcb_(len);
+    rcb_(message_t::alloc(0));
     return;
   }
 
   if (len <= maxmsglen_) {
     // Length comes from untrusted source; don't crash if can't alloc
-    try { rdmsg_ = MsgBuf(len); }
+    try { rdmsg_ = message_t::alloc(len); }
     catch (const std::bad_alloc &) {
-      std::cerr << "SeqSock: allocation of " << len << "-byte message failed"
+      std::cerr << "msg_sock: allocation of " << len << "-byte message failed"
 		<< std::endl;
     }
   }
   else {
-    std::cerr << "SeqSock: rejecting " << len << "-byte message (too long)"
+    std::cerr << "msg_sock: rejecting " << len << "-byte message (too long)"
 	      << std::endl;
     ps_.fd_cb(fd_, pollset::Read);
   }
@@ -122,7 +114,7 @@ SeqSock::input()
 }
 
 void
-SeqSock::putmsg(MsgBuf &mb)
+msg_sock::putmsg(msg_ptr &mb)
 {
   if (wfail_) {
     mb.reset();
@@ -130,27 +122,27 @@ SeqSock::putmsg(MsgBuf &mb)
   }
 
   bool was_empty = !wsize_;
-  wsize_ += mb->rawSize();
+  wsize_ += mb->raw_size();
   wqueue_.emplace_back(mb.release());
   if (was_empty)
     output(false);
 }
 
 void
-SeqSock::pop_wbytes(size_t n)
+msg_sock::pop_wbytes(size_t n)
 {
   if (n == 0)
     return;
   assert (n <= wsize_);
   wsize_ -= n;
-  size_t frontbytes = wqueue_.front()->rawSize() - wstart_;
+  size_t frontbytes = wqueue_.front()->raw_size() - wstart_;
   if (n < frontbytes) {
     wstart_ += n;
     return;
   }
   n -= frontbytes;
   wqueue_.pop_front();
-  while (n > 0 && n >= (frontbytes = wqueue_.front()->rawSize())) {
+  while (n > 0 && n >= (frontbytes = wqueue_.front()->raw_size())) {
     n -= frontbytes;
     wqueue_.pop_front();
   }
@@ -158,19 +150,19 @@ SeqSock::pop_wbytes(size_t n)
 }
 
 void
-SeqSock::output(bool cbset)
+msg_sock::output(bool cbset)
 {
   static constexpr size_t maxiov = 8;
   size_t i = 0;
   iovec v[maxiov];
   for (auto b = wqueue_.begin(); i < maxiov && b != wqueue_.end(); ++b, ++i) {
     if (i) {
-      v[i].iov_len = (*b)->rawSize();
-      v[i].iov_base = const_cast<char *> ((*b)->rawData());
+      v[i].iov_len = (*b)->raw_size();
+      v[i].iov_base = const_cast<char *> ((*b)->raw_data());
     }
     else {
-      v[i].iov_len = (*b)->rawSize() - wstart_;
-      v[i].iov_base = const_cast<char *> ((*b)->rawData() + wstart_);
+      v[i].iov_len = (*b)->raw_size() - wstart_;
+      v[i].iov_base = const_cast<char *> ((*b)->raw_data()) + wstart_;
     }
   }
   ssize_t n = writev(fd_, v, i);

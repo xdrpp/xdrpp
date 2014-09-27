@@ -13,20 +13,23 @@ BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
 	include/xdrc/rpc_msg.hh
 
 lib_LIBRARIES = xmsg/libxmsg.a
-xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/msgsock.cc	\
-	xmsg/printer.cc include/xdrc/msgsock.h xmsg/pollset.cc	\
-	include/xdrc/pollset.h include/xdrc/iniparse.h
+xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc	\
+	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
-	include/xdrc/clear.h include/xdrc/marshal.h		\
-	include/xdrc/printer.h include/xdrc/rpc_msg.hh		\
-	include/xdrc/message.h
+	include/xdrc/clear.h include/xdrc/iniparse.h		\
+	include/xdrc/marshal.h include/xdrc/printer.h		\
+	include/xdrc/rpc_msg.hh include/xdrc/message.h		\
+	include/xdrc/msgsock.h include/xdrc/pollset.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
 check_PROGRAMS = tests/test-msgsock tests/test-marshal	\
-	tests/test-printer tests/test-cereal
+	tests/test-printer
+if USE_CEREAL
+check_PROGRAMS += tests/test-cereal
+endif
 #TESTS = $(check_PROGRAMS)
 tests_test_printer_SOURCES = tests/printer.cc xmsg/libxmsg.a
 tests_test_msgsock_SOURCES = tests/msgsock.cc xmsg/libxmsg.a
@@ -36,11 +39,13 @@ tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
 
+XDRC = $(top_builddir)/xdrc/xdrc$(EXEEXT)
+
 SUFFIXES = .x .hh
 .x.hh:
-	$(top_builddir)/xdrc/xdrc$(EXEEXT) -hh -o $@ $<
-$(top_builddir)/tests/xdrtest.hh: $(top_builddir)/xdrc/xdrc$(EXEEXT)
-$(top_builddir)/include/xdrc/rpc_msg.hh: $(top_builddir)/xdrc/xdrc$(EXEEXT)
+	$(XDRC) -hh -o $@ $<
+$(top_builddir)/tests/xdrtest.hh: $(XDRC)
+$(top_builddir)/include/xdrc/rpc_msg.hh: $(XDRC)
 
 CLEANFILES = *~ */*~ .gitignore~ tests/xdrtest.hh include/xdrc/rpc_msg.hh
 

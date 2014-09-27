@@ -20,27 +20,13 @@ struct marshal_base {
     u64conv(std::uint64_t u) : u64(u) {}
   };
 
-  static void getBytes(const std::uint32_t *&pr, void *buf, std::size_t len) {
-    const char *p = reinterpret_cast<const char *>(pr);
-    std::memcpy(buf, p, len);
-    p += len;
-    while (len & 3) {
-      ++len;
-      if (*p++ != '\0')
-	throw xdr_should_be_zero("Non-zero padding bytes encountered");
-    }
-    pr = reinterpret_cast<const std::uint32_t *>(p);
-  }
-  static void putBytes(std::uint32_t *&pr, const void *buf, std::size_t len) {
-    char *p = reinterpret_cast<char *>(pr);
-    std::memcpy(p, buf, len);
-    p += len;
-    while (len & 3) {
-      ++len;
-      *p++ = '\0';
-    }
-    pr = reinterpret_cast<std::uint32_t *>(p);
-  }
+  //! Copy \c len bytes to buf, then consume 0-3 bytes of padding to
+  //! make the total number of bytes consumed divisible by 4.  \throws
+  //! xdr_should_be_zero if the padding bytes are not zero.
+  static void get_bytes(const std::uint32_t *&pr, void *buf, std::size_t len);
+  //! Copy \c len bytes from buf, then add 0-3 zero-valued padding
+  //! bytes to make the overall marshaled length a multiple of 4.
+  static void put_bytes(std::uint32_t *&pr, const void *buf, std::size_t len);
 };
 
 struct marshal_noswap : marshal_base {
@@ -79,15 +65,15 @@ struct marshal_swap : marshal_base {
 template<typename Base> struct xdr_generic_put : Base {
   using Base::put32;
   using Base::put64;
-  using Base::putBytes;
+  using Base::put_bytes;
 
   std::uint32_t *p_;
   std::uint32_t *const e_;
 
   xdr_generic_put() = default;
   xdr_generic_put(msg_ptr &m)
-    : p_(static_cast<std::uint32_t *>(m->data())),
-      e_(static_cast<std::uint32_t *>(m->end())) {
+    : p_(reinterpret_cast<std::uint32_t *>(m->data())),
+      e_(reinterpret_cast<std::uint32_t *>(m->end())) {
     // Assertion failure rather than exception, because we generated message.
     assert(!(m->size() & 3));
   }
@@ -114,7 +100,7 @@ template<typename Base> struct xdr_generic_put : Base {
     }
     else
       check(t.size());
-    putBytes(p_, t.data(), t.size());
+    put_bytes(p_, t.data(), t.size());
   }
 
   template<typename T> typename std::enable_if<
@@ -125,15 +111,15 @@ template<typename Base> struct xdr_generic_put : Base {
 template<typename Base> struct xdr_generic_get : Base {
   using Base::get32;
   using Base::get64;
-  using Base::getBytes;
+  using Base::get_bytes;
 
   const std::uint32_t *p_;
   const std::uint32_t *const e_;
 
   xdr_generic_get() = default;
   xdr_generic_get(const msg_ptr &m)
-    : p_(static_cast<std::uint32_t *>(m->data())),
-      e_(static_cast<std::uint32_t *>(m->end())) {
+    : p_(reinterpret_cast<std::uint32_t *>(m->data())),
+      e_(reinterpret_cast<std::uint32_t *>(m->end())) {
     if (m->size() & 3)
       throw xdr_bad_message_size("xdr_generic_get: message size not"
 				 " multiple of 4");
@@ -166,7 +152,7 @@ template<typename Base> struct xdr_generic_get : Base {
       size = t.size();
       check(size);
     }
-    getBytes(p_, t.data(), size);
+    get_bytes(p_, t.data(), size);
   }
 
   template<typename T> typename std::enable_if<
