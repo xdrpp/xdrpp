@@ -2,6 +2,7 @@
 #include <cassert>
 #include <ctype.h>
 #include <sstream>
+#include <utility>
 #include "xdrc_internal.h"
 
 using std::endl;
@@ -587,13 +588,87 @@ void
 gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
   os << endl;
-  os << nl << "struct " << v.id << " {"
-     << nl.open << "static constexpr std::uint32_t prog = " << u.id << ";"
-     << nl << "static constexpr std::uint32_t vers = " << v.val << ";"
+  os << nl << "struct " << v.id << "_t {"
+     << nl.open << "static constexpr std::uint32_t program = " << u.id << ";"
+     << nl << "static constexpr char program_name[] = \"" << u.id << "\";"
+     << nl << "static constexpr std::uint32_t version = " << v.val << ";"
+     << nl << "static constexpr char version_name[] = \"" << v.id << "\";";
+
+  for (const rpc_proc &p : v.procs) {
+    os << endl
+       << nl << "struct " << p.id << "_t {"
+       << nl.open << "using version_type = " << v.id << "_t;"
+       << nl << "static constexpr std::uint32_t proc = " << p.val << ";"
+       << nl << "static constexpr char proc_name[] = \"" << p.id << "\";"
+       << nl << "using arg_type = " << p.arg << ";"
+       << nl << "using res_type = " << p.res << ";"
+       << nl << "template<typename R = void, typename C, typename...A> static R"
+       << nl << "dispatch(C &&c, A &&...a) {"
+       << nl << "  return c." << p.id << "(std::forward<A>(a)...);"
+       << nl << "}"
+       << nl.close << "};";
+  }
+
+  os << endl
+     << nl << "template<typename F, typename...A> bool"
+     << nl << "demux(F &&f, std::uint32_t proc, A &&...a) {"
+     << nl.open << "switch(proc) {";
+  for (const rpc_proc &p : v.procs)
+    os << nl << "case " << p.val << ":"
+       << nl << "  f(" << p.id << "_t{}, std::forward<A>(a)...);"
+       << nl << "  return true;";
+  os << nl << "}"
+     << nl << "return false;"
+     << nl.close << "}";
+
+#if 0
      << nl << "enum class proc : std::uint32_t {";
   for (const rpc_proc &proc : v.procs)
     os << nl << "  " << proc.id << " = " << proc.val << ",";
-  os << nl << "};";
+  os << nl << "};"
+     << nl << "static const char *proc_name(std::uint32_t p) {"
+     << nl.open << "switch (proc(p)) {";
+  for (const rpc_proc &p : v.procs)
+    os << nl << "case proc::" << p.id << ":"
+       << nl << "  return \"" << p.id << "\";";
+  os << nl << "default:"
+     << nl << "  return nullptr;"
+     << nl << "}"
+     << nl.close << "}"
+     << endl;
+
+  os << nl << "template<typename T, typename...Args> bool"
+     << nl << "dispatch(T &&t, std::uint32_t p, Args &&...a) {"
+     << nl.open << "switch (proc(p)) {";
+  for (const rpc_proc &p : v.procs)
+    os << nl << "case proc::" << p.id << ":"
+       << nl << "  t." << p.id << "(std::forward<Args>(a)...);"
+       << nl << "  return true;";
+  os << nl << "default:"
+     << nl << "  return false;"
+     << nl << "}"
+     << nl.close << "}";
+
+  for (auto field : {
+      make_pair("arg", &rpc_proc::arg),
+	make_pair("res", &rpc_proc::res) }) {
+
+    os << endl
+       << nl << "template<typename F, typename...Args> bool"
+       << nl << "with_" << field.first
+       << "(F &&f, std::uint32_t p, Args &&...a) {"
+       << nl.open << "switch (proc(p)) {";
+    for (const rpc_proc &p : v.procs)
+      os << nl << "case proc::" << p.id << ":"
+	 << nl << "  f.template operator()<" << p.*field.second
+	 << ">(std::forward<Args>(a)...);"
+	 << nl << "  return true;";
+    os << nl << "default:"
+       << nl << "  return false;"
+       << nl << "}"
+       << nl.close << "}";
+  }
+#endif
 
   os << nl.close << "};";
 }
