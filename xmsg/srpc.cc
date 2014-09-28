@@ -12,7 +12,7 @@ msg_ptr
 read_message(int fd)
 {
   std::uint32_t len;
-  std::size_t n = read(fd, &len, 4);
+  ssize_t n = read(fd, &len, 4);
   if (n == -1)
     throw std::system_error(errno, std::system_category(), "xdr::read_message");
   if (n < 4)
@@ -22,6 +22,7 @@ read_message(int fd)
   if (n >= 0x80000000)
     throw xdr_bad_message_size("read_message: received size too big");
 
+  len = swap32le(len);
   msg_ptr m = message_t::alloc(len);
   n = read(fd, m->data(), len);
   if (n == -1)
@@ -36,14 +37,14 @@ read_message(int fd)
 void
 write_message(int fd, const msg_ptr &m)
 {
-  std::size_t n = write(fd, m->raw_data(), m->raw_size());
-  if (n == -1)
+  ssize_t n = write(fd, m->raw_data(), m->raw_size());
+  if (n < 0)
     throw std::system_error(errno, std::system_category(),
 			    "xdr::write_message");
   // If this assertion fails, the file descriptor may have had
   // O_NONBLOCK set, which is not allowed for the synchronous
   // interface.
-  assert(n == m->raw_size());
+  assert(std::size_t(n) == m->raw_size());
 }
 
 }

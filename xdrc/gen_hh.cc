@@ -626,7 +626,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   ++nl;
   os << nl << "using _XDRBASE::_XDRBASE;";
   for (const rpc_proc &p : v.procs) {
-    string invoke = string("_XDRBASE::template invoke<") + p.id + "_t>("
+    string invoke = string("this->_XDRBASE::template invoke<") + p.id + "_t>("
       + "_xdr_args...)";
     os << endl << nl << "template<typename..._XDRARGS> auto"
        << nl << p.id << "(_XDRARGS &&..._xdr_args) ->"
