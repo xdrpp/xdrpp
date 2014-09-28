@@ -212,9 +212,7 @@ gen(std::ostream &os, const rpc_struct &s)
   }
 
   top_material
-    << "> {" << endl
-    << "  static constexpr bool is_class = true;" << endl
-    << "  static constexpr bool is_struct = true;" << endl;
+    << "> {" << endl;
   for (string decl :
     { string("  template<typename Archive> static void\n"
 	     "  save(Archive &ar, const ")
@@ -587,19 +585,18 @@ gen(std::ostream &os, const rpc_union &u)
 void
 gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
-  os << endl;
-  os << nl << "struct " << v.id << "_t {"
-     << nl.open << "static constexpr std::uint32_t program = " << u.id << ";"
-     << nl << "static constexpr char program_name[] = \"" << u.id << "\";"
+  os << "struct " << v.id << "_t {"
+     << nl.open << "static constexpr std::uint32_t program = " << u.val << ";"
+     << nl << "static constexpr const char *program_name = \"" << u.id << "\";"
      << nl << "static constexpr std::uint32_t version = " << v.val << ";"
-     << nl << "static constexpr char version_name[] = \"" << v.id << "\";";
+     << nl << "static constexpr const char *version_name = \"" << v.id << "\";";
 
   for (const rpc_proc &p : v.procs) {
     os << endl
        << nl << "struct " << p.id << "_t {"
        << nl.open << "using version_type = " << v.id << "_t;"
        << nl << "static constexpr std::uint32_t proc = " << p.val << ";"
-       << nl << "static constexpr char proc_name[] = \"" << p.id << "\";"
+       << nl << "static constexpr const char *proc_name = \"" << p.id << "\";"
        << nl << "using arg_type = " << p.arg << ";"
        << nl << "using res_type = " << p.res << ";"
        << nl << "template<typename R = void, typename C, typename...A> static R"
@@ -621,78 +618,42 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
      << nl << "return false;"
      << nl.close << "}";
 
-#if 0
-     << nl << "enum class proc : std::uint32_t {";
-  for (const rpc_proc &proc : v.procs)
-    os << nl << "  " << proc.id << " = " << proc.val << ",";
-  os << nl << "};"
-     << nl << "static const char *proc_name(std::uint32_t p) {"
-     << nl.open << "switch (proc(p)) {";
-  for (const rpc_proc &p : v.procs)
-    os << nl << "case proc::" << p.id << ":"
-       << nl << "  return \"" << p.id << "\";";
-  os << nl << "default:"
-     << nl << "  return nullptr;"
-     << nl << "}"
-     << nl.close << "}"
-     << endl;
-
-  os << nl << "template<typename T, typename...Args> bool"
-     << nl << "dispatch(T &&t, std::uint32_t p, Args &&...a) {"
-     << nl.open << "switch (proc(p)) {";
-  for (const rpc_proc &p : v.procs)
-    os << nl << "case proc::" << p.id << ":"
-       << nl << "  t." << p.id << "(std::forward<Args>(a)...);"
-       << nl << "  return true;";
-  os << nl << "default:"
-     << nl << "  return false;"
-     << nl << "}"
-     << nl.close << "}";
-
-  for (auto field : {
-      make_pair("arg", &rpc_proc::arg),
-	make_pair("res", &rpc_proc::res) }) {
-
-    os << endl
-       << nl << "template<typename F, typename...Args> bool"
-       << nl << "with_" << field.first
-       << "(F &&f, std::uint32_t p, Args &&...a) {"
-       << nl.open << "switch (proc(p)) {";
-    for (const rpc_proc &p : v.procs)
-      os << nl << "case proc::" << p.id << ":"
-	 << nl << "  f.template operator()<" << p.*field.second
-	 << ">(std::forward<Args>(a)...);"
-	 << nl << "  return true;";
-    os << nl << "default:"
-       << nl << "  return false;"
-       << nl << "}"
-       << nl.close << "}";
+  os << endl
+     << nl << "template<typename _XDRBASE> struct client : _XDRBASE {";
+  ++nl;
+  bool first{true};
+  for (const rpc_proc &p : v.procs) {
+    if (first)
+      first = false;
+    else
+      os << endl;
+    string invoke = string("_XDRBASE::template invoke<") + p.id + "_t>("
+      + (p.arg == "void" ? "xdr::xdr_void{}" : "_xdr_arg")
+      + ", _xdr_rest...)";
+    os << nl << "template<typename...A> auto"
+       << nl << p.id << "(";
+    if (p.arg != "void")
+      os << "const " << p.arg << " &_xdr_arg, ";
+    os << "A &&..._xdr_rest) ->"
+       << nl << "decltype(" << invoke << ") {"
+       << nl << "  return " << invoke << ";"
+       << nl << "}";
   }
-#endif
-
-  os << nl.close << "};";
+  os << nl.close << "};"
+     << nl.close << "};";
 }
 
 void
 gen(std::ostream &os, const rpc_program &u)
 {
-  string guard("_xdr_defined_");
-  for (const string &ns : namespaces) {
-    guard += ns;
-    guard += "__";
-  }
-  guard += u.id;
-
-  os << "#ifdef " << guard
-     << nl << "static_assert(" << u.id << " == " << u.val
-     << ", \"conflicting values for " << u.id << "\");"
-     << nl << "#else // !" << guard
-     << nl << "#define " << guard << " 1"
-     << nl << "constexpr std::uint32_t " << u.id << " = " << u.val << ";"
-     << nl << "#endif // !" << guard;
-
-  for (const rpc_vers &v : u.vers)
+  bool first{true};
+  for (const rpc_vers &v : u.vers) {
+    if (first)
+      first = false;
+    else
+      os << endl << nl;
     gen_vers(os, u, v);
+  }
 }
 
 }

@@ -82,6 +82,17 @@ program xdrtest_prog {
     void null(void) = 1;
     ContainsEnum nonnull(u_4_12) = 2;
   } = 1;
+  version xdrtest2 {
+    void null2(void) = 1;
+    ContainsEnum nonnull2(u_4_12) = 2;
+    void ut(uniontest) = 3;
+  } = 2;
 } = 0x20000000;
+
+program other_prog {
+  version opv1 {
+    void o_null(void) = 1;
+  } = 1;
+}= 0x20000001;
 
 }

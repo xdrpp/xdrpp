@@ -104,8 +104,11 @@ struct xdr_traits_base {
   static constexpr bool is_enum = false;
   static constexpr bool is_container = false;
   static constexpr bool is_numeric = false;
+  static constexpr bool is_struct = false;
+  static constexpr bool is_union = false;
   static constexpr bool has_fixed_size = false;
 };
+
 
 template<typename To, typename From> To
 xdr_reinterpret(From f)
@@ -450,6 +453,7 @@ template<typename FP, typename ...Fields>
 
 template<> struct xdr_struct_base<> : xdr_traits_base {
   static constexpr bool is_class = true;
+  static constexpr bool is_struct = true;
   static constexpr bool has_fixed_size = true;
   static constexpr std::size_t fixed_size = 0;
   template<typename T> static constexpr std::size_t serial_size(const T&) {
@@ -464,6 +468,16 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
   using field_info = FP;
   using next_field = xdr_struct_base<Rest...>;
 };
+
+
+//! Placehoder type representing void values marshaled as 0 bytes.
+struct xdr_void {};
+template<> struct xdr_traits<xdr_void> : xdr_struct_base<> {
+  template<typename Archive> static void
+  save(Archive &ar, const xdr_void &obj) {}
+  template<typename Archive> static void load(Archive &ar, xdr_void &obj) {}
+};
+
 
 //! Dereference a pointer to a member of type \c F of a class of type
 //! \c T, preserving reference types.  Hence applying to an lvalue
