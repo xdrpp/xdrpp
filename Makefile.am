@@ -13,8 +13,9 @@ BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
 	include/xdrc/rpc_msg.hh
 
 lib_LIBRARIES = xmsg/libxmsg.a
-xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc		\
-	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc xmsg/srpc.cc
+xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc	\
+	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc		\
+	xmsg/rpc_msg.cc xmsg/srpc.cc
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
@@ -27,7 +28,7 @@ pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
 check_PROGRAMS = tests/test-msgsock tests/test-marshal	\
-	tests/test-printer
+	tests/test-srpc tests/test-printer
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 endif
@@ -36,9 +37,11 @@ tests_test_printer_SOURCES = tests/printer.cc xmsg/libxmsg.a
 tests_test_msgsock_SOURCES = tests/msgsock.cc xmsg/libxmsg.a
 tests_test_marshal_SOURCES = tests/marshal.cc xmsg/libxmsg.a
 tests_test_cereal_SOURCES = tests/cereal.cc xmsg/libxmsg.a
+tests_test_srpc_SOURCES = tests/srpc.cc xmsg/libxmsg.a
 tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
+tests/srpc.o: tests/xdrtest.hh
 
 SUFFIXES = .x .hh
 .x.hh:

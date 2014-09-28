@@ -53,7 +53,7 @@ struct xdr_wrong_union : std::logic_error {
 //! uses include translating types to supertypes, e.g., so an archive
 //! can handle \c std::string instead of \c xdr::xstring.
 template<typename Archive> struct archive_adapter {
-  template<typename T> static void apply(Archive &ar, const char *, T &&t) {
+  template<typename T> static void apply(Archive &ar, T &&t, const char *) {
     ar(std::forward<T>(t));
   }
 };
@@ -63,9 +63,9 @@ template<typename Archive> struct archive_adapter {
 //! xdr::archive_adapter template class, which can be specialized to
 //! capture the field name as well.
 template<typename Archive, typename T> inline void
-archive(Archive &ar, const char *name, T &&t)
+archive(Archive &ar, T &&t, const char *name = nullptr)
 {
-  archive_adapter<Archive>::apply(ar, name, std::forward<T>(t));
+  archive_adapter<Archive>::apply(ar, std::forward<T>(t), name);
 }
 
 //! Metadata for all marshalable XDR types.
@@ -186,14 +186,14 @@ struct xdr_container_base : xdr_traits_base {
 
   template<typename Archive> static void save(Archive &a, const T &t) {
     if (variable)
-      archive(a, nullptr, uint32_t(t.size()));
+      archive(a, uint32_t(t.size()));
     for (const value_type &v : t)
-      archive(a, nullptr, v);
+      archive(a, v);
   }
   template<typename Archive> static void load(Archive &a, T &t) {
     uint32_t n;
     if (variable) {
-      archive(a, nullptr, n);
+      archive(a, n);
       t.check_size(n);
       if (t.size() > n)
 	t.resize(n);
@@ -201,7 +201,7 @@ struct xdr_container_base : xdr_traits_base {
     else
       n = t.size();
     for (uint32_t i = 0; i < n; ++i)
-      archive(a, nullptr, t.extend_at(i));
+      archive(a, t.extend_at(i));
   }
   static std::size_t serial_size(const T &t) {
     std::size_t s = variable ? 4 : 0;
@@ -532,11 +532,11 @@ struct field_archiver_t {
 
   template<typename F, typename T, typename Archive> void
   operator()(F T::*mp, Archive &ar, T &t, const char *name) const {
-    archive(ar, name, member(t, mp));
+    archive(ar, member(t, mp), name);
   }
   template<typename F, typename T, typename Archive> void
   operator()(F T::*mp, Archive &ar, const T &t, const char *name) const {
-    archive(ar, name, member(t, mp));
+    archive(ar, member(t, mp), name);
   }
 };
 constexpr field_archiver_t field_archiver;

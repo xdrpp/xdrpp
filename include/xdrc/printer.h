@@ -29,7 +29,7 @@ struct Printer {
 
   template<typename T> void operator()(const char *field, const pointer<T> &t) {
     if (t)
-      archive(*this, field, *t);
+      archive(*this, *t, field);
     else
       bol(field) << "NULL";
   }
@@ -65,7 +65,7 @@ struct Printer {
     skipnl_ = skipnl;
     indent_ += 2;
     for (const auto &o : t)
-      archive(*this, nullptr, o);
+      archive(*this, o);
     if (skipnl) {
       buf_ << " ]";
       indent_ -= 2;
@@ -80,33 +80,33 @@ struct Printer {
 
 template<> struct archive_adapter<Printer> {
   template<std::uint32_t N>
-  static void apply(Printer &p, const char *field, const xstring<N> &s) {
+  static void apply(Printer &p, const xstring<N> &s, const char *field) {
     p(field, escape_string(s));
   }
   template<std::uint32_t N>
-  static void apply(Printer &p, const char *field, const opaque_array<N> &v) {
+  static void apply(Printer &p, const opaque_array<N> &v, const char *field) {
     p(field, hexdump(v.data(), v.size()));
   }
   template<std::uint32_t N>
-  static void apply(Printer &p, const char *field, const opaque_vec<N> &v) {
+  static void apply(Printer &p, const opaque_vec<N> &v, const char *field) {
     p(field, hexdump(v.data(), v.size()));
   }
 
   template<typename T> static ENABLE_IF(xdr_traits<T>::is_enum)
-  apply(Printer &p, const char *field, T t) {
+  apply(Printer &p, T t, const char *field) {
     if (const char *n = xdr_traits<T>::enum_name(t))
       p(field, n);
     else
       p(field, std::to_string(t));
   }
   template<typename T> static ENABLE_IF(xdr_traits<T>::is_numeric)
-  apply(Printer &p, const char *field, T t) {
+  apply(Printer &p, T t, const char *field) {
     p(field, std::to_string(t));
   };
 
   template<typename T> static ENABLE_IF(xdr_traits<T>::is_class
 					|| xdr_traits<T>::is_container)
-  apply(Printer &p, const char *field, const T &obj) { p(field, obj); }
+  apply(Printer &p, const T &obj, const char *field) { p(field, obj); }
 };
 
 template<typename T> std::string

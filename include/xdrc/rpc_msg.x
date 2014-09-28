@@ -1,5 +1,7 @@
 /* RPC message format as defined by RFC 5531 */
 
+namespace xdr {
+
 enum auth_flavor {
   AUTH_NONE       = 0,
   AUTH_SYS        = 1,
@@ -115,7 +117,7 @@ union rejected_reply switch (reject_stat stat) {
      unsigned int high;
    } mismatch_info;
  case AUTH_ERROR:
-   auth_stat stat;
+   auth_stat rj_why;
 };
 
 /* Body of a reply to an RPC call: */
@@ -136,3 +138,5 @@ struct rpc_msg {
     reply_body rbody;
   } body;
 };
+
+}

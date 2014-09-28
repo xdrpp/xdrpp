@@ -46,7 +46,7 @@ template<typename T> void
 xdr_clear(T &t)
 {
   static constexpr xdr_clear_t c;
-  archive(c, nullptr, t);
+  archive(c, t);
 }
 
 }

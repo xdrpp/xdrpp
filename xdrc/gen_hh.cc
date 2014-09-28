@@ -222,9 +222,8 @@ gen(std::ostream &os, const rpc_struct &s)
 	+ cur_scope() + " &obj) {" } ) {
     top_material << decl << endl;
     for (size_t i = 0; i < s.decls.size(); ++i)
-      top_material << "    archive(ar, \""
-		   << s.decls[i].id << "\", obj."
-		   << s.decls[i].id << ");" << endl;
+      top_material << "    archive(ar, obj." << s.decls[i].id
+		   << ", \"" << s.decls[i].id << "\");" << endl;
     top_material << "  }" << endl;;
   }
   top_material << "};" << endl;
@@ -554,8 +553,8 @@ gen(std::ostream &os, const rpc_union &u)
     << "  template<typename Archive> static void" << endl
     << "  save(Archive &ar, const "
     << cur_scope() << " &obj) {" << endl
-    << "    xdr::archive(ar, \"" << u.tagid << "\", obj."
-    << u.tagid << "());" << endl
+    << "    xdr::archive(ar, obj." << u.tagid << "(), \""
+    << u.tagid << "\");" << endl
     << "    if (!obj._xdr_with_mem_ptr(field_archiver, obj."
     << u.tagid << "(), ar, obj," << endl
     << "                               union_field_name(obj)))" << endl
@@ -567,7 +566,7 @@ gen(std::ostream &os, const rpc_union &u)
     << "  load(Archive &ar, "
     << cur_scope() << " &obj) {" << endl
     << "    discriminant_type which;" << endl
-    << "    xdr::archive(ar, \"" << u.tagid << "\", which);" << endl
+    << "    xdr::archive(ar, which, \"" << u.tagid << "\");" << endl
     << "    obj." << u.tagid << "(which);" << endl
     << "    obj._xdr_with_mem_ptr(field_archiver, obj."
     << u.tagid << "(), ar, obj," << endl
@@ -628,13 +627,9 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   os << nl << "using _XDRBASE::_XDRBASE;";
   for (const rpc_proc &p : v.procs) {
     string invoke = string("_XDRBASE::template invoke<") + p.id + "_t>("
-      + (p.arg == "void" ? "xdr::xdr_void{}" : "_xdr_arg")
-      + ", _xdr_rest...)";
-    os << endl << nl << "template<typename...A> auto"
-       << nl << p.id << "(";
-    if (p.arg != "void")
-      os << "const " << p.arg << " &_xdr_arg, ";
-    os << "A &&..._xdr_rest) ->"
+      + "_xdr_args...)";
+    os << endl << nl << "template<typename..._XDRARGS> auto"
+       << nl << p.id << "(_XDRARGS &&..._xdr_args) ->"
        << nl << "decltype(" << invoke << ") {"
        << nl << "  return " << invoke << ";"
        << nl << "}";

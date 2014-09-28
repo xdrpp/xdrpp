@@ -70,7 +70,7 @@ load(Archive &ar, T &t)
 
 template<typename Archive> struct nvp_adapter {
   template<typename T> static void
-  apply(Archive &ar, const char *field, T &&t) {
+  apply(Archive &ar, T &&t, const char *field) {
     if (field)
       ar(cereal::make_nvp(field, std::forward<T>(t)));
     else
@@ -78,11 +78,11 @@ template<typename Archive> struct nvp_adapter {
   }
 
   template<uint32_t N> static void
-  apply(Archive &ar, const char *field, xstring<N> &s) {
+  apply(Archive &ar, xstring<N> &s, const char *field) {
     apply(ar, field, static_cast<std::string &>(s));
   }
   template<uint32_t N> static void
-  apply(Archive &ar, const char *field, const xstring<N> &s) {
+  apply(Archive &ar, const xstring<N> &s, const char *field) {
     apply(ar, field, static_cast<const std::string &>(s));
   }
 };

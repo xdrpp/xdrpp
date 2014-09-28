@@ -186,7 +186,7 @@ xdr_argpack_archive(Archive &)
 template<typename Archive, typename T, typename...Args> inline void
 xdr_argpack_archive(Archive &ar, T &&t, Args &&...args)
 {
-  archive(ar, nullptr, std::forward<T>(t));
+  archive(ar, std::forward<T>(t));
   xdr_argpack_archive(ar, std::forward<Args>(args)...);
 }
 
@@ -204,8 +204,8 @@ xdr_to_msg(const Args &...args)
 template<typename T> T &
 xdr_from_msg(const msg_ptr &m, T &t)
 {
-  xdr_get g (m);
-  archive(g, nullptr, t);
+  xdr_get g(m);
+  archive(g, t);
   if (g.p_ != g.e_)
     throw xdr_runtime_error("xdr_from_message did not consume whole message");
   return t;
