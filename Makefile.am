@@ -13,15 +13,16 @@ BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
 	include/xdrc/rpc_msg.hh
 
 lib_LIBRARIES = xmsg/libxmsg.a
-xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc	\
-	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc
+xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc		\
+	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc xmsg/srpc.cc
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
 	include/xdrc/clear.h include/xdrc/iniparse.h		\
 	include/xdrc/marshal.h include/xdrc/printer.h		\
 	include/xdrc/rpc_msg.hh include/xdrc/message.h		\
-	include/xdrc/msgsock.h include/xdrc/pollset.h
+	include/xdrc/msgsock.h include/xdrc/pollset.h		\
+	include/xdrc/srpc.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
@@ -45,7 +46,7 @@ SUFFIXES = .x .hh
 $(top_builddir)/tests/xdrtest.hh: $(XDRC)
 $(top_builddir)/include/xdrc/rpc_msg.hh: $(XDRC)
 
-CLEANFILES = *~ */*~ .gitignore~ tests/xdrtest.hh include/xdrc/rpc_msg.hh
+CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh include/xdrc/rpc_msg.hh
 
 $(srcdir)/xdrc/xdrc.1: $(srcdir)/xdrc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/xdrc/xdrc.1.md -o $(srcdir)/xdrc/xdrc.1

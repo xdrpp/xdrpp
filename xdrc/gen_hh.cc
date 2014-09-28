@@ -598,7 +598,11 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "static constexpr std::uint32_t proc = " << p.val << ";"
        << nl << "static constexpr const char *proc_name = \"" << p.id << "\";"
        << nl << "using arg_type = " << p.arg << ";"
+       << nl << "using arg_wire_type = "
+       << (p.arg == "void" ? "xdr::xdr_void" : p.arg) << ";"
        << nl << "using res_type = " << p.res << ";"
+       << nl << "using res_wire_type = "
+       << (p.res == "void" ? "xdr::xdr_void" : p.res) << ";"
        << nl << "template<typename R = void, typename C, typename...A> static R"
        << nl << "dispatch(C &&c, A &&...a) {"
        << nl << "  return c." << p.id << "(std::forward<A>(a)...);"
@@ -621,16 +625,12 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   os << endl
      << nl << "template<typename _XDRBASE> struct client : _XDRBASE {";
   ++nl;
-  bool first{true};
+  os << nl << "using _XDRBASE::_XDRBASE;";
   for (const rpc_proc &p : v.procs) {
-    if (first)
-      first = false;
-    else
-      os << endl;
     string invoke = string("_XDRBASE::template invoke<") + p.id + "_t>("
       + (p.arg == "void" ? "xdr::xdr_void{}" : "_xdr_arg")
       + ", _xdr_rest...)";
-    os << nl << "template<typename...A> auto"
+    os << endl << nl << "template<typename...A> auto"
        << nl << p.id << "(";
     if (p.arg != "void")
       os << "const " << p.arg << " &_xdr_arg, ";
