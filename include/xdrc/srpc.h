@@ -64,4 +64,78 @@ public:
   }
 };
 
+struct server_base {
+  const uint32_t prog_;
+  const uint32_t vers_;
+
+  server_base(uint32_t prog, uint32_t vers) : prog_(prog), vers_(vers) {}
+  virtual msg_ptr process(const rpc_msg &hdr, xdr_get &g) = 0;
+};
+
+//! Call a function, but drop the first argument if it is of type
+//! xdr::xdr_void, and promote the result to xdr_void if it is of type
+//! void.
+template<typename R, typename...A> inline R
+xdr_drop_void(R(&fn)(A...a), A &&...a)
+{
+  return fn(std::forward<A>(a)...);
+}
+template<typename R, typename...A> inline R
+xdr_drop_void(R(&fn)(A...a), xdr_void, A &&...a)
+{
+  return fn(std::forward<A>(a)...);
+}
+
+template<typename V, typename T> struct synchronous_server : server_base {
+  T server_;
+
+  template<typename...A> synchronous_server(A &&...a)
+    : server_base(V::program, V::version), server_(std::forward<A>(a)...) {}
+  msg_ptr process(const rpc_msg &chdr, xdr_get &g) override {
+    if (chdr.body.mtype() != CALL
+	|| chdr.body.cbody().rpcvers != 2
+	|| chdr.body.cbody().prog != prog_
+	|| chdr.body.cbody().vers != vers_)
+      return nullptr;
+
+    rpc_msg rhdr;
+    rhdr.xid = chdr.xid;
+    rhdr.body.mtype(REPLY).rbody().stat(MSG_ACCEPTED)
+      .areply().reply_data.stat(SUCCESS);
+
+    msg_ptr ret;
+    if (!V::call_dispatch(*this, chdr.body.cbody().proc, g, rhdr, ret)) {
+      rpc_msg rhdr;
+      rhdr.body.rbody().areply().reply_data.stat(PROC_UNAVAIL);
+      return xdr_to_msg(rhdr);
+    }
+    return ret;
+  }
+
+  template<typename P> typename std::enable_if<
+    !std::is_same<void, typename P::res_type>::value>::type
+  dispatch(xdr_get &g, rpc_msg rhdr, msg_ptr &ret) {
+    std::unique_ptr<typename P::arg_wire_type>
+      arg(new typename P::arg_wire_type);
+    archive(g, *arg);
+    if (g.p_ != g.e_)
+      throw xdr_bad_message_size("synchronous_server did not consume"
+				 " whole message");
+    std::unique_ptr<typename P::res_type> res = xdr_drop_void(P::dispatch, arg);
+    return xdr_to_msg(rhdr, *res);
+  }
+  template<typename P> typename std::enable_if<
+    std::is_same<void, typename P::res_type>::value>::type
+  dispatch(xdr_get &g, rpc_msg rhdr, msg_ptr &ret) {
+    std::unique_ptr<typename P::arg_wire_type>
+      arg(new typename P::arg_wire_type);
+    archive(g, *arg);
+    if (g.p_ != g.e_)
+      throw xdr_bad_message_size("synchronous_server did not consume"
+				 " whole message");
+    xdr_drop_void(P::dispatch, arg);
+    return xdr_to_msg(rhdr);
+  }
+};
+
 }

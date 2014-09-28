@@ -190,7 +190,7 @@ gen(std::ostream &os, const rpc_struct &s)
     os << endl;
 
   for (auto &d : s.decls)
-    os << nl << decl_type(d) << ' ' << d.id << ';';
+    os << nl << decl_type(d) << ' ' << d.id << "{};";
   os << nl.close << "}";
 
   top_material

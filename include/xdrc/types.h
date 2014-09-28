@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -258,7 +259,12 @@ template<typename T, uint32_t N>
 struct xdr_traits<xarray<T,N>> : xdr_container_base<xarray<T,N>, false> {};
 
 //! XDR \c opaque is represented as std::uint8_t;
-template<uint32_t N = XDR_MAX_LEN> using opaque_array = xarray<std::uint8_t,N>;
+template<uint32_t N = XDR_MAX_LEN> struct opaque_array
+  : xarray<std::uint8_t,N> {
+  using xarray<std::uint8_t,N>::xarray;
+  // Pay a little performance to avoid heartbleed-type errors...
+  opaque_array() { std::memset(this->data(), 0, N); }
+};
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
   static constexpr std::size_t has_fixed_size = true;
@@ -556,6 +562,7 @@ struct field_size_t {
 constexpr field_size_t field_size;
 
 
+#if 0
 template<typename T> struct const_lvalue_arg {
   using type = const typename T::arg_type;
 };
@@ -566,6 +573,7 @@ template<typename T> struct unique_ptr_res {
 template<> struct unique_ptr_res<void> {
   using type = void;
 };
+#endif
 
 
 }

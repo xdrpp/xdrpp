@@ -207,7 +207,8 @@ xdr_from_msg(const msg_ptr &m, T &t)
   xdr_get g(m);
   archive(g, t);
   if (g.p_ != g.e_)
-    throw xdr_runtime_error("xdr_from_message did not consume whole message");
+    throw xdr_bad_message_size("xdr_from_message did not"
+			       " consume whole message");
   return t;
 }
 
