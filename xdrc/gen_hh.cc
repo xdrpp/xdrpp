@@ -622,21 +622,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
      << nl << "return false;"
      << nl.close << "}";
 
-  os << endl
-     << nl << "template<typename _XDRBASE> struct client : _XDRBASE {";
-  ++nl;
-  os << nl << "using _XDRBASE::_XDRBASE;";
-  for (const rpc_proc &p : v.procs) {
-    string invoke = string("this->_XDRBASE::template invoke<") + p.id + "_t>("
-      + "_xdr_args...)";
-    os << endl << nl << "template<typename..._XDRARGS> auto"
-       << nl << p.id << "(_XDRARGS &&..._xdr_args) ->"
-       << nl << "decltype(" << invoke << ") {"
-       << nl << "  return " << invoke << ";"
-       << nl << "}";
-  }
-  os << nl.close << "};";
-
+  // interface
   os << endl
      << nl << "template<template<typename> class _R,"
      << " template<typename> class _A,"
@@ -655,8 +641,24 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
       os << "typename _A<" << id << ">::type,"
 	 << nl << std::string (p.id.size()+1, ' ');
     os << "typename _As<" << id << ">::type...) {"
-       << nl << "  throw xdr::xdr_unimplemented(\"" << v.id << "::" << p.id
-       << " unimplemented\");"
+       << nl << "  throw xdr::xdr_unimplemented(\"" << v.id << " procedure "
+       << p.id << " unimplemented\");"
+       << nl << "}";
+  }
+  os << nl.close << "};";
+
+  // client
+  os << endl
+     << nl << "template<typename _XDRBASE> struct client : _XDRBASE {";
+  ++nl;
+  os << nl << "using _XDRBASE::_XDRBASE;";
+  for (const rpc_proc &p : v.procs) {
+    string invoke = string("this->_XDRBASE::template invoke<") + p.id + "_t>("
+      + "_xdr_args...)";
+    os << endl << nl << "template<typename..._XDRARGS> auto"
+       << nl << p.id << "(_XDRARGS &&..._xdr_args) ->"
+       << nl << "decltype(" << invoke << ") {"
+       << nl << "  return " << invoke << ";"
        << nl << "}";
   }
   os << nl.close << "};";
