@@ -584,16 +584,17 @@ gen(std::ostream &os, const rpc_union &u)
 void
 gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
-  os << "struct " << v.id << "_t {"
+  os << "struct " << v.id << " {"
      << nl.open << "static constexpr std::uint32_t program = " << u.val << ";"
      << nl << "static constexpr const char *program_name = \"" << u.id << "\";"
      << nl << "static constexpr std::uint32_t version = " << v.val << ";"
      << nl << "static constexpr const char *version_name = \"" << v.id << "\";";
 
   for (const rpc_proc &p : v.procs) {
+    string call = "c." + p.id + "(std::forward<A>(a)...)";
     os << endl
        << nl << "struct " << p.id << "_t {"
-       << nl.open << "using version_type = " << v.id << "_t;"
+       << nl.open << "using version_type = " << v.id << ";"
        << nl << "static constexpr std::uint32_t proc = " << p.val << ";"
        << nl << "static constexpr const char *proc_name = \"" << p.id << "\";"
        << nl << "using arg_type = " << p.arg << ";"
@@ -602,16 +603,18 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "using res_type = " << p.res << ";"
        << nl << "using res_wire_type = "
        << (p.res == "void" ? "xdr::xdr_void" : p.res) << ";"
-       << nl << "template<typename R = void, typename C, typename...A> static R"
-       << nl << "dispatch(C &&c, A &&...a) {"
-       << nl << "  return c." << p.id << "(std::forward<A>(a)...);"
+       << nl
+       << nl << "template<typename C, typename...A> static auto"
+       << nl << "dispatch(C &&c, A &&...a) ->"
+       << nl << "decltype(" << call << ") {"
+       << nl << "  return " << call << ";"
        << nl << "}"
        << nl.close << "};";
   }
 
   os << endl
-     << nl << "template<typename T, typename...A> bool"
-     << nl << "dispatch(T &&t, std::uint32_t proc, A &&...a) {"
+     << nl << "template<typename T, typename...A> static bool"
+     << nl << "call_dispatch(T &&t, std::uint32_t proc, A &&...a) {"
      << nl.open << "switch(proc) {";
   for (const rpc_proc &p : v.procs)
     os << nl << "case " << p.val << ":"
@@ -634,7 +637,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
       first = false;
     else
       os << endl;
-    string id = v.id + "_t::" + p.id + "_t";
+    string id = v.id + "::" + p.id + "_t";
     os << nl << "virtual typename _R<" << id << ">::type"
        << nl << p.id << "(";
     if (p.arg != "void")

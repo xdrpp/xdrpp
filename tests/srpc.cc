@@ -34,7 +34,7 @@ getmsg(int fd)
 void
 sendreq(int fd)
 {
-  testns::xdrtest2_t::client<synchronous_client> sc(fd);
+  testns::xdrtest2::client<synchronous_client> sc(fd);
 
   u_4_12 arg(12);
   arg.f12().i = 77;
