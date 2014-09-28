@@ -610,12 +610,13 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   }
 
   os << endl
-     << nl << "template<typename F, typename...A> bool"
-     << nl << "demux(F &&f, std::uint32_t proc, A &&...a) {"
+     << nl << "template<typename T, typename...A> bool"
+     << nl << "dispatch(T &&t, std::uint32_t proc, A &&...a) {"
      << nl.open << "switch(proc) {";
   for (const rpc_proc &p : v.procs)
     os << nl << "case " << p.val << ":"
-       << nl << "  f(" << p.id << "_t{}, std::forward<A>(a)...);"
+       << nl << "  t.template dispatch<" << p.id
+       << "_t>(std::forward<A>(a)...);"
        << nl << "  return true;";
   os << nl << "}"
      << nl << "return false;"

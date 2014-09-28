@@ -4,8 +4,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
 
 bin_PROGRAMS = xdrc/xdrc
 
-xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/scan.ll	\
-	xdrc/parse.yy xdrc/union.h xdrc/xdrc_internal.h
+xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/gen_server.cc	\
+	xdrc/scan.ll xdrc/parse.yy xdrc/union.h xdrc/xdrc_internal.h
 xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d

@@ -2,8 +2,10 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
-#include <stdio.h>
+#include <fcntl.h>
 #include <getopt.h>
+#include <stdio.h>
+#include <unistd.h>
 #include <config.h>
 #include "xdrc_internal.h"
 
@@ -15,6 +17,7 @@ extern FILE *yyin;
 std::set<string> ids;
 string input_file;
 string output_file;
+string file_prefix;
 
 void
 rpc_decl::set_id(const string &nid)
@@ -60,6 +63,7 @@ enum opttag {
   OPT_VERSION = 0x100,
   OPT_HELP,
   OPT_CC,
+  OPT_SERVER,
   OPT_HH
 };
 
@@ -67,15 +71,16 @@ enum opttag {
 usage(int err = 1)
 {
   std::ostream &os = err ? cerr : cout;
-  os << "usage: xdrc -hh [-DVAR=VALUE...] [-o OUTFILE] INPUT.x\n";
+  os << "usage: xdrc {-hh|-server} [-DVAR=VALUE...] [-o OUTFILE] INPUT.x\n";
   exit(err);
 }
 
 static const struct option xdrc_options[] = {
   {"version", no_argument, nullptr, OPT_VERSION},
   {"help", no_argument, nullptr, OPT_HELP},
-  //{"cc", no_argument, nullptr, OPT_CC},
   {"hh", no_argument, nullptr, OPT_HH},
+  {"server", no_argument, nullptr, OPT_SERVER},
+  //{"cc", no_argument, nullptr, OPT_CC},
   {nullptr, 0, nullptr, 0}
 };
 
@@ -88,8 +93,10 @@ int
 main(int argc, char **argv)
 {
   string cpp_command {CPP_COMMAND};
+  cpp_command += " -DXDRC=1";
   void (*gen)(std::ostream &) = nullptr;
   string suffix;
+  bool noclobber = false;
 
   int opt;
   while ((opt = getopt_long_only(argc, argv, "D:o:",
@@ -117,6 +124,14 @@ main(int argc, char **argv)
       gen = gen_cc;
       cpp_command += " -DXDRC_CC=1";
       suffix = ".cc";
+      break;
+    case OPT_SERVER:
+      if (gen)
+	usage();
+      gen = gen_server;
+      cpp_command += " -DXDRC_SERVER=1";
+      suffix = ".server.cc";
+      noclobber = true;
       break;
     case OPT_HH:
       if (gen)
@@ -157,6 +172,18 @@ main(int argc, char **argv)
     output_file = strip_directory(output_file);
     output_file += suffix;
   }
+
+  if (noclobber && output_file != "-" && !access(output_file.c_str(), 0)
+      && output_file != "/dev/null") {
+    cerr << output_file << ": already exists, refusing to clobber it." << endl;
+    exit(1);
+  }
+
+  if (output_file.size() > suffix.size()
+      && output_file.substr(output_file.size() - suffix.size()) == suffix)
+    file_prefix = output_file.substr(0, output_file.size() - suffix.size());
+  else
+    file_prefix = strip_dot_x(input_file);
 
   if (output_file == "-")
     gen(cout);

@@ -229,9 +229,11 @@ extern strlist_t litq;
 string strip_directory(string in);
 string strip_dot_x(string in);
 void gen_hh(std::ostream &os);
+void gen_server(std::ostream &os);
 
 extern string input_file;
 extern string output_file;
+extern string file_prefix;
 
 struct omanip : std::function<void(std::ostream&)> {
   using ostream = std::ostream;
