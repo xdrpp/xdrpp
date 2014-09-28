@@ -41,6 +41,11 @@ struct xdr_should_be_zero : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
 };
 
+//! Attempt to call unimplemented function
+struct xdr_unimplemented : std::logic_error {
+  using std::logic_error::logic_error;
+};
+
 //! Attempt to access wrong field of a union.
 struct xdr_wrong_union : std::logic_error {
   using std::logic_error::logic_error;

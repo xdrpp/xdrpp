@@ -635,8 +635,33 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "  return " << invoke << ";"
        << nl << "}";
   }
-  os << nl.close << "};"
-     << nl.close << "};";
+  os << nl.close << "};";
+
+  os << endl
+     << nl << "template<template<typename> class _R,"
+     << " template<typename> class _A,"
+     << nl << "         template<typename> class..._As> struct interface {";
+  ++nl;
+  bool first = true;
+  for (const rpc_proc &p : v.procs) {
+    if (first)
+      first = false;
+    else
+      os << endl;
+    string id = v.id + "_t::" + p.id + "_t";
+    os << nl << "virtual typename _R<" << id << ">::type"
+       << nl << p.id << "(";
+    if (p.arg != "void")
+      os << "typename _A<" << id << ">::type,"
+	 << nl << std::string (p.id.size()+1, ' ');
+    os << "typename _As<" << id << ">::type...) {"
+       << nl << "  throw xdr::xdr_unimplemented(\"" << v.id << "::" << p.id
+       << " unimplemented\");"
+       << nl << "}";
+  }
+  os << nl.close << "};";
+
+  os << nl.close << "};";
 }
 
 void
