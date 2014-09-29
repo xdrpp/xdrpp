@@ -206,28 +206,28 @@ typedef string rpcb_string<>;
 program RPCBPROG {
   version RPCBVERS {
     bool
-      RPCBPROC_SET(rpcb) = 1;
+      RPCBPROC3_SET(rpcb) = 1;
 
     bool
-      RPCBPROC_UNSET(rpcb) = 2;
+      RPCBPROC3_UNSET(rpcb) = 2;
 
     rpcb_string
-      RPCBPROC_GETADDR(rpcb) = 3;
+      RPCBPROC3_GETADDR(rpcb) = 3;
 
     rpcblist_ptr
-      RPCBPROC_DUMP(void) = 4;
+      RPCBPROC3_DUMP(void) = 4;
 
     rpcb_rmtcallres
-      RPCBPROC_CALLIT(rpcb_rmtcallargs) = 5;
+      RPCBPROC3_CALLIT(rpcb_rmtcallargs) = 5;
 
     unsigned int
-      RPCBPROC_GETTIME(void) = 6;
+      RPCBPROC3_GETTIME(void) = 6;
 
     netbuf
-      RPCBPROC_UADDR2TADDR(rpcb_string) = 7;
+      RPCBPROC3_UADDR2TADDR(rpcb_string) = 7;
 
     rpcb_string
-      RPCBPROC_TADDR2UADDR(netbuf) = 8;
+      RPCBPROC3_TADDR2UADDR(netbuf) = 8;
   } = 3;
 
   version RPCBVERS4 {
