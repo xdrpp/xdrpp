@@ -561,21 +561,6 @@ struct field_size_t {
 };
 constexpr field_size_t field_size;
 
-
-#if 0
-template<typename T> struct const_lvalue_arg {
-  using type = const typename T::arg_type;
-};
-
-template<typename T> struct unique_ptr_res {
-  using type = std::unique_ptr<T>;
-};
-template<> struct unique_ptr_res<void> {
-  using type = void;
-};
-#endif
-
-
 }
 
 #endif // !_XDRC_TYPES_H_HEADER_INCLUDED_

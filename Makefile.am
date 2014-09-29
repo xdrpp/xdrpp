@@ -19,11 +19,11 @@ xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc	\
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
-	include/xdrc/clear.h include/xdrc/iniparse.h		\
-	include/xdrc/marshal.h include/xdrc/printer.h		\
-	include/xdrc/rpc_msg.hh include/xdrc/message.h		\
-	include/xdrc/msgsock.h include/xdrc/pollset.h		\
-	include/xdrc/srpc.h
+	include/xdrc/clear.h include/xdrc/exception.h		\
+	include/xdrc/iniparse.h include/xdrc/marshal.h		\
+	include/xdrc/printer.h include/xdrc/rpc_msg.hh		\
+	include/xdrc/message.h include/xdrc/msgsock.h		\
+	include/xdrc/pollset.h include/xdrc/srpc.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
