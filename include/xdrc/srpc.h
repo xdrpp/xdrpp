@@ -3,10 +3,8 @@
 //! \file srpc.h Simple synchronous RPC functions.
 
 #include <xdrc/marshal.h>
-#include <xdrc/rpc_msg.hh>
 #include <xdrc/printer.h>
-//#include <mutex>
-//#include <condition_variable>
+#include <xdrc/rpc_msg.hh>
 #include <map>
 
 namespace xdr {
@@ -14,37 +12,41 @@ namespace xdr {
 msg_ptr read_message(int fd);
 void write_message(int fd, const msg_ptr &m);
 
+void prepare_call(uint32_t prog, uint32_t vers, uint32_t proc, rpc_msg &hdr);
+template<typename P> inline void
+prepare_call(rpc_msg &hdr)
+{
+  prepare_call(P::interface_type::program, P::interface_type::version,
+	       P::proc, hdr);
+}
+
+
 //! Synchronous file descriptor demultiplexer.
-class synchronous_client {
+class synchronous_client_base {
   const int fd_;
   std::uint32_t xid_{0};
 
-  static void moveret(xdr_void &) {}
+  static void moveret(std::unique_ptr<xdr_void> &) {}
   template<typename T> static T &&moveret(T &t) { return std::move(t); }
 
 public:
-  synchronous_client(int fd) : fd_(fd) {}
+  synchronous_client_base(int fd) : fd_(fd) {}
 
   template<typename P> typename P::res_type invoke() {
     return this->template invoke<P>(xdr::xdr_void{});
   }
 
-  template<typename P> typename P::res_type
+  template<typename P> typename std::conditional<
+    std::is_void<typename P::res_type>::value, void,
+    std::unique_ptr<typename P::res_type>>::type
   invoke(const typename P::arg_wire_type &a) {
     std::uint32_t xid = ++xid_;
     rpc_msg hdr;
-    hdr.xid = xid;
-    hdr.body.cbody().rpcvers = 2;
-    hdr.body.cbody().prog = P::interface_type::program;
-    hdr.body.cbody().vers = P::interface_type::version;
-    hdr.body.cbody().proc = P::proc;
-    hdr.body.cbody().cred.flavor = AUTH_NONE;
-    hdr.body.cbody().verf.flavor = AUTH_NONE;
+    prepare_call<P>(hdr);
 
-    msg_ptr m = xdr_to_msg(hdr, a);
-    write_message(fd_, m);
+    write_message(fd_, xdr_to_msg(hdr, a));
+    msg_ptr m = read_message(fd_);
 
-    m = read_message(fd_);
     xdr_get g(m);
     archive(g, hdr);
     if (hdr.xid != xid || hdr.body.mtype() != REPLY)
@@ -56,14 +58,17 @@ public:
       throw xdr_runtime_error
 	(xdr_to_string(hdr.body.rbody().areply().reply_data, "reply_data"));
 
-    typename P::res_type r;
-    archive(g, r);
+    std::unique_ptr<typename P::res_type> r (new typename P::res_type);
+    archive(g, *r);
     if (g.p_ != g.e_)
       throw xdr_runtime_error("synchronous_client: "
 			      "did not consume whole message");
     return moveret(r);
   }
 };
+
+template<typename T> using srpc_client =
+  typename T::template client<synchronous_client_base>;
 
 struct server_base {
   const uint32_t prog_;
@@ -129,21 +134,31 @@ template<typename T> struct synchronous_server : server_base {
   }
 };
 
-//! Closes file descriptor when done.
-class server_fd {
-  const int fd_;
+class rpc_server {
   std::map<uint32_t, std::map<uint32_t, std::unique_ptr<server_base>>> servers_;
-
-  void dispatch(msg_ptr m);
   void register_server_base(server_base *s);
 
 public:
-  server_fd(int fd) : fd_(fd) {}
-  ~server_fd() { close(fd_); }
-
-  template<typename T> void register_server(T &t) {
+  //! Add objects implementing RPC program interfaces to the server.
+  template<typename T> void register_service(T &t) {
     register_server_base(new synchronous_server<T>(t));
   }
+  msg_ptr dispatch(msg_ptr m);
+};
+
+//! Attach an RPC server to a stream socket.  No procedures will be
+//! implemented by the RPC server until interface objects are
+//! reigstered with \c register_server.
+class srpc_server : public rpc_server {
+  const int fd_;
+  bool close_on_destruction_;
+
+public:
+  srpc_server(int fd, bool close_on_destruction = true)
+    : fd_(fd), close_on_destruction_(close_on_destruction) {}
+  ~srpc_server() { if (close_on_destruction_) close(fd_); }
+
+  //! Start serving requests.  (Loops until an exception.)
   void run();
 };
 

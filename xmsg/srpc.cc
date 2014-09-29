@@ -1,6 +1,7 @@
 
 #include <cerrno>
 #include <cstring>
+#include <iostream>
 #include <system_error>
 #include <unistd.h>
 #include <xdrc/srpc.h>
@@ -79,31 +80,40 @@ write_message(int fd, const msg_ptr &m)
   assert(std::size_t(n) == m->raw_size());
 }
 
+uint32_t xid_counter;
+
 void
-server_fd::register_server_base(server_base *s)
+prepare_call(uint32_t prog, uint32_t vers, uint32_t proc, rpc_msg &hdr)
+{
+  hdr.xid = ++xid_counter;
+  hdr.body.mtype(CALL);
+  hdr.body.cbody().rpcvers = 2;
+  hdr.body.cbody().prog = prog;
+  hdr.body.cbody().vers = vers;
+  hdr.body.cbody().proc = proc;
+}
+
+void
+rpc_server::register_server_base(server_base *s)
 {
   servers_[s->prog_][s->vers_].reset(s);
 }
 
-void
-server_fd::dispatch(msg_ptr m)
+msg_ptr
+rpc_server::dispatch(msg_ptr m)
 {
   xdr_get g(m);
   rpc_msg hdr;
   archive(g, hdr);
   if (hdr.body.mtype() != CALL)
-    throw xdr_runtime_error("server_fd received non-CALL message");
+    throw xdr_runtime_error("rpc_server received non-CALL message");
 
-  if (hdr.body.cbody().rpcvers != 2) {
-    write_message(fd_,  xdr_to_msg(rpc_mkerr(hdr, RPC_MISMATCH)));
-    return;
-  }
+  if (hdr.body.cbody().rpcvers != 2)
+    return xdr_to_msg(rpc_mkerr(hdr, RPC_MISMATCH));
 
   auto prog = servers_.find(hdr.body.cbody().prog);
-  if (prog == servers_.end()) {
-    write_message(fd_,  xdr_to_msg(rpc_mkerr(hdr, PROG_UNAVAIL)));
-    return;
-  }
+  if (prog == servers_.end())
+    return xdr_to_msg(rpc_mkerr(hdr, PROG_UNAVAIL));
 
   auto vers = prog->second.find(hdr.body.cbody().vers);
   if (vers == prog->second.end()) {
@@ -112,18 +122,21 @@ server_fd::dispatch(msg_ptr m)
       prog->second.cbegin()->first;
     hdr.body.rbody().areply().reply_data.mismatch_info().high =
       prog->second.crbegin()->first;
-    write_message(fd_, xdr_to_msg(hdr));
-    return;
+    return xdr_to_msg(hdr);
   }
 
-  write_message(fd_, vers->second->process(hdr, g));
+  try { return vers->second->process(hdr, g); }
+  catch (const xdr_runtime_error &e) {
+    std::cerr << xdr_to_string(hdr, e.what());
+    return xdr_to_msg(rpc_mkerr(hdr, GARBAGE_ARGS));
+  }
 }
 
 void
-server_fd::run()
+srpc_server::run()
 {
   for (;;)
-    dispatch(read_message(fd_));
+    write_message(fd_, dispatch(read_message(fd_)));
 }
 
 }

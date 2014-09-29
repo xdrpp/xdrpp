@@ -71,8 +71,8 @@ getmsg(int fd)
 #endif
 
   xdrtest2_server s;
-  server_fd sfd(fd);
-  sfd.register_server(s);
+  srpc_server sfd(fd);
+  sfd.register_service(s);
   sfd.run();
   
   close(fd);
@@ -81,14 +81,14 @@ getmsg(int fd)
 void
 sendreq(int fd)
 {
-  testns::xdrtest2::client<synchronous_client> sc(fd);
+  srpc_client<testns::xdrtest2> sc (fd);
 
   u_4_12 arg(12);
   arg.f12().i = 77;
   arg.f12().d = 3.141592654;
-  testns::ContainsEnum ce = sc.nonnull2(arg);
+  auto cep = sc.nonnull2(arg);
 
-  cout << xdr_to_string(ce);
+  cout << xdr_to_string(*cep, "The response");
 }
 
 int
