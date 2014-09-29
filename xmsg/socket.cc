@@ -7,6 +7,8 @@
 
 namespace xdr {
 
+using std::string;
+
 void
 set_nonblock(int fd)
 {
@@ -33,6 +35,17 @@ really_close(int fd)
       std::cerr << "really_close: " << std::strerror(errno) << std::endl;
       return;
     }
+}
+
+int
+parse_uaddr_port(const string &uaddr)
+{
+  int low = uaddr.rfind('.');
+  if (low == string::npos || low == 0)
+    return -1;
+  int high = uaddr.rfind('.', low - 1);
+  if (high == string::npos)
+    return -1;
 }
 
 }
