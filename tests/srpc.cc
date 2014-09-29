@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <thread>
 #include <xdrc/srpc.h>
+//#include <xdrc/rpcbind.hh>
 #include "tests/xdrtest.hh"
 
 using namespace std;
@@ -90,6 +91,13 @@ sendreq(int fd)
 
   cout << xdr_to_string(*cep, "The response");
 }
+
+
+void
+test_rpcb()
+{
+}
+
 
 int
 main()

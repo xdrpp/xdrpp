@@ -21,11 +21,50 @@ void set_close_on_exec(int fd);
 //! Keep closing a file descriptor until you don't get \c EINTR.
 void really_close(int fd);
 
+//! Category for system errors dealing with DNS (getaddrinfo, etc.).
+const std::error_category &gai_category();
+
 struct delete_addrinfo {
   constexpr delete_addrinfo() {}
   void operator()(addrinfo *ai) const { freeaddrinfo(ai); }
 };
 //! Automatically garbage-collected addrinfo pointer.
 using unique_addrinfo = std::unique_ptr<addrinfo, delete_addrinfo>;
+
+unique_addrinfo get_addrinfo(const char *host,
+			     int socktype = SOCK_STREAM,
+			     const char *service = nullptr,
+			     int family = AF_UNSPEC);
+
+//! Self-closing file descriptor.
+class unique_fd {
+  int fd_;
+public:
+  explicit unique_fd(int fd) : fd_(fd) {}
+  unique_fd(unique_fd &&uf) { fd_ = uf.fd_; uf.fd_ = -1; }
+  ~unique_fd() { clear(); }
+  unique_fd &operator=(unique_fd &&uf) {
+    clear();
+    std::swap(fd_, uf.fd_);
+    return *this;
+  }
+
+  int get() const { return fd_; }
+  operator int() const { return fd_; }
+  explicit operator bool() const { return fd_ != -1; }
+  int release() {
+    int ret = fd_;
+    fd_ = -1;
+    return ret;
+  }
+  void clear() {
+    if (fd_ != -1) {
+      really_close(fd_);
+      fd_ = -1;
+    }
+  }
+};
+
+unique_fd tcp_connect(const char *host, const char *service);
 
 }
