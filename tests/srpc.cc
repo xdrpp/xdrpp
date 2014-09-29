@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <thread>
 #include <xdrc/srpc.h>
+#include <xdrc/rpcbind.hh>
+#include <xdrc/socket.h>
 #include "tests/xdrtest.hh"
 
 using namespace std;
@@ -91,9 +93,33 @@ sendreq(int fd)
   cout << xdr_to_string(*cep, "The response");
 }
 
+
+void
+test_rpcb()
+{
+  auto fd = tcp_connect(nullptr, "sunrpc");
+  srpc_client<xdr::RPCBVERS4> rpcb(fd);
+
+  xdr::rpcb arg;
+  arg.r_prog = xdrtest2::program;
+  arg.r_vers = xdrtest2::version;
+  arg.r_netid = "tcp";
+  arg.r_addr = "0.0.0.0.32.32";
+  arg.r_owner = "dm";
+
+  auto res = rpcb.RPCBPROC_SET(arg);
+  std::cout << "RPCBPROC3_SET: " << *res << endl;
+
+  res = rpcb.RPCBPROC_UNSET(arg);
+  std::cout << "RPCBPROC_UNSET: " << *res << endl;
+}
+
+
 int
 main()
 {
+  test_rpcb();
+
   int fds[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1) {
     perror("socketpair");

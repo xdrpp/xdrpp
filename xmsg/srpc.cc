@@ -56,6 +56,11 @@ read_message(int fd)
     throw xdr_bad_message_size("read_message: received size too big");
 
   len = swap32le(len);
+  if (len & 0x80000000)
+    len &= 0x7fffffff;
+  else
+    throw xdr_bad_message_size("read_message: message fragments unimplemented");
+
   msg_ptr m = message_t::alloc(len);
   n = read(fd, m->data(), len);
   if (n == -1)

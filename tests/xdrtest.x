@@ -1,4 +1,9 @@
 
+struct test_recursive {
+  string elem<>;
+  test_recursive *next;
+};
+
 struct fix_4 {
   int i;
 };

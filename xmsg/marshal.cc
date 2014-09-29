@@ -13,7 +13,8 @@ message_t::alloc(std::size_t size)
   if (!raw)
     throw std::bad_alloc();
   message_t *m = new (raw) message_t (size);
-  *reinterpret_cast<std::uint32_t *>(m->raw_data()) = swap32le(size);
+  *reinterpret_cast<std::uint32_t *>(m->raw_data()) =
+    swap32le(size | 0x80000000);
   return msg_ptr(m);
 }
 
