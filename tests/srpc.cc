@@ -9,22 +9,25 @@
 using namespace std;
 using namespace xdr;
 
-class xdrtest_server {
-public:
-  using rpc_interface_type = testns::xdrtest;
+using namespace testns;
 
-  void null();
-  std::unique_ptr<testns::ContainsEnum> nonnull(std::unique_ptr<u_4_12> arg);
+class xdrtest2_server {
+public:
+  using rpc_interface_type = testns::xdrtest2;
+
+  void null2();
+  std::unique_ptr<ContainsEnum> nonnull2(std::unique_ptr<u_4_12> arg);
+  void ut(std::unique_ptr<uniontest> arg);
 };
 
 void
-xdrtest_server::null()
+xdrtest2_server::null2()
 {
   cerr << "I got a null request" << endl;
 }
 
 std::unique_ptr<testns::ContainsEnum>
-xdrtest_server::nonnull(std::unique_ptr<u_4_12> arg)
+xdrtest2_server::nonnull2(std::unique_ptr<u_4_12> arg)
 {
   using namespace testns;
   std::unique_ptr<ContainsEnum> res(new ContainsEnum);
@@ -34,6 +37,14 @@ xdrtest_server::nonnull(std::unique_ptr<u_4_12> arg)
   res->c(::REDDER).num() = ContainsEnum::TWO;
   
   return res;
+}
+
+void
+xdrtest2_server::ut(std::unique_ptr<uniontest> arg)
+{
+  
+  // Fill in function body here
+  
 }
 
 void
@@ -59,7 +70,7 @@ getmsg(int fd)
   close(fd);
 #endif
 
-  xdrtest_server s;
+  xdrtest2_server s;
   server_fd sfd(fd);
   sfd.register_server(s);
   sfd.run();

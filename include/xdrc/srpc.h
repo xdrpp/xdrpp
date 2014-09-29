@@ -36,8 +36,8 @@ public:
     hdr.xid = xid;
     hdr.body.cbody().rpcvers = 2;
     hdr.body.cbody().prog = P::interface_type::program;
-    hdr.body.cbody().prog = P::interface_type::version;
-    hdr.body.cbody().prog = P::proc;
+    hdr.body.cbody().vers = P::interface_type::version;
+    hdr.body.cbody().proc = P::proc;
     hdr.body.cbody().cred.flavor = AUTH_NONE;
     hdr.body.cbody().verf.flavor = AUTH_NONE;
 
