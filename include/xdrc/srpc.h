@@ -5,8 +5,9 @@
 #include <xdrc/marshal.h>
 #include <xdrc/rpc_msg.hh>
 #include <xdrc/printer.h>
-#include <mutex>
-#include <condition_variable>
+//#include <mutex>
+//#include <condition_variable>
+#include <map>
 
 namespace xdr {
 
@@ -136,6 +137,19 @@ template<typename V, typename T> struct synchronous_server : server_base {
     xdr_drop_void(P::dispatch, arg);
     return xdr_to_msg(rhdr);
   }
+};
+
+//! Closes file descriptor when done.
+class server_fd {
+  const int fd_;
+  std::map<uint32_t, std::map<uint32_t, server_base *>> servers_;
+
+  void dispatch(msg_ptr m);
+
+public:
+  server_fd(int fd) : fd_(fd) {}
+  ~server_fd() { close(fd_); }
+  void register_server(server_base &s);
 };
 
 }
