@@ -609,6 +609,17 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "decltype(" << call << ") {"
        << nl << "  return " << call << ";"
        << nl << "}"
+       << nl;
+    call = "c." + p.id + "(";
+    if (p.arg != "void")
+      call += "std::forward<DropIfVoid>(d), ";
+    call += "std::forward<A>(a)...)";
+    os << nl << "template<typename C, typename DropIfVoid, typename...A>"
+       << " static auto"
+       << nl << "dispatch_dropvoid(C &&c, DropIfVoid &&d, A &&...a) ->"
+       << nl << "decltype(" << call << ") {"
+       << nl << "  return " << call << ";"
+       << nl << "}"
        << nl.close << "};";
   }
 
