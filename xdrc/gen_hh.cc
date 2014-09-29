@@ -594,7 +594,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     string call = "c." + p.id + "(std::forward<A>(a)...)";
     os << endl
        << nl << "struct " << p.id << "_t {"
-       << nl.open << "using version_type = " << v.id << ";"
+       << nl.open << "using interface_type = " << v.id << ";"
        << nl << "static constexpr std::uint32_t proc = " << p.val << ";"
        << nl << "static constexpr const char *proc_name = \"" << p.id << "\";"
        << nl << "using arg_type = " << p.arg << ";"
@@ -625,6 +625,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
      << nl << "return false;"
      << nl.close << "}";
 
+#if 0
   // interface
   os << endl
      << nl << "template<template<typename> class _R,"
@@ -649,6 +650,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "}";
   }
   os << nl.close << "};";
+#endif
 
   // client
   os << endl

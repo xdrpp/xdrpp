@@ -35,8 +35,8 @@ public:
     rpc_msg hdr;
     hdr.xid = xid;
     hdr.body.cbody().rpcvers = 2;
-    hdr.body.cbody().prog = P::version_type::program;
-    hdr.body.cbody().prog = P::version_type::version;
+    hdr.body.cbody().prog = P::interface_type::program;
+    hdr.body.cbody().prog = P::interface_type::version;
     hdr.body.cbody().prog = P::proc;
     hdr.body.cbody().cred.flavor = AUTH_NONE;
     hdr.body.cbody().verf.flavor = AUTH_NONE;
@@ -70,6 +70,7 @@ struct server_base {
   const uint32_t vers_;
 
   server_base(uint32_t prog, uint32_t vers) : prog_(prog), vers_(vers) {}
+  virtual ~server_base() {}
   virtual msg_ptr process(const rpc_msg &hdr, xdr_get &g) = 0;
 };
 
@@ -87,11 +88,13 @@ xdr_drop_void(R(&fn)(A...a), xdr_void, A &&...a)
   return fn(std::forward<A>(a)...);
 }
 
-template<typename V, typename T> struct synchronous_server : server_base {
-  T server_;
+template<typename T> struct synchronous_server : server_base {
+  using interface = typename T::rpc_interface_type;
+  T &server_;
 
-  template<typename...A> synchronous_server(A &&...a)
-    : server_base(V::program, V::version), server_(std::forward<A>(a)...) {}
+  synchronous_server(T &server)
+    : server_base(interface::program, interface::version), server_(server) {}
+
   msg_ptr process(const rpc_msg &chdr, xdr_get &g) override {
     if (chdr.body.mtype() != CALL
 	|| chdr.body.cbody().rpcvers != 2
@@ -105,10 +108,10 @@ template<typename V, typename T> struct synchronous_server : server_base {
       .areply().reply_data.stat(SUCCESS);
 
     msg_ptr ret;
-    if (!V::call_dispatch(*this, chdr.body.cbody().proc, g, rhdr, ret)) {
-      rpc_msg rhdr;
+    if (!interface::call_dispatch(*this, chdr.body.cbody().proc,
+				  g, rhdr, ret)) {
       rhdr.body.rbody().areply().reply_data.stat(PROC_UNAVAIL);
-      return xdr_to_msg(rhdr);
+      ret = xdr_to_msg(rhdr);
     }
     return ret;
   }
@@ -142,14 +145,19 @@ template<typename V, typename T> struct synchronous_server : server_base {
 //! Closes file descriptor when done.
 class server_fd {
   const int fd_;
-  std::map<uint32_t, std::map<uint32_t, server_base *>> servers_;
+  std::map<uint32_t, std::map<uint32_t, std::unique_ptr<server_base>>> servers_;
 
   void dispatch(msg_ptr m);
+  void register_server_base(server_base *s);
 
 public:
   server_fd(int fd) : fd_(fd) {}
   ~server_fd() { close(fd_); }
-  void register_server(server_base &s);
+
+  template<typename T> void register_server(T &t) {
+    register_server_base(new synchronous_server<T>(t));
+  }
+  void run();
 };
 
 }

@@ -80,9 +80,9 @@ write_message(int fd, const msg_ptr &m)
 }
 
 void
-server_fd::register_server(server_base &s)
+server_fd::register_server_base(server_base *s)
 {
-  servers_[s.prog_][s.vers_] = &s;
+  servers_[s->prog_][s->vers_].reset(s);
 }
 
 void
@@ -117,6 +117,13 @@ server_fd::dispatch(msg_ptr m)
   }
 
   write_message(fd_, vers->second->process(hdr, g));
+}
+
+void
+server_fd::run()
+{
+  for (;;)
+    dispatch(read_message(fd_));
 }
 
 }

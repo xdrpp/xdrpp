@@ -8,13 +8,15 @@ namespace {
 indenter nl;
 
 void
-gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
+gen_decl(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
   string name = v.id + "_server";
+
   os << endl
      << nl << "class " << name << " {"
      << nl << "public:";
   ++nl;
+  os << nl << "using rpc_interface_type = " << v.id << ";" << endl;
   for (const rpc_proc &p : v.procs) {
     string arg = p.arg == "void" ? ""
       : (string("std::unique_ptr<") + p.arg + "> arg");
@@ -23,6 +25,12 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     os << nl << res << " " << p.id << "(" << arg << ");";
   }
   os << nl.close << "};";
+}
+
+void
+gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
+{
+  string name = v.id + "_server";
 
   for (const rpc_proc &p : v.procs) {
     string arg = p.arg == "void" ? ""
@@ -61,27 +69,29 @@ gen_server(std::ostream &os)
 
   int last_type = -1;
 
-  for (auto &s : symlist) {
-    switch (s.type) {
-    case rpc_sym::PROGRAM:
-      for (const rpc_vers &v : s.sprogram->vers)
-	gen_vers(os, *s.sprogram, v);
-      break;
-    case rpc_sym::NAMESPACE:
-      if (last_type != rpc_sym::NAMESPACE)
-	os << endl;
-      os << nl << "namespace " << *s.sliteral << " {";
-      break;
-    case rpc_sym::CLOSEBRACE:
-      if (last_type != rpc_sym::CLOSEBRACE)
-	os << endl;
-      os << nl << "}";
-      break;
-    default:
-      break;
+  for (auto phase : { gen_decl, gen_def }) {
+    for (auto &s : symlist) {
+      switch (s.type) {
+      case rpc_sym::PROGRAM:
+	for (const rpc_vers &v : s.sprogram->vers)
+	  phase(os, *s.sprogram, v);
+	break;
+      case rpc_sym::NAMESPACE:
+	if (last_type != rpc_sym::NAMESPACE)
+	  os << endl;
+	os << nl << "namespace " << *s.sliteral << " {";
+	break;
+      case rpc_sym::CLOSEBRACE:
+	if (last_type != rpc_sym::CLOSEBRACE)
+	  os << endl;
+	os << nl << "}";
+	break;
+      default:
+	break;
+      }
+      last_type = s.type;
     }
-    last_type = s.type;
+    os << nl;
   }
-  os << nl;
 }
 
