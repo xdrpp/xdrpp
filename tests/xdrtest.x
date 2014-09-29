@@ -1,7 +1,7 @@
 
-struct ll {
+struct test_recursive {
   string elem<>;
-  ll *next;
+  test_recursive *next;
 };
 
 struct fix_4 {

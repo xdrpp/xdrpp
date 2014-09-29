@@ -1,6 +1,8 @@
 /*
  * rpcb_prot.x
- * rpcbind protocol, versions 3 and 4, in RPC Language
+ * rpcbind protocol, versions 3 and 4
+ * portmapper protocol, version 2
+ * from RFC1833
  */
 
 namespace xdr {
@@ -133,9 +135,9 @@ typedef rpcb_entry_list *rpcb_entry_list_ptr;
  * rpcbind statistics
  */
 
-const rpcb_highproc_2 = RPCBPROC_CALLIT;
-const rpcb_highproc_3 = RPCBPROC_TADDR2UADDR;
-const rpcb_highproc_4 = RPCBPROC_GETSTAT;
+const rpcb_highproc_2 = 5; /* PMAPPROC_CALLIT */
+const rpcb_highproc_3 = 8; /* RPCBPROC3_TADDR2UADDR */
+const rpcb_highproc_4 = 12; /* RPCBPROC_GETSTAT */
 
 const RPCBSTAT_HIGHPROC = 13; /* # of procs in rpcbind V4 plus one */
 const RPCBVERS_STAT     = 3; /* provide only for rpcbind V2, V3 and V4 */

@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <thread>
 #include <xdrc/srpc.h>
-//#include <xdrc/rpcbind.hh>
+#include <xdrc/rpcbind.hh>
 #include "tests/xdrtest.hh"
 
 using namespace std;
