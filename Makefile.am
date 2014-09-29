@@ -48,8 +48,10 @@ SUFFIXES = .x .hh
 	$(XDRC) -hh -o $@ $<
 $(top_builddir)/tests/xdrtest.hh: $(XDRC)
 $(top_builddir)/include/xdrc/rpc_msg.hh: $(XDRC)
+$(top_builddir)/include/xdrc/rpcbind.hh: $(XDRC)
 
-CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh include/xdrc/rpc_msg.hh
+CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh	\
+	include/xdrc/rpc_msg.hh include/xdrc/rpcbind.hh
 
 $(srcdir)/xdrc/xdrc.1: $(srcdir)/xdrc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/xdrc/xdrc.1.md -o $(srcdir)/xdrc/xdrc.1
