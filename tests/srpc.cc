@@ -9,9 +9,37 @@
 using namespace std;
 using namespace xdr;
 
+class xdrtest_server {
+public:
+  using rpc_interface_type = testns::xdrtest;
+
+  void null();
+  std::unique_ptr<testns::ContainsEnum> nonnull(std::unique_ptr<u_4_12> arg);
+};
+
+void
+xdrtest_server::null()
+{
+  cerr << "I got a null request" << endl;
+}
+
+std::unique_ptr<testns::ContainsEnum>
+xdrtest_server::nonnull(std::unique_ptr<u_4_12> arg)
+{
+  using namespace testns;
+  std::unique_ptr<ContainsEnum> res(new ContainsEnum);
+  
+  cerr << "I got a nonnull request" << endl
+       << xdr_to_string(*arg, "arg");
+  res->c(::REDDER).num() = ContainsEnum::TWO;
+  
+  return res;
+}
+
 void
 getmsg(int fd)
 {
+#if 0
   msg_ptr p;
   try { p = read_message(fd); }
   catch (const std::exception &e) {
@@ -28,6 +56,14 @@ getmsg(int fd)
   
   cerr << xdr_to_string(hdr);
 
+  close(fd);
+#endif
+
+  xdrtest_server s;
+  server_fd sfd(fd);
+  sfd.register_server(s);
+  sfd.run();
+  
   close(fd);
 }
 

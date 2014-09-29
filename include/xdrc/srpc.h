@@ -77,15 +77,16 @@ struct server_base {
 //! Call a function, but drop the first argument if it is of type
 //! xdr::xdr_void, and promote the result to xdr_void if it is of type
 //! void.
-template<typename R, typename...A> inline R
-xdr_drop_void(R(&fn)(A...a), A &&...a)
+template<typename P, typename C, typename A> inline auto
+xdr_drop_void(C &&c, A &&a) -> decltype(P::dispatch(c, std::forward<A>(a)))
 {
-  return fn(std::forward<A>(a)...);
+  return P::dispatch(c, std::forward<A>(a));
 }
-template<typename R, typename...A> inline R
-xdr_drop_void(R(&fn)(A...a), xdr_void, A &&...a)
+template<typename P, typename C> inline auto
+xdr_drop_void(C &&c, const std::unique_ptr<xdr_void> &) ->
+decltype(P::dispatch(c))
 {
-  return fn(std::forward<A>(a)...);
+  return P::dispatch(c);
 }
 
 template<typename T> struct synchronous_server : server_base {
@@ -125,7 +126,7 @@ template<typename T> struct synchronous_server : server_base {
     if (g.p_ != g.e_)
       throw xdr_bad_message_size("synchronous_server did not consume"
 				 " whole message");
-    std::unique_ptr<typename P::res_type> res = xdr_drop_void(P::dispatch, arg);
+    std::unique_ptr<typename P::res_type> res = xdr_drop_void<P>(*this, arg);
     return xdr_to_msg(rhdr, *res);
   }
   template<typename P> typename std::enable_if<
@@ -137,7 +138,7 @@ template<typename T> struct synchronous_server : server_base {
     if (g.p_ != g.e_)
       throw xdr_bad_message_size("synchronous_server did not consume"
 				 " whole message");
-    xdr_drop_void(P::dispatch, arg);
+    xdr_drop_void<P>(*this, arg);
     return xdr_to_msg(rhdr);
   }
 };
