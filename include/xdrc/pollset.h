@@ -15,19 +15,9 @@
 #include <unordered_map>
 #include <vector>
 #include <poll.h>
+#include <xdrc/socket.h>
 
 namespace xdr {
-
-//! Set the \c O_NONBLOCK flag on a socket.  \throws std::system_error
-//! on failure.
-void set_nonblock(int fd);
-
-//! Set the close-on-exec flag of a file descriptor.  \throws
-//! std::system_error on failure.
-void set_close_on_exec(int fd);
-
-//! Keep closing a file descriptor until you don't get \c EINTR.
-void really_close(int fd);
 
 class pollset {
 public:
