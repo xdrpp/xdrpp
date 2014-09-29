@@ -10,7 +10,7 @@ xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
 BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
-	include/xdrc/rpc_msg.hh
+	include/xdrc/rpc_msg.hh include/xdrc/rpcbind.hh
 
 lib_LIBRARIES = xmsg/libxmsg.a
 xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc	\
@@ -64,6 +64,6 @@ maintainer-clean-local:
 man_MANS = xdrc/xdrc.1
 EXTRA_DIST = .gitignore xdrc/xdrc.1 xdrc/xdrc.1.md	\
 	include/xdrc/endian.h.in include/xdrc/rpc_msg.x	\
-	tests/xdrtest.x
+	include/xdrc/rpcbind.x tests/xdrtest.x
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 	$(srcdir)/xdrc/xdrc.1
