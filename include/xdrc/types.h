@@ -132,6 +132,7 @@ template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   static constexpr std::size_t fixed_size = sizeof(uint_type);
   static constexpr std::size_t serial_size(type) { return fixed_size; }
   static uint_type to_uint(type t) { return t; }
+  //static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
   static type from_uint(uint_type u) {
     return reinterpret_cast<type &>(u);
   }
@@ -421,8 +422,12 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   }
 };
 
+// Note an explicit third template argument (VFixed = false) is
+// required because pointers are used recursively, so we might not
+// have xdr_traits<T> available at the time we instantiate
+// xdr_traits<pointer<T>>.
 template<typename T> struct xdr_traits<pointer<T>>
-  : xdr_container_base<pointer<T>, true> {};
+  : xdr_container_base<pointer<T>, true, false> {};
 
 
 //! Type-level representation of a pointer-to-member value.

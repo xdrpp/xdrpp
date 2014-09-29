@@ -1,4 +1,9 @@
 
+struct ll {
+  string elem<>;
+  ll *next;
+};
+
 struct fix_4 {
   int i;
 };
