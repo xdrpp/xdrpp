@@ -104,7 +104,7 @@ public:
 };
 
 class rpc_tcp_listener : rpc_server_base {
-  pollset ps_;
+  pollset_light ps_;
   unique_fd listen_fd_;
   const bool use_rpcbind_;
 
