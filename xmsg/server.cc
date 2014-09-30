@@ -82,7 +82,7 @@ rpc_server_base::dispatch(msg_ptr m)
 }
 
 rpc_tcp_listener::rpc_tcp_listener(int fd, bool reg)
-  : listen_fd_(fd == -1 ? tcp_listen() : fd),
+  : listen_fd_(fd == -1 ? tcp_listen() : unique_fd{fd}),
     use_rpcbind_(reg)
 {
   set_close_on_exec(listen_fd_);
