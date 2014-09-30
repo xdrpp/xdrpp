@@ -92,6 +92,7 @@ unique_fd tcp_listen(const char *service = "0", int family = AF_UNSPEC);
 int parse_uaddr_port(const std::string &uaddr);
 
 std::string make_uaddr(const sockaddr *sa, socklen_t salen);
+std::string make_uaddr(int fd);
 void rpcbind_register(const sockaddr *sa, socklen_t salen,
 		      std::uint32_t prog, std::uint32_t vers);
 void rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers);

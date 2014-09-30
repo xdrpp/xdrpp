@@ -177,6 +177,20 @@ make_uaddr(const sockaddr *sa, socklen_t salen)
   return host;
 }
 
+string
+make_uaddr(int fd)
+{
+  union {
+    struct sockaddr sa;
+    struct sockaddr_storage ss;
+  };
+  socklen_t salen{sizeof ss};
+  std::memset(&ss, 0, salen);
+  if (getsockname(fd, &sa, &salen) == -1)
+    throw std::system_error(errno, std::system_category(), "getsockname");
+  return make_uaddr(&sa, salen);
+}
+
 void
 rpcbind_register(const sockaddr *sa, socklen_t salen,
 		 std::uint32_t prog, std::uint32_t vers)
@@ -229,6 +243,8 @@ get_rpcaddr(const char *host, std::uint32_t prog, std::uint32_t vers,
       arg.r_prog = prog;
       arg.r_vers = vers;
       arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
+      arg.r_addr = make_uaddr(fd);
+      //arg.r_owner = "libtirpc";
       auto res = c.RPCBPROC_GETADDR(arg);
 
       int port = parse_uaddr_port(*res);
