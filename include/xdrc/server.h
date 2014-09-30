@@ -101,9 +101,10 @@ public:
   template<typename T> void register_service(T &t) {
     register_service_base(new synchronous_server<T>(t));
     if(use_rpcbind_)
-      register_service(listen_fd_, T::rpc_interface_type::program,
+      rpcbind_register(listen_fd_, T::rpc_interface_type::program,
 		       T::rpc_interface_type::version);
   }
+  void run();
 };
 
 

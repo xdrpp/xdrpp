@@ -126,4 +126,11 @@ rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
   }
 }
 
+void
+rpc_tcp_listener::run()
+{
+  while (ps_.pending())
+    ps_.poll();
+}
+
 }

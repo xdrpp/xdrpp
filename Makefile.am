@@ -28,8 +28,8 @@ pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 
-check_PROGRAMS = tests/test-msgsock tests/test-marshal	\
-	tests/test-srpc tests/test-printer
+check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
+	tests/test-srpc tests/test-printer tests/test-listener
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 endif
@@ -39,10 +39,12 @@ tests_test_msgsock_SOURCES = tests/msgsock.cc xmsg/libxmsg.a
 tests_test_marshal_SOURCES = tests/marshal.cc xmsg/libxmsg.a
 tests_test_cereal_SOURCES = tests/cereal.cc xmsg/libxmsg.a
 tests_test_srpc_SOURCES = tests/srpc.cc xmsg/libxmsg.a
+tests_test_listener_SOURCES = tests/listener.cc xmsg/libxmsg.a
 tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
 tests/srpc.o: tests/xdrtest.hh
+tests/listener.o: tests/xdrtest.hh
 
 SUFFIXES = .x .hh
 .x.hh:

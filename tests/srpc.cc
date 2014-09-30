@@ -123,11 +123,9 @@ main(int argc, char **argv)
   string host, port;
   get_numinfo(ai->ai_addr, ai->ai_addrlen, &host, &port);
   cout << host << ":" << port << endl;
-#endif
-
-  return 0;
 
   test_rpcb();
+#endif
 
   int fds[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1) {
@@ -136,6 +134,7 @@ main(int argc, char **argv)
   }
 
   thread t1(sendreq, fds[0]);
+
   getmsg(fds[1]);
   
   t1.join();

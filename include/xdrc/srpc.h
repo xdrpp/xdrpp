@@ -24,7 +24,6 @@ prepare_call(rpc_msg &hdr)
 //! Synchronous file descriptor demultiplexer.
 class synchronous_client_base {
   const int fd_;
-  std::uint32_t xid_{0};
 
   static void moveret(std::unique_ptr<xdr_void> &) {}
   template<typename T> static T &&moveret(T &t) { return std::move(t); }
@@ -40,9 +39,9 @@ public:
     std::is_void<typename P::res_type>::value, void,
     std::unique_ptr<typename P::res_type>>::type
   invoke(const typename P::arg_wire_type &a) {
-    std::uint32_t xid = ++xid_;
     rpc_msg hdr;
     prepare_call<P>(hdr);
+    uint32_t xid = hdr.xid;
 
     write_message(fd_, xdr_to_msg(hdr, a));
     msg_ptr m = read_message(fd_);
@@ -58,7 +57,7 @@ public:
       throw xdr_runtime_error
 	(xdr_to_string(hdr.body.rbody().areply().reply_data, "reply_data"));
 
-    std::unique_ptr<typename P::res_type> r (new typename P::res_type);
+    std::unique_ptr<typename P::res_wire_type> r{new typename P::res_wire_type};
     archive(g, *r);
     if (g.p_ != g.e_)
       throw xdr_runtime_error("synchronous_client: "
