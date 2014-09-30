@@ -59,7 +59,7 @@ pollset::~pollset()
   really_close(selfpipe_[1]);
 }
 
-pollset::fd_state::~fd_state()
+pollset_light::fd_state::~fd_state()
 {
   // XXX - eventually remove
   assert (!rcb && !wcb);
@@ -121,8 +121,8 @@ pollset::inject_cb_vec(std::vector<cb_t>::iterator b,
   }
 }
 
-pollset::cb_t &
-pollset::fd_cb_helper(int fd, op_t op)
+pollset_light::cb_t &
+pollset_light::fd_cb_helper(int fd, op_t op)
 {
   fd_state &fs = state_[fd];
   pollfd *pfdp;
@@ -138,7 +138,8 @@ pollset::fd_cb_helper(int fd, op_t op)
   }
   if (op & kReadFlag) {
     if (op & kWriteFlag) {
-      std::cerr << "Illegal call to PollSet::fd_cb with ReadWrite" << std::endl;
+      std::cerr << "Illegal call to pollset_light::fd_cb with ReadWrite"
+		<< std::endl;
       std::terminate();
     }
     fs.roneshot = op & kOnceFlag;
@@ -151,14 +152,15 @@ pollset::fd_cb_helper(int fd, op_t op)
     return fs.wcb;
   }
   else {
-    std::cerr << "Illegal call to PollSet::fd_cb with neither Read nor Write"
+    std::cerr << "Illegal call to pollset_light::fd_cb with"
+                 " neither Read nor Write"
 	      << std::endl;
     std::terminate();
   }
 }
 
 void
-pollset::fd_cb(int fd, op_t op, std::nullptr_t)
+pollset_light::fd_cb(int fd, op_t op, std::nullptr_t)
 {
   auto fi = state_.find(fd);
   if (fi == state_.end())
@@ -176,13 +178,19 @@ pollset::fd_cb(int fd, op_t op, std::nullptr_t)
 }
 
 bool
+pollset_light::pending() const
+{
+  return pollfds_.size() > 1 || !time_cbs_.empty();
+}
+
+bool
 pollset::pending() const
 {
-  return pollfds_.size() > 1 || nasync_ || !time_cbs_.empty();
+  return nasync_ || pollset_light::pending();
 }
 
 int
-pollset::next_timeout(int ms)
+pollset_light::next_timeout(int ms)
 {
   auto next = time_cbs_.begin();
   if (next == time_cbs_.end())
@@ -199,7 +207,7 @@ pollset::next_timeout(int ms)
 }
 
 void
-pollset::poll(int timeout)
+pollset_light::poll(int timeout)
 {
   int r = ::poll(pollfds_.data(), pollfds_.size(), next_timeout(timeout));
   if (r < 0) {
@@ -239,12 +247,12 @@ pollset::poll(int timeout)
   }
 
   run_timeouts();
-  run_signal_handlers();
+  run_subtype_handlers();
   consolidate();
 }
 
 void
-pollset::run_timeouts()
+pollset_light::run_timeouts()
 {
   auto i = time_cbs_.begin();
   if (i != time_cbs_.end()) {
@@ -257,7 +265,7 @@ pollset::run_timeouts()
 }
 
 void
-pollset::run_signal_handlers()
+pollset::run_subtype_handlers()
 {
   if (!signal_pending_)
     return;
@@ -291,7 +299,7 @@ pollset::run_signal_handlers()
 }
 
 void
-pollset::consolidate()
+pollset_light::consolidate()
 {
   while (!pollfds_.empty() && !pollfds_.back().events) {
     auto fi = state_.find(pollfds_.back().fd);
@@ -385,7 +393,7 @@ pollset::signal_cb(int sig, std::nullptr_t)
 }
 
 std::int64_t
-pollset::now_ms()
+pollset_light::now_ms()
 {
   using namespace std::chrono;
   return duration_cast<milliseconds>(steady_clock::now().time_since_epoch())
@@ -393,7 +401,7 @@ pollset::now_ms()
 }
 
 void
-pollset::timeout_cancel(Timeout &t)
+pollset_light::timeout_cancel(Timeout &t)
 {
   if (timeout_is_not_null(t)) {
     assert(time_cbs_.find(t.i_->first) != time_cbs_.end());
@@ -403,7 +411,7 @@ pollset::timeout_cancel(Timeout &t)
 }
 
 void
-pollset::timeout_reschedule_at(Timeout &t, std::int64_t ms)
+pollset_light::timeout_reschedule_at(Timeout &t, std::int64_t ms)
 {
   auto i = t.i_;
   t.i_ = time_cbs_.emplace(ms, std::move(i->second));

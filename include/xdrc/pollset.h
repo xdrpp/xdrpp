@@ -19,13 +19,13 @@
 
 namespace xdr {
 
-class pollset {
-public:
-  using cb_t = std::function<void()>;
-private:
+//! Structure to poll for a set of file descriptors and timeouts.
+class pollset_light {
+protected:
   static constexpr int kReadFlag = 0x1;
   static constexpr int kWriteFlag = 0x2;
   static constexpr int kOnceFlag = 0x4;
+
 public:
   enum op_t {
     //! Specify interest in read-ready condition
@@ -40,6 +40,8 @@ public:
     WriteOnce = kWriteFlag | kOnceFlag
   };
 
+  using cb_t = std::function<void()>;
+
 private:
   // File descriptor callback information
   struct fd_state {
@@ -48,34 +50,8 @@ private:
     int idx {-1};		// Index in pollfds_
     bool roneshot;
     bool woneshot;
-    ~fd_state();			// Sanity check no active callbacks
+    ~fd_state();		// Sanity check no active callbacks
   };
-
-  enum class wake_type : std::uint8_t {
-    Normal = 0,
-    Signal = 1
-  };
-  
-  // State for asynchronous tasks
-  template<typename R> struct async_task {
-    pollset *ps_;
-    std::function<R()> work_;
-    std::function<void(R)> cb_;
-    std::unique_ptr<R> rp_;
-
-    void start() {
-      rp_.reset(new R { work_() });
-      ps_->inject_cb(std::bind(&async_task::done, this));
-    }
-    void done() {
-      std::unique_ptr<async_task> self {this};
-      ps_->nasync_--;
-      cb_(std::move(*rp_));
-    }
-  };
-
-  // Self-pipe used to wake up poll from signal handlers and other threads
-  int selfpipe_[2];
 
   // File descriptor callback state
   std::vector<pollfd> pollfds_;
@@ -84,36 +60,15 @@ private:
   // Timeout callback state
   std::multimap<std::int64_t, cb_t> time_cbs_;
 
-  // Asynchronous events enqueued from other threads
-  std::mutex async_cbs_lock_;
-  std::vector<cb_t> async_cbs_;
-  bool async_pending_{false};
-  size_t nasync_{0};
-
-  // Signal callback state
-  static constexpr int num_sig = 32;
-  static std::mutex signal_owners_lock;
-  static pollset *signal_owners[num_sig];
-  static volatile std::sig_atomic_t signal_flags[num_sig];
-  bool signal_pending_{false};
-  std::map<int, cb_t> signal_cbs_;
-
-  void wake(wake_type wt);
-  void run_pending_asyncs();
-  void inject_cb_vec(std::vector<cb_t>::iterator b,
-		     std::vector<cb_t>::iterator e);
+  cb_t &fd_cb_helper(int fd, op_t op);
+  void consolidate();
   int next_timeout(int ms);
   void run_timeouts();
-  void run_signal_handlers();
-  void consolidate();
-  cb_t &fd_cb_helper(int fd, op_t op);
-  static void signal_handler(int);
-  static void erase_signal_cb(int);
+
+  // Hook for subtypes
+  virtual void run_subtype_handlers() {}
 
 public:
-  pollset();
-  ~pollset();
-
   //! Go through one round of checking all file descriptors.  \arg \c
   //! timeout is a timeout in milliseconds (or -1 to wait forever).
   //! 
@@ -130,12 +85,7 @@ public:
   //! returns \c false, then PollSet::poll will pause forever in the
   //! absence of a signal or a call to PollSet::inject_cb in a
   //! different thread.
-  bool pending() const;
-
-  //! Cause PollSet::poll to return if it is sleeping.  Unlike most
-  //! other methods, \c wake is safe to call from a signal handler or
-  //! a different thread.
-  void wake() { wake(wake_type::Normal); }
+  virtual bool pending() const;
 
   //! Set a read or write callback on a particular file descriptor.
   //! \arg \c fd is the file descriptor.  \arg \c op specifies the
@@ -156,37 +106,6 @@ public:
   //! descriptor.
   void fd_cb(int fd, op_t op, std::nullptr_t = nullptr);
 
-  //! Inject a callback to run immediately.  Unlike most methods, it
-  //! is safe to call this function from another thread.  Being
-  //! thread-safe adds extra overhead, so it does not make sense to
-  //! call this function from the same thread as PollSet::poll.  Note
-  //! that \c inject_cb acquires a lock and definitely must <i>not</i>
-  //! be called from a signal handler (or deadlock could ensue).
-  template<typename CB> void inject_cb(CB &&cb) {
-    std::lock_guard<std::mutex> lk(async_cbs_lock_);
-    async_cbs_.emplace_back(std::forward<CB>(cb));
-    if (!async_pending_) {
-      async_pending_ = true;
-      wake();
-    }
-  }
-
-  //! Execute a task asynchonously in another thread, then run
-  //! callback on the task's result in the main thread.  \arg \c work
-  //! is a task to perform asynchronously in another thread, and must
-  //! be convertible to std::function<R()> for some type \c R.  \arg
-  //! \c cb is the callback that processes the result in the main
-  //! thread, and must be convertible to std::function<void(R)> for
-  //! the same type \c R.
-  template<typename Work, typename CB> void async(Work &&work, CB &&cb) {
-    using R = decltype(work());
-    async_task<R> *a = new async_task<R> {
-      this, std::forward<Work>(work), std::forward<CB>(cb), nullptr
-    };
-    ++nasync_;
-    std::thread(&async_task<R>::start, a).detach();
-  }
-
   //! Number of milliseconds since an arbitrary but fixed time, used
   //! as the basis of all timeouts.  Time zero is
   //! std::chrono::steady_clock's epoch, which in some implementations
@@ -199,7 +118,7 @@ public:
     iterator i_;
     Timeout(iterator i) : i_(i) {}
     Timeout &operator=(iterator i) { i_ = i; return *this; }
-    friend class pollset;
+    friend class pollset_light;
   };
 
   //! Set a callback to run a certain number of milliseconds from now.
@@ -242,6 +161,101 @@ public:
   //! Reschedule a timeout some number of milliseconds in the future.
   void timeout_reschedule(Timeout &t, std::int64_t ms) {
     timeout_reschedule_at(t, now_ms() + ms);
+  }
+};
+
+//! Adds support for signal handlers, asynchonous events, and
+//! callbacks injected from other threads to the basic functionality
+//! in \c pollset_light.
+class pollset : public pollset_light {
+  enum class wake_type : std::uint8_t {
+    Normal = 0,
+    Signal = 1
+  };
+  
+  // State for asynchronous tasks
+  template<typename R> struct async_task {
+    pollset *ps_;
+    std::function<R()> work_;
+    std::function<void(R)> cb_;
+    std::unique_ptr<R> rp_;
+
+    void start() {
+      rp_.reset(new R { work_() });
+      ps_->inject_cb(std::bind(&async_task::done, this));
+    }
+    void done() {
+      std::unique_ptr<async_task> self {this};
+      ps_->nasync_--;
+      cb_(std::move(*rp_));
+    }
+  };
+
+  // Self-pipe used to wake up poll from signal handlers and other threads
+  int selfpipe_[2];
+
+  // Asynchronous events enqueued from other threads
+  std::mutex async_cbs_lock_;
+  std::vector<cb_t> async_cbs_;
+  bool async_pending_{false};
+  size_t nasync_{0};
+
+  // Signal callback state
+  static constexpr int num_sig = 32;
+  static std::mutex signal_owners_lock;
+  static pollset *signal_owners[num_sig];
+  static volatile std::sig_atomic_t signal_flags[num_sig];
+  bool signal_pending_{false};
+  std::map<int, cb_t> signal_cbs_;
+
+  void wake(wake_type wt);
+  void run_pending_asyncs();
+  void inject_cb_vec(std::vector<cb_t>::iterator b,
+		     std::vector<cb_t>::iterator e);
+  void run_subtype_handlers() override;
+  static void signal_handler(int);
+  static void erase_signal_cb(int);
+
+public:
+  pollset();
+  ~pollset();
+
+  bool pending() const override;
+
+  //! Cause PollSet::poll to return if it is sleeping.  Unlike most
+  //! other methods, \c wake is safe to call from a signal handler or
+  //! a different thread.
+  void wake() { wake(wake_type::Normal); }
+
+  //! Inject a callback to run immediately.  Unlike most methods, it
+  //! is safe to call this function from another thread.  Being
+  //! thread-safe adds extra overhead, so it does not make sense to
+  //! call this function from the same thread as PollSet::poll.  Note
+  //! that \c inject_cb acquires a lock and definitely must <i>not</i>
+  //! be called from a signal handler (or deadlock could ensue).
+  template<typename CB> void inject_cb(CB &&cb) {
+    std::lock_guard<std::mutex> lk(async_cbs_lock_);
+    async_cbs_.emplace_back(std::forward<CB>(cb));
+    if (!async_pending_) {
+      async_pending_ = true;
+      wake();
+    }
+  }
+
+  //! Execute a task asynchonously in another thread, then run
+  //! callback on the task's result in the main thread.  \arg \c work
+  //! is a task to perform asynchronously in another thread, and must
+  //! be convertible to std::function<R()> for some type \c R.  \arg
+  //! \c cb is the callback that processes the result in the main
+  //! thread, and must be convertible to std::function<void(R)> for
+  //! the same type \c R.
+  template<typename Work, typename CB> void async(Work &&work, CB &&cb) {
+    using R = decltype(work());
+    async_task<R> *a = new async_task<R> {
+      this, std::forward<Work>(work), std::forward<CB>(cb), nullptr
+    };
+    ++nasync_;
+    std::thread(&async_task<R>::start, a).detach();
   }
 
   //! Add a callback for a particular signal.  Note that only one
