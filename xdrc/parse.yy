@@ -1,7 +1,8 @@
 
 %{
 #include "xdrc_internal.h"
-#define YYSTYPE YYSTYPE
+  //#define YYSTYPE YYSTYPE
+#define YYSTYPE_IS_DEFINED 1	// required for bison 2.3
 
   //string xdr_unbounded = "xdr::XDR_MAX_LEN";
 string xdr_unbounded = "";
