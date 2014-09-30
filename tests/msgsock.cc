@@ -18,7 +18,7 @@ echoserver(int fd)
 {
   pollset ps;
   bool done {false};
-  msg_sock ss(&ps, fd, nullptr);
+  msg_sock ss(ps, fd, nullptr);
   int i = 0;
 
   ss.setrcb([&done,&ss,&i](msg_ptr b) {
@@ -37,7 +37,7 @@ void
 echoclient(int fd)
 {
   pollset ps;
-  msg_sock ss { &ps, fd, nullptr };
+  msg_sock ss { ps, fd };
   unsigned int i = 0;
 
   {

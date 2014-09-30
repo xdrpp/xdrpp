@@ -28,9 +28,8 @@ msg_sock::init()
 void
 msg_sock::initcb()
 {
-  if (rcb_) {
+  if (rcb_)
     ps_.fd_cb(fd_, pollset::Read, [this](){ input(); });
-  }
   else
     ps_.fd_cb(fd_, pollset::Read);
 }

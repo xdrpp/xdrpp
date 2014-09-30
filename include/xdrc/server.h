@@ -5,26 +5,28 @@
 
 #include <xdrc/marshal.h>
 #include <xdrc/printer.h>
+#include <xdrc/msgsock.h>
+#include <xdrc/socket.h>
 #include <xdrc/rpc_msg.hh>
 #include <map>
 
 namespace xdr {
 
-struct server_base {
+struct service_base {
   const uint32_t prog_;
   const uint32_t vers_;
 
-  server_base(uint32_t prog, uint32_t vers) : prog_(prog), vers_(vers) {}
-  virtual ~server_base() {}
+  service_base(uint32_t prog, uint32_t vers) : prog_(prog), vers_(vers) {}
+  virtual ~service_base() {}
   virtual msg_ptr process(const rpc_msg &hdr, xdr_get &g) = 0;
 };
 
-template<typename T> struct synchronous_server : server_base {
+template<typename T> struct synchronous_server : service_base {
   using interface = typename T::rpc_interface_type;
   T &server_;
 
   synchronous_server(T &server)
-    : server_base(interface::program, interface::version), server_(server) {}
+    : service_base(interface::program, interface::version), server_(server) {}
 
   msg_ptr process(const rpc_msg &chdr, xdr_get &g) override {
     if (chdr.body.mtype() != CALL
@@ -74,17 +76,36 @@ template<typename T> struct synchronous_server : server_base {
   }
 };
 
-class rpc_server {
-  std::map<uint32_t, std::map<uint32_t, std::unique_ptr<server_base>>> servers_;
-  void register_server_base(server_base *s);
-
+class rpc_server_base {
+  std::map<uint32_t,
+	   std::map<uint32_t, std::unique_ptr<service_base>>> servers_;
+protected:
+  void register_service_base(service_base *s);
 public:
-  //! Add objects implementing RPC program interfaces to the server.
-  template<typename T> void register_service(T &t) {
-    register_server_base(new synchronous_server<T>(t));
-  }
   msg_ptr dispatch(msg_ptr m);
 };
+
+class rpc_tcp_listener : rpc_server_base {
+  pollset ps_;
+  unique_fd listen_fd_;
+  const bool use_rpcbind_;
+
+  void accept_cb();
+  void receive_cb(msg_sock *ms, msg_ptr mp);
+
+public:
+  rpc_tcp_listener(int fd = -1, bool use_rpcbind = true);
+  virtual ~rpc_tcp_listener();
+
+  //! Add objects implementing RPC program interfaces to the server.
+  template<typename T> void register_service(T &t) {
+    register_service_base(new synchronous_server<T>(t));
+    if(use_rpcbind_)
+      register_service(listen_fd_, T::rpc_interface_type::program,
+		       T::rpc_interface_type::version);
+  }
+};
+
 
 }
 

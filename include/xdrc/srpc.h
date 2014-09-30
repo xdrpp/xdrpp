@@ -74,7 +74,7 @@ template<typename T> using srpc_client =
 //! Attach an RPC server to a stream socket.  No procedures will be
 //! implemented by the RPC server until interface objects are
 //! reigstered with \c register_server.
-class srpc_server : public rpc_server {
+class srpc_server : public rpc_server_base {
   const int fd_;
   bool close_on_destruction_;
 
@@ -82,6 +82,11 @@ public:
   srpc_server(int fd, bool close_on_destruction = true)
     : fd_(fd), close_on_destruction_(close_on_destruction) {}
   ~srpc_server() { if (close_on_destruction_) close(fd_); }
+
+  //! Add objects implementing RPC program interfaces to the server.
+  template<typename T> void register_service(T &t) {
+    register_service_base(new synchronous_server<T>(t));
+  }
 
   //! Start serving requests.  (Loops until an exception.)
   void run();

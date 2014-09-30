@@ -1,5 +1,8 @@
 // -*- C++ -*-
 
+#ifndef _XDRC_SOCKET_H_HEADER_INCLUDED_
+#define _XDRC_SOCKET_H_HEADER_INCLUDED_ 1
+
 //! \file socket.h Simplified support for creatins sockets.
 
 #include <memory>
@@ -78,12 +81,15 @@ unique_fd tcp_connect(const char *host, const char *service,
 unique_fd tcp_connect_rpc(const char *host,
 			  std::uint32_t prog, std::uint32_t vers);
 
-unique_fd tcp_listen(const char *service, int family = AF_UNSPEC);
+unique_fd tcp_listen(const char *service = "0", int family = AF_UNSPEC);
 
 int parse_uaddr_port(const std::string &uaddr);
 
 std::string make_uaddr(const sockaddr *sa, socklen_t salen);
-void register_service(const sockaddr *sa, socklen_t salen,
+void rpcbind_register(const sockaddr *sa, socklen_t salen,
 		      std::uint32_t prog, std::uint32_t vers);
+void rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers);
 
 }
+
+#endif // !_XDRC_SOCKET_H_HEADER_INCLUDED_

@@ -156,7 +156,7 @@ make_uaddr(const sockaddr *sa, socklen_t salen)
 }
 
 void
-register_service(const sockaddr *sa, socklen_t salen,
+rpcbind_register(const sockaddr *sa, socklen_t salen,
 		 std::uint32_t prog, std::uint32_t vers)
 {
   set_cleanup();
@@ -177,7 +177,7 @@ register_service(const sockaddr *sa, socklen_t salen,
 }
 
 void
-register_service(int fd, std::uint32_t prog, std::uint32_t vers)
+rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers)
 {
   union {
     struct sockaddr sa;
@@ -187,7 +187,7 @@ register_service(int fd, std::uint32_t prog, std::uint32_t vers)
   std::memset(&ss, 0, salen);
   if (getsockname(fd, &sa, &salen) == -1)
     throw std::system_error(errno, std::system_category(), "getsockname");
-  register_service(&sa, salen, prog, vers);
+  rpcbind_register(&sa, salen, prog, vers);
 }
 
 unique_addrinfo

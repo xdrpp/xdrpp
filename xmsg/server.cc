@@ -43,13 +43,13 @@ rpc_mkerr(rpc_msg &m, auth_stat stat)
 }
 
 void
-rpc_server::register_server_base(server_base *s)
+rpc_server_base::register_service_base(service_base *s)
 {
   servers_[s->prog_][s->vers_].reset(s);
 }
 
 msg_ptr
-rpc_server::dispatch(msg_ptr m)
+rpc_server_base::dispatch(msg_ptr m)
 {
   xdr_get g(m);
   rpc_msg hdr;
@@ -78,6 +78,51 @@ rpc_server::dispatch(msg_ptr m)
   catch (const xdr_runtime_error &e) {
     std::cerr << xdr_to_string(hdr, e.what());
     return xdr_to_msg(rpc_mkerr(hdr, GARBAGE_ARGS));
+  }
+}
+
+rpc_tcp_listener::rpc_tcp_listener(int fd, bool reg)
+  : listen_fd_(fd == -1 ? tcp_listen() : fd),
+    use_rpcbind_(reg)
+{
+  set_close_on_exec(listen_fd_);
+  ps_.fd_cb(listen_fd_, pollset::Read,
+	    std::bind(&rpc_tcp_listener::accept_cb, this));
+}
+
+rpc_tcp_listener::~rpc_tcp_listener()
+{
+  ps_.fd_cb(listen_fd_, pollset::Read);
+}
+
+void
+rpc_tcp_listener::accept_cb()
+{
+  int fd = accept(listen_fd_, nullptr, 0);
+  if (fd == -1) {
+    std::cerr << "rpc_tcp_listener: accept: " << std::strerror(errno)
+	      << std::endl;
+    return;
+  }
+  set_close_on_exec(fd);
+  msg_sock *ms = new msg_sock(ps_, fd);
+  ms->setrcb(std::bind(&rpc_tcp_listener::receive_cb, this, ms,
+		       std::placeholders::_1));
+}
+
+void
+rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
+{
+  if (!mp) {
+    delete ms;
+    return;
+  }
+  try {
+    ms->putmsg(dispatch(std::move(mp)));
+  }
+  catch (const std::exception &e) {
+    std::cerr << e.what() << std::endl;
+    delete ms;
   }
 }
 
