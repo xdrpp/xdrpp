@@ -4,6 +4,8 @@
 
 namespace xdr {
 
+bool xdr_trace_server = std::getenv("XDR_TRACE_SERVER");
+
 namespace {
 
 rpc_msg &

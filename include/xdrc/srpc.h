@@ -48,8 +48,8 @@ public:
     if (xdr_trace_client) {
       std::string s = "CALL ";
       s += P::proc_name;
-      s += " [xid " + std::to_string(xid) + "]";
-      std::cerr << xdr_to_string(a, s.c_str());
+      s += " -> [xid " + std::to_string(xid) + "]";
+      std::clog << xdr_to_string(a, s.c_str());
     }
     write_message(fd_, xdr_to_msg(hdr, a));
     msg_ptr m = read_message(fd_);
@@ -73,8 +73,8 @@ public:
     if (xdr_trace_client) {
       std::string s = "REPLY ";
       s += P::proc_name;
-      s += " [xid " + std::to_string(xid) + "]";
-      std::cerr << xdr_to_string(a, s.c_str());
+      s += " <- [xid " + std::to_string(xid) + "]";
+      std::clog << xdr_to_string(*r, s.c_str());
     }
     return moveret(r);
   }

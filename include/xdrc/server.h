@@ -12,6 +12,8 @@
 
 namespace xdr {
 
+extern bool xdr_trace_server;
+
 struct service_base {
   const uint32_t prog_;
   const uint32_t vers_;
@@ -58,8 +60,24 @@ template<typename T> struct synchronous_server : service_base {
     if (g.p_ != g.e_)
       throw xdr_bad_message_size("synchronous_server did not consume"
 				 " whole message");
+
+    if (xdr_trace_server) {
+      std::string s = "CALL ";
+      s += P::proc_name;
+      s += " <- [xid " + std::to_string(rhdr.xid) + "]";
+      std::clog << xdr_to_string(*arg, s.c_str());
+    }
+
     std::unique_ptr<typename P::res_type> res =
       P::dispatch_dropvoid(server_, std::move(arg));
+
+    if (xdr_trace_server) {
+      std::string s = "REPLY ";
+      s += P::proc_name;
+      s += " -> [xid " + std::to_string(rhdr.xid) + "]";
+      std::clog << xdr_to_string(*res, s.c_str());
+    }
+
     ret = xdr_to_msg(rhdr, *res);
   }
   template<typename P> typename std::enable_if<

@@ -202,7 +202,8 @@ get_rpcaddr(const char *host, std::uint32_t prog, std::uint32_t vers)
   rpcb arg;
   arg.r_prog = prog;
   arg.r_vers = vers;
-  arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
+  //arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
+  arg.r_netid = "tcp";
   auto res = c.RPCBPROC_GETADDR(arg);
 
   int port = parse_uaddr_port(*res);
