@@ -38,7 +38,7 @@ xdrtest2_server::nonnull2(std::unique_ptr<u_4_12> arg)
   std::unique_ptr<ContainsEnum> res(new ContainsEnum);
   
   cout << xdr_to_string(*arg, "nonnull2 arg");
-  res->c(::REDDER).foo() = "Hello, world\n";
+  res->c(::RED).foo() = "Hello, world\n";
   
   return res;
 }
