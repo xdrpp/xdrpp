@@ -118,10 +118,12 @@ test_rpcb()
 int
 main(int argc, char **argv)
 {
+#if 0
   auto ai = get_rpcaddr(nullptr, 100000, 3);
   string host, port;
   get_numinfo(ai->ai_addr, ai->ai_addrlen, &host, &port);
   cout << host << ":" << port << endl;
+#endif
 
   return 0;
 

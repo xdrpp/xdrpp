@@ -13,9 +13,9 @@ BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
 	include/xdrc/rpc_msg.hh include/xdrc/rpcbind.hh
 
 lib_LIBRARIES = xmsg/libxmsg.a
-xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc	\
-	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc		\
-	xmsg/rpc_msg.cc xmsg/socket.cc xmsg/srpc.cc
+xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc		\
+	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc			\
+	xmsg/rpc_msg.cc xmsg/server.cc xmsg/socket.cc xmsg/srpc.cc
 
 nodist_pkginclude_HEADERS = include/xdrc/endian.h
 pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
@@ -23,8 +23,8 @@ pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
 	include/xdrc/iniparse.h include/xdrc/marshal.h		\
 	include/xdrc/printer.h include/xdrc/rpc_msg.hh		\
 	include/xdrc/message.h include/xdrc/msgsock.h		\
-	include/xdrc/pollset.h include/xdrc/socket.h		\
-	include/xdrc/srpc.h
+	include/xdrc/pollset.h include/xdrc/server.h		\
+	include/xdrc/socket.h include/xdrc/srpc.h
 
 LDADD = $(top_builddir)/xmsg/libxmsg.a
 

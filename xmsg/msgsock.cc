@@ -87,6 +87,13 @@ msg_sock::input()
   if (rdmsg_ || rdpos_ < sizeof nextlen_)
     return;
   size_t len = nextlen();
+  if (!(len & 0x80000000)) {
+    std::cerr << "msgsock: message fragments unimplemented" << std::endl;
+    errno = ECONNRESET;
+    rcb_(nullptr);
+    return;
+  }
+  len &= 0x7fffffff;
   if (!len) {
     rdpos_ = 0;
     rcb_(message_t::alloc(0));
