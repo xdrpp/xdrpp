@@ -40,7 +40,7 @@ unique_addrinfo get_addrinfo(const char *host,
 			     int family = AF_UNSPEC);
 
 unique_addrinfo get_rpcaddr(const char *host, std::uint32_t prog,
-			    std::uint32_t vers);
+			    std::uint32_t vers, int family = AF_UNSPEC);
 
 //! Return printable versions of numeric host and port number
 void get_numinfo(const sockaddr *sa, socklen_t salen,
@@ -75,11 +75,17 @@ public:
   }
 };
 
-unique_fd tcp_connect(const unique_addrinfo &ai);
+unique_fd tcp_connect(const addrinfo *ai);
+inline unique_fd
+tcp_connect(const unique_addrinfo &ai)
+{
+  return tcp_connect(ai.get());
+}
 unique_fd tcp_connect(const char *host, const char *service,
 		      int family = AF_UNSPEC);
 unique_fd tcp_connect_rpc(const char *host,
-			  std::uint32_t prog, std::uint32_t vers);
+			  std::uint32_t prog, std::uint32_t vers,
+			  int family = AF_UNSPEC);
 
 unique_fd tcp_listen(const char *service = "0", int family = AF_UNSPEC);
 

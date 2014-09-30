@@ -1,6 +1,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
@@ -36,7 +37,28 @@ set_cleanup()
   } o;
 }
 
-};
+}
+
+string
+addrinfo_to_string(const addrinfo *ai)
+{
+  std::ostringstream os;
+  bool first{true};
+  while (ai) {
+    if (first)
+      first = false;
+    else
+      os << ", ";
+    string h, p;
+    get_numinfo(ai->ai_addr, ai->ai_addrlen, &h, &p);
+    if (h.find(':') == string::npos)
+      os << h << ':' << p;
+    else
+      os << '[' << h << "]:" << p;
+    ai = ai -> ai_next;
+  }
+  return os.str();
+}
 
 void
 set_nonblock(int fd)
@@ -161,7 +183,7 @@ rpcbind_register(const sockaddr *sa, socklen_t salen,
 {
   set_cleanup();
 
-  auto fd = tcp_connect(nullptr, "sunrpc");
+  auto fd = tcp_connect(nullptr, "sunrpc", sa->sa_family);
   srpc_client<xdr::RPCBVERS4> c{fd};
 
   rpcb arg;
@@ -193,32 +215,45 @@ rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers)
 }
 
 unique_addrinfo
-get_rpcaddr(const char *host, std::uint32_t prog, std::uint32_t vers)
+get_rpcaddr(const char *host, std::uint32_t prog, std::uint32_t vers,
+	    int family)
 {
-  unique_addrinfo ai = get_addrinfo(host, SOCK_STREAM, "sunrpc");
-  auto fd = tcp_connect(ai);
-  srpc_client<xdr::RPCBVERS4> c{fd};
+  unique_addrinfo ail = get_addrinfo(host, SOCK_STREAM, "sunrpc", family);
 
-  rpcb arg;
-  arg.r_prog = prog;
-  arg.r_vers = vers;
-  //arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
-  arg.r_netid = "tcp";
-  auto res = c.RPCBPROC_GETADDR(arg);
+  for (const addrinfo *ai = ail.get(); ai; ai = ai->ai_next) {
+    try {
+      auto fd = tcp_connect(ai);
+      srpc_client<xdr::RPCBVERS4> c{fd};
 
-  int port = parse_uaddr_port(*res);
-  if (port == -1)
-    throw xdr_runtime_error("could not parse port in uaddr " + *res);
-  for (addrinfo *i = ai.get(); i; i = i->ai_next)
-    switch (i->ai_family) {
-    case AF_INET:
-      ((sockaddr_in *) i->ai_addr)->sin_port = htons(port);
-      break;
-    case AF_INET6:
-      ((sockaddr_in6 *) i->ai_addr)->sin6_port = htons(port);
-      break;
+      rpcb arg;
+      arg.r_prog = prog;
+      arg.r_vers = vers;
+      arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
+      auto res = c.RPCBPROC_GETADDR(arg);
+
+      int port = parse_uaddr_port(*res);
+      if (port == -1)
+	continue;
+
+      switch (ai->ai_family) {
+      case AF_INET:
+	((sockaddr_in *) ai->ai_addr)->sin_port = htons(port);
+	break;
+      case AF_INET6:
+	((sockaddr_in6 *) ai->ai_addr)->sin6_port = htons(port);
+	break;
+      }
+
+      // XXX - is this safe?
+      unique_addrinfo ret {new addrinfo(*ai)};
+      ret->ai_canonname = nullptr;
+      ret->ai_next = nullptr;
+      return std::move(ret);
     }
-  return ai;
+    catch(const std::system_error &) {}
+  }
+  throw std::system_error(std::make_error_code(std::errc::connection_refused),
+			  "Could not obtain port from rpcbind");
 }
 
 void get_numinfo(const sockaddr *sa, socklen_t salen,
@@ -238,8 +273,11 @@ void get_numinfo(const sockaddr *sa, socklen_t salen,
 }
 
 unique_fd
-tcp_connect(const unique_addrinfo &ai)
+tcp_connect(const addrinfo *ai)
 {
+  // XXX
+  std::cerr << "connecting to " << addrinfo_to_string(ai) << std::endl;
+
   unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
   if (fd == -1)
     throw std::system_error(errno, std::system_category(), "socket");
@@ -255,9 +293,10 @@ tcp_connect(const char *host, const char *service, int family)
 }
 
 unique_fd
-tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers)
+tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
+		int family)
 {
-  return tcp_connect(get_rpcaddr(host, prog, vers));
+  return tcp_connect(get_rpcaddr(host, prog, vers, family));
 }
 
 unique_fd
@@ -272,6 +311,9 @@ tcp_listen(const char *service, int family)
   if (err)
     throw std::system_error(err, gai_category(), "AI_PASSIVE");
   unique_addrinfo ai{res};
+
+  // XXX
+  std::cerr << "listening at " << addrinfo_to_string(ai.get()) << std::endl;
 
   unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
   if (fd == -1)

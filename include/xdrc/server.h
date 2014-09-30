@@ -112,7 +112,8 @@ class rpc_tcp_listener : rpc_server_base {
   void receive_cb(msg_sock *ms, msg_ptr mp);
 
 public:
-  rpc_tcp_listener(int fd = -1, bool use_rpcbind = true);
+  rpc_tcp_listener(int fd, bool use_rpcbind = false);
+  rpc_tcp_listener() : rpc_tcp_listener(-1, true) {}
   virtual ~rpc_tcp_listener();
 
   //! Add objects implementing RPC program interfaces to the server.
