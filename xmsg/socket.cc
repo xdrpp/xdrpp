@@ -169,8 +169,10 @@ rpcbind_register(const sockaddr *sa, socklen_t salen,
   arg.r_vers = vers;
   arg.r_netid = sa->sa_family == AF_INET6 ? "tcp6" : "tcp";
   arg.r_addr = make_uaddr(sa, salen);
+  arg.r_owner = std::to_string(geteuid());
+  c.RPCBPROC_UNSET(arg);
   auto res = c.RPCBPROC_SET(arg);
-  if (*res)
+  if (!*res)
     throw std::system_error(std::make_error_code(std::errc::address_in_use),
 			    "RPCBPROC_SET");
   registered_services.push_back(arg);
@@ -200,11 +202,12 @@ get_rpcaddr(const char *host, std::uint32_t prog, std::uint32_t vers)
   rpcb arg;
   arg.r_prog = prog;
   arg.r_vers = vers;
+  arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
   auto res = c.RPCBPROC_GETADDR(arg);
 
   int port = parse_uaddr_port(*res);
   if (port == -1)
-    return nullptr;
+    throw xdr_runtime_error("could not parse port in uaddr " + *res);
   for (addrinfo *i = ai.get(); i; i = i->ai_next)
     switch (i->ai_family) {
     case AF_INET:

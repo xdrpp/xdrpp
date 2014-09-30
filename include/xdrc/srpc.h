@@ -9,6 +9,8 @@
 
 namespace xdr {
 
+extern bool xdr_trace_client;
+
 msg_ptr read_message(int fd);
 void write_message(int fd, const msg_ptr &m);
 
@@ -43,6 +45,12 @@ public:
     prepare_call<P>(hdr);
     uint32_t xid = hdr.xid;
 
+    if (xdr_trace_client) {
+      std::string s = "CALL ";
+      s += P::proc_name;
+      s += " [xid " + std::to_string(xid) + "]";
+      std::cerr << xdr_to_string(a, s.c_str());
+    }
     write_message(fd_, xdr_to_msg(hdr, a));
     msg_ptr m = read_message(fd_);
 
@@ -62,6 +70,12 @@ public:
     if (g.p_ != g.e_)
       throw xdr_runtime_error("synchronous_client: "
 			      "did not consume whole message");
+    if (xdr_trace_client) {
+      std::string s = "REPLY ";
+      s += P::proc_name;
+      s += " [xid " + std::to_string(xid) + "]";
+      std::cerr << xdr_to_string(a, s.c_str());
+    }
     return moveret(r);
   }
 };

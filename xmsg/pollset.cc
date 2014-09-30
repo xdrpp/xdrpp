@@ -210,26 +210,27 @@ pollset::poll(int timeout)
   }
   size_t maxpoll = pollfds_.size();
   for (size_t i = 0; r > 0 && i < maxpoll; i++) {
-    pollfd &pfd = pollfds_.at(i);
-    fd_state &fi = state_.at(pfd.fd);
-    assert (!(pfd.revents & POLLNVAL));
-    if (pfd.revents)
+    pollfd *pfp = &pollfds_.at(i);
+    fd_state &fi = state_.at(pfp->fd);
+    assert (!(pfp->revents & POLLNVAL));
+    if (pfp->revents)
       --r;
-    if (pfd.revents & (POLLIN|POLLHUP|POLLERR) && fi.rcb) {
+    if (pfp->revents & (POLLIN|POLLHUP|POLLERR) && fi.rcb) {
       if (fi.roneshot) {
 	cb_t cb {std::move(fi.rcb)};
 	fi.rcb = nullptr;
-	pfd.events &= ~POLLIN;
+	pfp->events &= ~POLLIN;
 	cb();
       }
       else
 	fi.rcb();
     }
-    if (pfd.revents & (POLLOUT|POLLHUP|POLLERR) && fi.wcb) {
+    pfp = &pollfds_.at(i); // callback might have resized vector
+    if (pfp->revents & (POLLOUT|POLLHUP|POLLERR) && fi.wcb) {
       if (fi.woneshot) {
 	cb_t cb {std::move(fi.wcb)};
 	fi.wcb = nullptr;
-	pfd.events &= ~POLLOUT;
+	pfp->events &= ~POLLOUT;
 	cb();
       }
       else

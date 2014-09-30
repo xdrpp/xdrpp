@@ -9,6 +9,8 @@
 
 namespace xdr {
 
+bool xdr_trace_client = std::getenv("XDR_TRACE_CLIENT");
+
 msg_ptr
 read_message(int fd)
 {
