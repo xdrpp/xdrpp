@@ -36,6 +36,13 @@ unique_addrinfo get_addrinfo(const char *host,
 			     const char *service = nullptr,
 			     int family = AF_UNSPEC);
 
+unique_addrinfo get_rpcaddr(const char *host, std::uint32_t prog,
+			    std::uint32_t vers);
+
+//! Return printable versions of numeric host and port number
+void get_numinfo(const sockaddr *sa, socklen_t salen,
+		 std::string *host, std::string *serv);
+
 //! Self-closing file descriptor.
 class unique_fd {
   int fd_;
@@ -65,6 +72,18 @@ public:
   }
 };
 
-unique_fd tcp_connect(const char *host, const char *service);
+unique_fd tcp_connect(const unique_addrinfo &ai);
+unique_fd tcp_connect(const char *host, const char *service,
+		      int family = AF_UNSPEC);
+unique_fd tcp_connect_rpc(const char *host,
+			  std::uint32_t prog, std::uint32_t vers);
+
+unique_fd tcp_listen(const char *service, int family = AF_UNSPEC);
+
+int parse_uaddr_port(const std::string &uaddr);
+
+std::string make_uaddr(const sockaddr *sa, socklen_t salen);
+void register_service(const sockaddr *sa, socklen_t salen,
+		      std::uint32_t prog, std::uint32_t vers);
 
 }

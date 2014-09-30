@@ -116,8 +116,15 @@ test_rpcb()
 
 
 int
-main()
+main(int argc, char **argv)
 {
+  auto ai = get_rpcaddr(nullptr, 100000, 3);
+  string host, port;
+  get_numinfo(ai->ai_addr, ai->ai_addrlen, &host, &port);
+  cout << host << ":" << port << endl;
+
+  return 0;
+
   test_rpcb();
 
   int fds[2];

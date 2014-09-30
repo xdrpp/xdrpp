@@ -1,13 +1,42 @@
 
 #include <cstring>
 #include <iostream>
+#include <vector>
 #include <fcntl.h>
 #include <unistd.h>
+#include <xdrc/rpcbind.hh>
 #include <xdrc/socket.h>
+#include <xdrc/srpc.h>
 
 namespace xdr {
 
 using std::string;
+
+namespace {
+
+std::vector<rpcb> registered_services;
+
+void
+run_cleanup()
+{
+  try {
+    auto fd = tcp_connect(nullptr, "sunrpc");
+    srpc_client<xdr::RPCBVERS4> c{fd};
+    for (const auto &arg : registered_services)
+      c.RPCBPROC_UNSET(arg);
+  }
+  catch (...) {}
+}
+
+void
+set_cleanup()
+{
+  static struct once {
+    once() { atexit(run_cleanup); }
+  } o;
+}
+
+};
 
 void
 set_nonblock(int fd)
@@ -82,36 +111,172 @@ unique_addrinfo get_addrinfo(const char *host, int socktype,
   hints.ai_family = family;
   hints.ai_flags = AI_ADDRCONFIG;
   int err = getaddrinfo(host, service, &hints, &res);
-  if (!err)
-    return unique_addrinfo(res);
-  throw std::system_error(err, gai_category(), cat_host_service(host, service));
-}
-
-unique_fd
-tcp_connect(const char *host, const char *service)
-{
-  unique_addrinfo ai = get_addrinfo(host, SOCK_STREAM, service);
-  int fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-  if (fd == -1)
-    throw std::system_error(errno, std::system_category(), "socket");
-  if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1) {
-    int saved_errno = errno;
-    really_close(fd);
-    throw std::system_error(saved_errno, std::system_category(),
+  if (err)
+    throw std::system_error(err, gai_category(),
 			    cat_host_service(host, service));
-  }
-  return unique_fd{fd};
+  return unique_addrinfo(res);
 }
 
 int
 parse_uaddr_port(const string &uaddr)
 {
-  int low = uaddr.rfind('.');
+  std::size_t low = uaddr.rfind('.');
   if (low == string::npos || low == 0)
     return -1;
-  int high = uaddr.rfind('.', low - 1);
+  std::size_t high = uaddr.rfind('.', low - 1);
   if (high == string::npos)
     return -1;
+
+  try {
+    int hb = std::stoi(uaddr.substr(high+1));
+    int lb = std::stoi(uaddr.substr(low+1));
+    if (hb < 0 || hb > 255 || lb < 0 || lb > 255)
+      return -1;
+    return hb << 8 | lb;
+  }
+  catch (std::invalid_argument &) {
+    return -1;
+  }
+  catch (std::out_of_range &) {
+    return -1;
+  }
+}
+
+string
+make_uaddr(const sockaddr *sa, socklen_t salen)
+{
+  string host, portstr;
+  get_numinfo(sa, salen, &host, &portstr);
+  unsigned port = std::stoul(portstr);
+  if (port == 0 || port >= 65536)
+    throw std::system_error(std::make_error_code(std::errc::invalid_argument),
+			    "bad port number");
+  host += "." + std::to_string(port >> 8) + "." + std::to_string(port & 0xff);
+  return host;
+}
+
+void
+register_service(const sockaddr *sa, socklen_t salen,
+		 std::uint32_t prog, std::uint32_t vers)
+{
+  set_cleanup();
+
+  auto fd = tcp_connect(nullptr, "sunrpc");
+  srpc_client<xdr::RPCBVERS4> c{fd};
+
+  rpcb arg;
+  arg.r_prog = prog;
+  arg.r_vers = vers;
+  arg.r_netid = sa->sa_family == AF_INET6 ? "tcp6" : "tcp";
+  arg.r_addr = make_uaddr(sa, salen);
+  auto res = c.RPCBPROC_SET(arg);
+  if (*res)
+    throw std::system_error(std::make_error_code(std::errc::address_in_use),
+			    "RPCBPROC_SET");
+  registered_services.push_back(arg);
+}
+
+void
+register_service(int fd, std::uint32_t prog, std::uint32_t vers)
+{
+  union {
+    struct sockaddr sa;
+    struct sockaddr_storage ss;
+  };
+  socklen_t salen{sizeof ss};
+  std::memset(&ss, 0, salen);
+  if (getsockname(fd, &sa, &salen) == -1)
+    throw std::system_error(errno, std::system_category(), "getsockname");
+  register_service(&sa, salen, prog, vers);
+}
+
+unique_addrinfo
+get_rpcaddr(const char *host, std::uint32_t prog, std::uint32_t vers)
+{
+  unique_addrinfo ai = get_addrinfo(host, SOCK_STREAM, "sunrpc");
+  auto fd = tcp_connect(ai);
+  srpc_client<xdr::RPCBVERS4> c{fd};
+
+  rpcb arg;
+  arg.r_prog = prog;
+  arg.r_vers = vers;
+  auto res = c.RPCBPROC_GETADDR(arg);
+
+  int port = parse_uaddr_port(*res);
+  if (port == -1)
+    return nullptr;
+  for (addrinfo *i = ai.get(); i; i = i->ai_next)
+    switch (i->ai_family) {
+    case AF_INET:
+      ((sockaddr_in *) i->ai_addr)->sin_port = htons(port);
+      break;
+    case AF_INET6:
+      ((sockaddr_in6 *) i->ai_addr)->sin6_port = htons(port);
+      break;
+    }
+  return ai;
+}
+
+void get_numinfo(const sockaddr *sa, socklen_t salen,
+		 string *host, string *serv)
+{
+  char hostbuf[NI_MAXHOST];
+  char servbuf[NI_MAXSERV];
+  int err = getnameinfo(sa, salen, hostbuf, sizeof(hostbuf),
+			servbuf, sizeof(servbuf),
+			NI_NUMERICHOST|NI_NUMERICSERV);
+  if (err)
+    throw std::system_error(err, gai_category(), "getnameinfo");
+  if (host)
+    *host = hostbuf;
+  if (serv)
+    *serv = servbuf;
+}
+
+unique_fd
+tcp_connect(const unique_addrinfo &ai)
+{
+  unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
+  if (fd == -1)
+    throw std::system_error(errno, std::system_category(), "socket");
+  if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1)
+    throw std::system_error(errno, std::system_category(), "connect");
+  return fd;
+}
+
+unique_fd
+tcp_connect(const char *host, const char *service, int family)
+{
+  return tcp_connect(get_addrinfo(host, SOCK_STREAM, service, family));
+}
+
+unique_fd
+tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers)
+{
+  return tcp_connect(get_rpcaddr(host, prog, vers));
+}
+
+unique_fd
+tcp_listen(const char *service, int family)
+{
+  addrinfo hints, *res;
+  std::memset(&hints, 0, sizeof(hints));
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_family = family;
+  hints.ai_flags = AI_ADDRCONFIG | AI_PASSIVE;
+  int err = getaddrinfo(nullptr, service ? service : "0", &hints, &res);
+  if (err)
+    throw std::system_error(err, gai_category(), "AI_PASSIVE");
+  unique_addrinfo ai{res};
+
+  unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
+  if (fd == -1)
+    throw std::system_error(errno, std::system_category(), "socket");
+  if (bind(fd, ai->ai_addr, ai->ai_addrlen) == -1)
+    throw std::system_error(errno, std::system_category(), "bind");
+  if (listen (fd, 5) == -1)
+    throw std::system_error(errno, std::system_category(), "listen");
+  return fd;
 }
 
 }
