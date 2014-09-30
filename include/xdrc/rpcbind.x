@@ -290,9 +290,11 @@ struct mapping {
   unsigned int port;
 };
 
+#if 0
 /* Supported values for the "prot" field: */
 const IPPROTO_TCP = 6;      /* protocol number for TCP/IP */
 const IPPROTO_UDP = 17;     /* protocol number for UDP/IP */
+#endif
 
 /* A list of mappings: */
 struct pmaplist_entry {
