@@ -181,6 +181,7 @@ struct rpc_sym {
   }
 };
 
+#define YYSTYPE YYSTYPE
 struct YYSTYPE {
   uint32_t num;
   struct rpc_decl decl;
