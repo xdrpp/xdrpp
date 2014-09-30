@@ -6,6 +6,13 @@
 #include <xdrc/rpc_msg.hh>
 #include <system_error>
 
+namespace std {
+
+template<> struct is_error_code_enum<xdr::accept_stat> : true_type {};
+template<> struct is_error_code_enum<xdr::auth_stat> : true_type {};
+
+}
+
 namespace xdr {
 
 const std::error_category &accept_stat_category();
@@ -22,13 +29,6 @@ make_error_code(auth_stat s)
 {
   return std::error_code(s, auth_stat_category());
 }
-
-}
-
-namespace std {
-
-template<> struct is_error_code_enum<xdr::accept_stat> : true_type {};
-template<> struct is_error_code_enum<xdr::auth_stat> : true_type {};
 
 }
 
