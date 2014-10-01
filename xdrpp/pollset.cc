@@ -177,16 +177,16 @@ pollset::fd_cb(int fd, op_t op, std::nullptr_t)
   }
 }
 
-bool
-pollset::pending() const
+std::size_t
+pollset::num_cbs() const
 {
-  return pollfds_.size() > 1 || !time_cbs_.empty();
+  return pollfds_.size() + time_cbs_.size();
 }
 
 bool
 pollset_plus::pending() const
 {
-  return nasync_ || pollset::pending();
+  return nasync_ || num_cbs();
 }
 
 int

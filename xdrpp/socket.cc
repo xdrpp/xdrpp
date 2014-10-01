@@ -248,7 +248,7 @@ unique_fd
 tcp_connect1(const addrinfo *ai, bool ndelay)
 {
   // XXX
-  std::cerr << "connecting to " << addrinfo_to_string(ai) << std::endl;
+  //std::cerr << "connecting to " << addrinfo_to_string(ai) << std::endl;
 
   unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
   if (!fd)
@@ -331,7 +331,7 @@ tcp_listen(const char *service, int family)
   unique_addrinfo ai{res};
 
   // XXX
-  std::cerr << "listening at " << addrinfo_to_string(ai.get()) << std::endl;
+  //std::cerr << "listening at " << addrinfo_to_string(ai.get()) << std::endl;
 
   unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
   if (fd == -1)

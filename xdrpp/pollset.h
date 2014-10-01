@@ -25,6 +25,8 @@ protected:
   static constexpr int kReadFlag = 0x1;
   static constexpr int kWriteFlag = 0x2;
   static constexpr int kOnceFlag = 0x4;
+  //! Number of registered file decriptor and timeout callbacks.
+  std::size_t num_cbs() const;
 
 public:
   enum op_t {
@@ -85,7 +87,7 @@ public:
   //! returns \c false, then PollSet::poll will pause forever in the
   //! absence of a signal or a call to PollSet::inject_cb in a
   //! different thread.
-  virtual bool pending() const;
+  virtual bool pending() const { return num_cbs(); }
 
   //! Set a read or write callback on a particular file descriptor.
   //! \arg \c fd is the file descriptor.  \arg \c op specifies the
