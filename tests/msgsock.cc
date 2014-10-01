@@ -5,7 +5,6 @@
 #include <sstream>
 #include <thread>
 #include <sys/socket.h>
-#include <sodium.h>
 #include <xdrpp/msgsock.h>
 
 #include <xdrpp/printer.h>
