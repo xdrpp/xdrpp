@@ -4,8 +4,8 @@
  * including this file, you can archive any XDR data structure with
  * cereal. */
 
-#ifndef _XDRC_CEREAL_H_HEADER_INCLUDED_
-#define _XDRC_CEREAL_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_CEREAL_H_HEADER_INCLUDED_
+#define _XDRPP_CEREAL_H_HEADER_INCLUDED_ 1
 
 #include <type_traits>
 #include <cereal/cereal.hpp>
@@ -14,7 +14,7 @@
 #include <cereal/types/memory.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/details/traits.hpp>
-#include <xdrc/types.h>
+#include <xdrpp/types.h>
 
 namespace cereal {
 class JSONInputArchive;
@@ -105,4 +105,4 @@ using xdr::load;
 using xdr::save;
 }
 
-#endif // !_XDRC_CEREAL_H_HEADER_INCLUDED_
+#endif // !_XDRPP_CEREAL_H_HEADER_INCLUDED_

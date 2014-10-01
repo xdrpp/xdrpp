@@ -37,10 +37,10 @@ AC_SUBST(IS_BIG_ENDIAN)
 
 AC_MSG_CHECKING(for cereal)
 cereal_CPPFLAGS=
-if -d "$ac_top_srcdir/cereal/include/cereal"; then
+if test -d "$ac_top_srcdir/cereal/include/cereal"; then
    cereal_CPPFLAGS='-I$(top_srcdir)/cereal/include'
    USE_CEREAL=yes
-elif -d cereal/include/cereal; then
+elif test -d cereal/include/cereal; then
    cereal_CPPFLAGS='-I$(top_builddir)/cereal/include'
    USE_CEREAL=yes
 fi

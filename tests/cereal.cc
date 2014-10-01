@@ -2,8 +2,8 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
-#include <xdrc/cereal.h>
-#include <xdrc/printer.h>
+#include <xdrpp/cereal.h>
+#include <xdrpp/printer.h>
 #include <cereal/archives/binary.hpp>
 #include <cereal/archives/json.hpp>
 #include "tests/xdrtest.hh"

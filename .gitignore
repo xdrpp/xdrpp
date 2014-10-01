@@ -9,6 +9,7 @@
 /aclocal.m4
 /ar-lib
 /autom4te.cache
+/cereal
 /compile
 /config.h
 /config.h.in
@@ -17,8 +18,6 @@
 /configure
 /depcomp
 /doc/html
-/xdrpp/*.hh
-/xdrpp/endian.h
 /install-sh
 /missing
 /stamp-*
@@ -30,5 +29,7 @@
 /xdrc/scan.cc
 /xdrc/xdrc
 /xdrc/xdrc.1
+/xdrpp/*.hh
+/xdrpp/endian.h
 /ylwrap
 xdrpp-*.tar.gz
