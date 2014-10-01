@@ -1,12 +1,57 @@
-Copyright (C) 2014 David Mazieres
+Copyright (C) 2014 David Mazieres.  All rights reserved.
+
 
 Anyone is premitted to distribute this software under the terms of the
-GNU General Public License (GPL) version 2 or later.  Acceptable
-versions of this license are available at the following URLs:
+GNU General Public License (GPL) version 3 or later.  An acceptable
+version of this license is available at the following URLs:
 
-        http://www.gnu.org/licenses/gpl-2.0.html
         http://www.gnu.org/licenses/gpl-3.0.html
 
 If the Free Software Foundation publishes a higher-numbered GPL
 license, you may at your option distribute this software under the
 terms of that license as well.
+
+
+Students sometimes object to being asked to invest time using software
+with a "restrictive" license such as the GPL.  Though the author does
+not believe the GPL is restrictive, he provides the following option
+to address this concern:  Any student who received credit for
+Stanford's CS244b class in Autumn quarter 2014 may additionally
+re-license any snapshot of xdrpp from any point in 2014 under the
+following so-called "MIT" license:
+
+	Copyright (C) 2014 David Mazieres.
+
+	Permission is hereby granted, free of charge, to any person
+	obtaining a copy of this software and associated documentation
+	files (the "Software"), to deal in the Software without
+	restriction, including without limitation the rights to use,
+	copy, modify, merge, publish, distribute, sublicense, and/or
+	sell copies of the Software, and to permit persons to whom the
+	Software is furnished to do so, subject to the following
+	conditions:
+
+	The above copyright notice and this permission notice shall be
+	included in all copies or substantial portions of the
+	Software.
+ 
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+	KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+	WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+	PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE AUTHORS OR
+	COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+	OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+	SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+To relicense the software, simply replace this file with the above
+indented text, and at the top write "Relicensed by <YOUR NAME> on
+<DATE> by permission of the author."  Since the MIT license is
+transferable, any entity that hires an Autumn 2014 CS244b student may
+end up using the software under the MIT license with that student's
+permission.
+
+
+Similarly, Stellar Development Foundation (who hired the author) may
+relicense any version of xdrpp under any license the foundation sees
+fit.

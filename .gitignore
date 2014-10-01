@@ -17,8 +17,8 @@
 /configure
 /depcomp
 /doc/html
-/include/xdrc/*.hh
-/include/xdrc/endian.h
+/xdrpp/*.hh
+/xdrpp/endian.h
 /install-sh
 /missing
 /stamp-*
@@ -31,4 +31,4 @@
 /xdrc/xdrc
 /xdrc/xdrc.1
 /ylwrap
-xdrc-*.tar.gz
+xdrpp-*.tar.gz
