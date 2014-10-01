@@ -228,50 +228,6 @@ rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers)
   rpcbind_register(&sa, salen, prog, vers);
 }
 
-unique_addrinfo
-get_rpcaddr(const char *host, std::uint32_t prog, std::uint32_t vers,
-	    int family)
-{
-  unique_addrinfo ail = get_addrinfo(host, SOCK_STREAM, "sunrpc", family);
-
-  for (const addrinfo *ai = ail.get(); ai; ai = ai->ai_next) {
-    try {
-      auto fd = tcp_connect(ai);
-      srpc_client<xdr::RPCBVERS4> c{fd};
-
-      rpcb arg;
-      arg.r_prog = prog;
-      arg.r_vers = vers;
-      arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
-      arg.r_addr = make_uaddr(fd);
-      //arg.r_owner = "libtirpc";
-      auto res = c.RPCBPROC_GETADDR(arg);
-
-      int port = parse_uaddr_port(*res);
-      if (port == -1)
-	continue;
-
-      switch (ai->ai_family) {
-      case AF_INET:
-	((sockaddr_in *) ai->ai_addr)->sin_port = htons(port);
-	break;
-      case AF_INET6:
-	((sockaddr_in6 *) ai->ai_addr)->sin6_port = htons(port);
-	break;
-      }
-
-      // XXX - is this safe?
-      unique_addrinfo ret {new addrinfo(*ai)};
-      ret->ai_canonname = nullptr;
-      ret->ai_next = nullptr;
-      return std::move(ret);
-    }
-    catch(const std::system_error &) {}
-  }
-  throw std::system_error(std::make_error_code(std::errc::connection_refused),
-			  "Could not obtain port from rpcbind");
-}
-
 void get_numinfo(const sockaddr *sa, socklen_t salen,
 		 string *host, string *serv)
 {
@@ -289,17 +245,30 @@ void get_numinfo(const sockaddr *sa, socklen_t salen,
 }
 
 unique_fd
-tcp_connect(const addrinfo *ai)
+tcp_connect1(const addrinfo *ai, bool ndelay)
 {
   // XXX
   std::cerr << "connecting to " << addrinfo_to_string(ai) << std::endl;
 
   unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
-  if (fd == -1)
+  if (!fd)
     throw std::system_error(errno, std::system_category(), "socket");
-  if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1)
-    throw std::system_error(errno, std::system_category(), "connect");
+  if (ndelay)
+    set_nonblock(fd);
+  if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1 && errno != EINPROGRESS)
+    fd.clear();
   return fd;
+}
+
+unique_fd
+tcp_connect(const addrinfo *ai)
+{
+  unique_fd fd;
+  errno = EADDRNOTAVAIL;
+  for (; ai && !fd; ai = ai->ai_next)
+    if ((fd = tcp_connect1(ai)))
+      return fd;
+  throw std::system_error(errno, std::system_category(), "connect");
 }
 
 unique_fd
@@ -312,7 +281,40 @@ unique_fd
 tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
 		int family)
 {
-  return tcp_connect(get_rpcaddr(host, prog, vers, family));
+  unique_addrinfo ail = get_addrinfo(host, SOCK_STREAM, "sunrpc", family);
+
+  for (const addrinfo *ai = ail.get(); ai; ai = ai->ai_next) {
+    try {
+      auto fd = tcp_connect1(ai);
+      srpc_client<xdr::RPCBVERS4> c{fd};
+
+      rpcb arg;
+      arg.r_prog = prog;
+      arg.r_vers = vers;
+      arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
+      arg.r_addr = make_uaddr(fd);
+      auto res = c.RPCBPROC_GETADDR(arg);
+
+      int port = parse_uaddr_port(*res);
+      if (port == -1)
+	continue;
+
+      switch (ai->ai_family) {
+      case AF_INET:
+	((sockaddr_in *) ai->ai_addr)->sin_port = htons(port);
+	break;
+      case AF_INET6:
+	((sockaddr_in6 *) ai->ai_addr)->sin6_port = htons(port);
+	break;
+      }
+      fd.clear();
+      if ((fd = tcp_connect1(ai)))
+	return fd;
+    }
+    catch(const std::system_error &) {}
+  }
+  throw std::system_error(std::make_error_code(std::errc::connection_refused),
+			  "Could not obtain port from rpcbind");
 }
 
 unique_fd

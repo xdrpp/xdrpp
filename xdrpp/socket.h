@@ -39,9 +39,6 @@ unique_addrinfo get_addrinfo(const char *host,
 			     const char *service = nullptr,
 			     int family = AF_UNSPEC);
 
-unique_addrinfo get_rpcaddr(const char *host, std::uint32_t prog,
-			    std::uint32_t vers, int family = AF_UNSPEC);
-
 //! Return printable versions of numeric host and port number
 void get_numinfo(const sockaddr *sa, socklen_t salen,
 		 std::string *host, std::string *serv);
@@ -50,12 +47,13 @@ void get_numinfo(const sockaddr *sa, socklen_t salen,
 class unique_fd {
   int fd_;
 public:
+  unique_fd() : unique_fd(-1) {}
   explicit unique_fd(int fd) : fd_(fd) {}
-  unique_fd(unique_fd &&uf) { fd_ = uf.fd_; uf.fd_ = -1; }
+  unique_fd(unique_fd &&uf) : fd_(uf.release()) {}
   ~unique_fd() { clear(); }
   unique_fd &operator=(unique_fd &&uf) {
     clear();
-    std::swap(fd_, uf.fd_);
+    fd_ = uf.release();
     return *this;
   }
 
@@ -73,8 +71,13 @@ public:
       fd_ = -1;
     }
   }
+  void reset(int fd) { clear(); fd_ = fd; }
 };
 
+//! Try connecting to the first \b addrinfo in a linked list.
+unique_fd tcp_connect1(const addrinfo *ai, bool ndelay = false);
+
+//! Try connecting to every \b addrinfo in a list until one succeeds.
 unique_fd tcp_connect(const addrinfo *ai);
 inline unique_fd
 tcp_connect(const unique_addrinfo &ai)
