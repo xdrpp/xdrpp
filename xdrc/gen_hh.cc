@@ -89,25 +89,6 @@ cur_scope()
   return out;
 }
 
-string
-guard_token()
-{
-  string in;
-  if (!output_file.empty() && output_file != "-")
-    in = output_file;
-  else
-    in = strip_directory(strip_dot_x(input_file)) + ".h";
-
-  string ret = "__XDR_";
-  for (char c : in)
-    if (isalnum(c))
-      ret += toupper(c);
-    else
-      ret += "_";
-  ret += "_INCLUDED__";
-  return ret;
-}
-
 inline string
 id_space(const string &s)
 {
@@ -704,7 +685,7 @@ gen_hh(std::ostream &os)
      << nl << "// Automatically generated from " << input_file << '.' << endl
      << "// DO NOT EDIT or your changes may be overwritten" << endl;
 
-  string gtok = guard_token();
+  string gtok = guard_token("");
   os << nl << "#ifndef " << gtok
      << nl << "#define " << gtok << " 1" << endl
      << nl << "#include <xdrpp/types.h>";

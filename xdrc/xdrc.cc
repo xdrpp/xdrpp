@@ -19,6 +19,25 @@ string input_file;
 string output_file;
 string file_prefix;
 
+string
+guard_token(const string &extra)
+{
+  string in;
+  if (!output_file.empty() && output_file != "-")
+    in = output_file;
+  else
+    in = strip_directory(strip_dot_x(input_file)) + extra + ".hh";
+
+  string ret = "__XDR_";
+  for (char c : in)
+    if (isalnum(c))
+      ret += toupper(c);
+    else
+      ret += "_";
+  ret += "_INCLUDED__";
+  return ret;
+}
+
 void
 rpc_decl::set_id(const string &nid)
 {
@@ -62,7 +81,7 @@ strip_dot_x(string in)
 enum opttag {
   OPT_VERSION = 0x100,
   OPT_HELP,
-  OPT_SERVER,
+  OPT_SERVERHH,
   OPT_SERVERCC,
   OPT_HH
 };
@@ -75,8 +94,8 @@ usage(int err = 1)
 usage: xdrc MODE [-DVAR=VALUE...] [-o OUTFILE] INPUT.x
 where MODE is one of:
       -hh        To generate header with XDR and RPC program definitions
-      -server    To generate header for synchronous RPC server
-      -servercc  To generate cc file with empty functions from server header
+      -serverhh  To generate scaffolding for server header file
+      -servercc  To generate scaffolding for server cc
 )";
   exit(err);
 }
@@ -85,7 +104,7 @@ static const struct option xdrc_options[] = {
   {"version", no_argument, nullptr, OPT_VERSION},
   {"help", no_argument, nullptr, OPT_HELP},
   {"hh", no_argument, nullptr, OPT_HH},
-  {"server", no_argument, nullptr, OPT_SERVER},
+  {"serverhh", no_argument, nullptr, OPT_SERVERHH},
   {"servercc", no_argument, nullptr, OPT_SERVERCC},
   {nullptr, 0, nullptr, 0}
 };
@@ -124,12 +143,13 @@ main(int argc, char **argv)
     case OPT_HELP:
       usage(0);
       break;
-    case OPT_SERVER:
+    case OPT_SERVERHH:
       if (gen)
 	usage();
       gen = gen_server;
       cpp_command += " -DXDRC_SERVER=1";
       suffix = ".server.hh";
+      noclobber = true;
       break;
     case OPT_SERVERCC:
       if (gen)

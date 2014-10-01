@@ -227,6 +227,7 @@ extern symlist_t symlist;
 using strlist_t = vec<string>;
 extern strlist_t litq;
 
+string guard_token(const string &extra);
 string strip_directory(string in);
 string strip_dot_x(string in);
 void gen_hh(std::ostream &os);

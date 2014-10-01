@@ -61,14 +61,19 @@ gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 void
 gen_server_internal(std::ostream &os, bool cc)
 {
+  if (!cc)
+    os << "// -*- C++ -*-" << endl;
+  os << "// Scaffolding originally generated from " << input_file << "."
+     << nl << "// Edit to add functionality." << endl;
+
+  string guard = guard_token(".server");
+
   if (cc)
-    os << "// Scaffolding originally generated from " << input_file << "."
-       << nl << "// Edit to add functionality." << endl
-       << nl << "#include \"" << file_prefix << "server.hh\"";
+    os << nl << "#include \"" << file_prefix << ".server.hh\"";
   else
-    os << "// -*- C++ -*-"
-       << nl << "// Automatically generated from " << input_file << '.' << endl
-       << "// DO NOT EDIT or your changes may be overwritten" << endl
+    os << nl << "#ifndef " << guard
+       << nl << "#define " << guard << " 1"
+       << nl
        << nl << "#include \"" << file_prefix << ".hh\"";
 
   int last_type = -1;
@@ -95,6 +100,9 @@ gen_server_internal(std::ostream &os, bool cc)
     last_type = s.type;
   }
   os << nl;
+
+  if (!cc)
+    os << nl << "#endif // !" << guard;
 }
 
 }
