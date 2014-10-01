@@ -62,8 +62,8 @@ strip_dot_x(string in)
 enum opttag {
   OPT_VERSION = 0x100,
   OPT_HELP,
-  OPT_CC,
   OPT_SERVER,
+  OPT_SERVERCC,
   OPT_HH
 };
 
@@ -71,7 +71,13 @@ enum opttag {
 usage(int err = 1)
 {
   std::ostream &os = err ? cerr : cout;
-  os << "usage: xdrc {-hh|-server} [-DVAR=VALUE...] [-o OUTFILE] INPUT.x\n";
+  os << R"(
+usage: xdrc MODE [-DVAR=VALUE...] [-o OUTFILE] INPUT.x
+where MODE is one of:
+      -hh        To generate header with XDR and RPC program definitions
+      -server    To generate header for synchronous RPC server
+      -servercc  To generate cc file with empty functions from server header
+)";
   exit(err);
 }
 
@@ -80,7 +86,7 @@ static const struct option xdrc_options[] = {
   {"help", no_argument, nullptr, OPT_HELP},
   {"hh", no_argument, nullptr, OPT_HH},
   {"server", no_argument, nullptr, OPT_SERVER},
-  //{"cc", no_argument, nullptr, OPT_CC},
+  {"servercc", no_argument, nullptr, OPT_SERVERCC},
   {nullptr, 0, nullptr, 0}
 };
 
@@ -118,17 +124,17 @@ main(int argc, char **argv)
     case OPT_HELP:
       usage(0);
       break;
-    case OPT_CC:
-      if (gen)
-	usage();
-      gen = gen_cc;
-      cpp_command += " -DXDRC_CC=1";
-      suffix = ".cc";
-      break;
     case OPT_SERVER:
       if (gen)
 	usage();
       gen = gen_server;
+      cpp_command += " -DXDRC_SERVER=1";
+      suffix = ".server.hh";
+      break;
+    case OPT_SERVERCC:
+      if (gen)
+	usage();
+      gen = gen_servercc;
       cpp_command += " -DXDRC_SERVER=1";
       suffix = ".server.cc";
       noclobber = true;
@@ -148,7 +154,7 @@ main(int argc, char **argv)
   if (optind + 1 != argc)
     usage();
   if (!gen) {
-    cerr << "xdrc: missing language specifier (-hh)" << endl;
+    cerr << "xdrc: missing mode specifier (e.g., -hh)" << endl;
     usage();
   }
   cpp_command += " ";

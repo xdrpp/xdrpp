@@ -231,6 +231,7 @@ string strip_directory(string in);
 string strip_dot_x(string in);
 void gen_hh(std::ostream &os);
 void gen_server(std::ostream &os);
+void gen_servercc(std::ostream &os);
 
 extern string input_file;
 extern string output_file;

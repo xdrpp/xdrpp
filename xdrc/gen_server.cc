@@ -58,40 +58,55 @@ gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   }
 }
 
+void
+gen_server_internal(std::ostream &os, bool cc)
+{
+  if (cc)
+    os << "// Scaffolding originally generated from " << input_file << "."
+       << nl << "// Edit to add functionality." << endl
+       << nl << "#include \"" << file_prefix << "server.hh\"";
+  else
+    os << "// -*- C++ -*-"
+       << nl << "// Automatically generated from " << input_file << '.' << endl
+       << "// DO NOT EDIT or your changes may be overwritten" << endl
+       << nl << "#include \"" << file_prefix << ".hh\"";
+
+  int last_type = -1;
+
+  for (auto &s : symlist) {
+    switch (s.type) {
+    case rpc_sym::PROGRAM:
+      for (const rpc_vers &v : s.sprogram->vers)
+	(cc ? gen_def : gen_decl)(os, *s.sprogram, v);
+      break;
+    case rpc_sym::NAMESPACE:
+      if (last_type != rpc_sym::NAMESPACE)
+	os << endl;
+      os << nl << "namespace " << *s.sliteral << " {";
+      break;
+    case rpc_sym::CLOSEBRACE:
+      if (last_type != rpc_sym::CLOSEBRACE)
+	os << endl;
+      os << nl << "}";
+      break;
+    default:
+      break;
+    }
+    last_type = s.type;
+  }
+  os << nl;
+}
+
 }
 
 void
 gen_server(std::ostream &os)
 {
-  os << "/* Scaffolding originally generated from " << input_file << "."
-     << nl << " * Edit to add functionality. */" << endl
-     << nl << "#include \"" << file_prefix << ".h\"";
-
-  int last_type = -1;
-
-  for (auto phase : { gen_decl, gen_def }) {
-    for (auto &s : symlist) {
-      switch (s.type) {
-      case rpc_sym::PROGRAM:
-	for (const rpc_vers &v : s.sprogram->vers)
-	  phase(os, *s.sprogram, v);
-	break;
-      case rpc_sym::NAMESPACE:
-	if (last_type != rpc_sym::NAMESPACE)
-	  os << endl;
-	os << nl << "namespace " << *s.sliteral << " {";
-	break;
-      case rpc_sym::CLOSEBRACE:
-	if (last_type != rpc_sym::CLOSEBRACE)
-	  os << endl;
-	os << nl << "}";
-	break;
-      default:
-	break;
-      }
-      last_type = s.type;
-    }
-    os << nl;
-  }
+  gen_server_internal(os, false);
 }
 
+void
+gen_servercc(std::ostream &os)
+{
+  gen_server_internal(os, true);
+}

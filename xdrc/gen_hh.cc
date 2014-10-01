@@ -700,8 +700,9 @@ gen(std::ostream &os, const rpc_program &u)
 void
 gen_hh(std::ostream &os)
 {
-  os << "// -*-C++-*-"
-     << nl << "// Automatically generated from " << input_file << '.' << endl;
+  os << "// -*- C++ -*-"
+     << nl << "// Automatically generated from " << input_file << '.' << endl
+     << "// DO NOT EDIT or your changes may be overwritten" << endl;
 
   string gtok = guard_token();
   os << nl << "#ifndef " << gtok
