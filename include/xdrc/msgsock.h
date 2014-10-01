@@ -30,12 +30,12 @@ class msg_sock {
 public:
   using rcb_t = std::function<void(msg_ptr)>;
 
-  template<typename T> msg_sock(pollset_light &ps, int fd, T &&rcb,
+  template<typename T> msg_sock(pollset &ps, int fd, T &&rcb,
 			       size_t maxmsglen = 0x100000)
     : ps_(ps), fd_(fd), maxmsglen_(maxmsglen), rcb_(std::forward<T>(rcb)) {
     init();
   }
-  msg_sock(pollset_light &ps, int fd) : msg_sock(ps, fd, nullptr) {}
+  msg_sock(pollset &ps, int fd) : msg_sock(ps, fd, nullptr) {}
   ~msg_sock();
   msg_sock &operator=(msg_sock &&) = delete;
 
@@ -49,7 +49,7 @@ public:
   void putmsg(msg_ptr &&b) { putmsg(b); }
 
 private:
-  pollset_light &ps_;
+  pollset &ps_;
   const int fd_;
   const size_t maxmsglen_;
   bool *destroyedp_ {nullptr};

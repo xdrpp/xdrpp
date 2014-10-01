@@ -16,7 +16,7 @@ using namespace xdr;
 void
 echoserver(int fd)
 {
-  pollset ps;
+  pollset_plus ps;
   bool done {false};
   msg_sock ss(ps, fd, nullptr);
   int i = 0;
@@ -36,7 +36,7 @@ echoserver(int fd)
 void
 echoclient(int fd)
 {
-  pollset ps;
+  pollset_plus ps;
   msg_sock ss { ps, fd };
   unsigned int i = 0;
 

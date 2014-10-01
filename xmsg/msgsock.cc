@@ -12,7 +12,7 @@ namespace xdr {
 
 msg_sock::~msg_sock()
 {
-  ps_.fd_cb(fd_, pollset::ReadWrite);
+  ps_.fd_cb(fd_, pollset_plus::ReadWrite);
   really_close(fd_);
   if (destroyedp_)
     *destroyedp_ = true;
@@ -29,9 +29,9 @@ void
 msg_sock::initcb()
 {
   if (rcb_)
-    ps_.fd_cb(fd_, pollset::Read, [this](){ input(); });
+    ps_.fd_cb(fd_, pollset_plus::Read, [this](){ input(); });
   else
-    ps_.fd_cb(fd_, pollset::Read);
+    ps_.fd_cb(fd_, pollset_plus::Read);
 }
 
 void
@@ -110,7 +110,7 @@ msg_sock::input()
   else {
     std::cerr << "msg_sock: rejecting " << len << "-byte message (too long)"
 	      << std::endl;
-    ps_.fd_cb(fd_, pollset::Read);
+    ps_.fd_cb(fd_, pollset_plus::Read);
   }
   if (rdmsg_)
     rdpos_ = 0;
@@ -184,9 +184,9 @@ msg_sock::output(bool cbset)
   pop_wbytes(n);
 
   if (wsize_ && !cbset)
-    ps_.fd_cb(fd_, pollset::Write, [this](){ output(true); });
+    ps_.fd_cb(fd_, pollset_plus::Write, [this](){ output(true); });
   else if (!wsize_ && cbset)
-    ps_.fd_cb(fd_, pollset::Write);
+    ps_.fd_cb(fd_, pollset_plus::Write);
 }
 
 }

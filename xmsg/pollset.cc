@@ -13,19 +13,19 @@
 
 namespace xdr {
 
-std::mutex pollset::signal_owners_lock;
-pollset *pollset::signal_owners[num_sig];
-volatile std::sig_atomic_t pollset::signal_flags[num_sig];
+std::mutex pollset_plus::signal_owners_lock;
+pollset_plus *pollset_plus::signal_owners[num_sig];
+volatile std::sig_atomic_t pollset_plus::signal_flags[num_sig];
 
 void
-pollset::signal_handler(int sig)
+pollset_plus::signal_handler(int sig)
 {
   assert(sig > 0 && sig < num_sig);
   if (signal_flags[sig])
     return;
   signal_flags[sig] = 1;
   std::atomic_thread_fence(std::memory_order_seq_cst);
-  if (pollset *ps = signal_owners[sig])
+  if (pollset_plus *ps = signal_owners[sig])
     // It would be pretty unpleasant if ps got deleted in another
     // thread right here.  To prevent this, we set signal_flags[sig]
     // to the value 1 to signal "wake in progress", then spin on the 1
@@ -35,7 +35,7 @@ pollset::signal_handler(int sig)
   signal_flags[sig] = 2;
 }
 
-pollset::pollset()
+pollset_plus::pollset_plus()
 {
   if (pipe(selfpipe_) == -1)
     throw std::system_error(errno, std::system_category(), "pipe");
@@ -46,7 +46,7 @@ pollset::pollset()
   this->fd_cb(selfpipe_[0], Read, [this](){ this->run_pending_asyncs(); });
 }
 
-pollset::~pollset()
+pollset_plus::~pollset_plus()
 {
   {
     std::lock_guard<std::mutex> lk {signal_owners_lock};
@@ -59,21 +59,21 @@ pollset::~pollset()
   really_close(selfpipe_[1]);
 }
 
-pollset_light::fd_state::~fd_state()
+pollset::fd_state::~fd_state()
 {
   // XXX - eventually remove
   assert (!rcb && !wcb);
 }
 
 void
-pollset::wake(wake_type wt)
+pollset_plus::wake(wake_type wt)
 {
   static_assert(sizeof wt == 1, "uint8_t enum has wrong size");
   write(selfpipe_[1], &wt, 1);
 }
 
 void
-pollset::run_pending_asyncs()
+pollset_plus::run_pending_asyncs()
 {
   std::vector<cb_t> cbs;
   std::vector<cb_t>::iterator i;
@@ -108,7 +108,7 @@ pollset::run_pending_asyncs()
 }
 
 void
-pollset::inject_cb_vec(std::vector<cb_t>::iterator b,
+pollset_plus::inject_cb_vec(std::vector<cb_t>::iterator b,
 		       std::vector<cb_t>::iterator e)
 {
   if (b != e) {
@@ -121,8 +121,8 @@ pollset::inject_cb_vec(std::vector<cb_t>::iterator b,
   }
 }
 
-pollset_light::cb_t &
-pollset_light::fd_cb_helper(int fd, op_t op)
+pollset::cb_t &
+pollset::fd_cb_helper(int fd, op_t op)
 {
   fd_state &fs = state_[fd];
   pollfd *pfdp;
@@ -160,7 +160,7 @@ pollset_light::fd_cb_helper(int fd, op_t op)
 }
 
 void
-pollset_light::fd_cb(int fd, op_t op, std::nullptr_t)
+pollset::fd_cb(int fd, op_t op, std::nullptr_t)
 {
   auto fi = state_.find(fd);
   if (fi == state_.end())
@@ -178,19 +178,19 @@ pollset_light::fd_cb(int fd, op_t op, std::nullptr_t)
 }
 
 bool
-pollset_light::pending() const
+pollset::pending() const
 {
   return pollfds_.size() > 1 || !time_cbs_.empty();
 }
 
 bool
-pollset::pending() const
+pollset_plus::pending() const
 {
-  return nasync_ || pollset_light::pending();
+  return nasync_ || pollset::pending();
 }
 
 int
-pollset_light::next_timeout(int ms)
+pollset::next_timeout(int ms)
 {
   auto next = time_cbs_.begin();
   if (next == time_cbs_.end())
@@ -207,7 +207,7 @@ pollset_light::next_timeout(int ms)
 }
 
 void
-pollset_light::poll(int timeout)
+pollset::poll(int timeout)
 {
   int r = ::poll(pollfds_.data(), pollfds_.size(), next_timeout(timeout));
   if (r < 0) {
@@ -252,7 +252,7 @@ pollset_light::poll(int timeout)
 }
 
 void
-pollset_light::run_timeouts()
+pollset::run_timeouts()
 {
   auto i = time_cbs_.begin();
   if (i != time_cbs_.end()) {
@@ -265,7 +265,7 @@ pollset_light::run_timeouts()
 }
 
 void
-pollset::run_subtype_handlers()
+pollset_plus::run_subtype_handlers()
 {
   if (!signal_pending_)
     return;
@@ -299,7 +299,7 @@ pollset::run_subtype_handlers()
 }
 
 void
-pollset_light::consolidate()
+pollset::consolidate()
 {
   while (!pollfds_.empty() && !pollfds_.back().events) {
     auto fi = state_.find(pollfds_.back().fd);
@@ -327,7 +327,7 @@ pollset_light::consolidate()
 }
 
 void
-pollset::signal_cb(int sig, cb_t cb)
+pollset_plus::signal_cb(int sig, cb_t cb)
 {
   if (!cb) {
     signal_cb(sig);
@@ -339,7 +339,7 @@ pollset::signal_cb(int sig, cb_t cb)
   signal_cbs_[sig] = std::move(cb);
   if (signal_owners[sig] == this)
     return;
-  if (pollset *ps = signal_owners[sig]) {
+  if (pollset_plus *ps = signal_owners[sig]) {
     signal_owners[sig] = this;
     ps->signal_cbs_.erase(sig);
   }
@@ -358,9 +358,9 @@ pollset::signal_cb(int sig, cb_t cb)
 
 // Assumes signal_owners_lock already held when called.
 void
-pollset::erase_signal_cb(int sig)
+pollset_plus::erase_signal_cb(int sig)
 {
-  pollset *ps = signal_owners[sig];
+  pollset_plus *ps = signal_owners[sig];
   if (!ps)
     return;
 
@@ -385,7 +385,7 @@ pollset::erase_signal_cb(int sig)
 }
 
 void
-pollset::signal_cb(int sig, std::nullptr_t)
+pollset_plus::signal_cb(int sig, std::nullptr_t)
 {
   assert(sig > 0 && sig < num_sig);
   std::lock_guard<std::mutex> lk {signal_owners_lock};
@@ -393,7 +393,7 @@ pollset::signal_cb(int sig, std::nullptr_t)
 }
 
 std::int64_t
-pollset_light::now_ms()
+pollset::now_ms()
 {
   using namespace std::chrono;
   return duration_cast<milliseconds>(steady_clock::now().time_since_epoch())
@@ -401,7 +401,7 @@ pollset_light::now_ms()
 }
 
 void
-pollset_light::timeout_cancel(Timeout &t)
+pollset::timeout_cancel(Timeout &t)
 {
   if (timeout_is_not_null(t)) {
     assert(time_cbs_.find(t.i_->first) != time_cbs_.end());
@@ -411,7 +411,7 @@ pollset_light::timeout_cancel(Timeout &t)
 }
 
 void
-pollset_light::timeout_reschedule_at(Timeout &t, std::int64_t ms)
+pollset::timeout_reschedule_at(Timeout &t, std::int64_t ms)
 {
   auto i = t.i_;
   t.i_ = time_cbs_.emplace(ms, std::move(i->second));

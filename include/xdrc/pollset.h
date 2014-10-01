@@ -20,7 +20,7 @@
 namespace xdr {
 
 //! Structure to poll for a set of file descriptors and timeouts.
-class pollset_light {
+class pollset {
 protected:
   static constexpr int kReadFlag = 0x1;
   static constexpr int kWriteFlag = 0x2;
@@ -118,7 +118,7 @@ public:
     iterator i_;
     Timeout(iterator i) : i_(i) {}
     Timeout &operator=(iterator i) { i_ = i; return *this; }
-    friend class pollset_light;
+    friend class pollset;
   };
 
   //! Set a callback to run a certain number of milliseconds from now.
@@ -167,7 +167,7 @@ public:
 //! Adds support for signal handlers, asynchonous events, and
 //! callbacks injected from other threads to the basic functionality
 //! in \c pollset_light.
-class pollset : public pollset_light {
+class pollset_plus : public pollset {
   enum class wake_type : std::uint8_t {
     Normal = 0,
     Signal = 1
@@ -175,7 +175,7 @@ class pollset : public pollset_light {
   
   // State for asynchronous tasks
   template<typename R> struct async_task {
-    pollset *ps_;
+    pollset_plus *ps_;
     std::function<R()> work_;
     std::function<void(R)> cb_;
     std::unique_ptr<R> rp_;
@@ -203,7 +203,7 @@ class pollset : public pollset_light {
   // Signal callback state
   static constexpr int num_sig = 32;
   static std::mutex signal_owners_lock;
-  static pollset *signal_owners[num_sig];
+  static pollset_plus *signal_owners[num_sig];
   static volatile std::sig_atomic_t signal_flags[num_sig];
   bool signal_pending_{false};
   std::map<int, cb_t> signal_cbs_;
@@ -217,8 +217,8 @@ class pollset : public pollset_light {
   static void erase_signal_cb(int);
 
 public:
-  pollset();
-  ~pollset();
+  pollset_plus();
+  ~pollset_plus();
 
   bool pending() const override;
 
