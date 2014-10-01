@@ -1,11 +1,11 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_SRPC_H_HEADER_INCLUDED_
-#define _XDRC_SRPC_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_SRPC_H_HEADER_INCLUDED_
+#define _XDRPP_SRPC_H_HEADER_INCLUDED_ 1
 
 //! \file srpc.h Simple synchronous RPC functions.
 
-#include <xdrc/server.h>
+#include <xdrpp/server.h>
 
 namespace xdr {
 
@@ -107,4 +107,4 @@ public:
 
 }
 
-#endif // !_XDRC_SRPC_H_HEADER_INCLUDED_
+#endif // !_XDRPP_SRPC_H_HEADER_INCLUDED_

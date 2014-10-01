@@ -9,7 +9,7 @@
 #include <system_error>
 #include <signal.h>
 #include <unistd.h>
-#include <xdrc/pollset.h>
+#include <xdrpp/pollset.h>
 
 namespace xdr {
 

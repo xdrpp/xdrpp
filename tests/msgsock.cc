@@ -6,9 +6,9 @@
 #include <thread>
 #include <sys/socket.h>
 #include <sodium.h>
-#include <xdrc/msgsock.h>
+#include <xdrpp/msgsock.h>
 
-#include <xdrc/printer.h>
+#include <xdrpp/printer.h>
 
 using namespace std;
 using namespace xdr;

@@ -706,7 +706,7 @@ gen_hh(std::ostream &os)
   string gtok = guard_token();
   os << nl << "#ifndef " << gtok
      << nl << "#define " << gtok << " 1" << endl
-     << nl << "#include <xdrc/types.h>";
+     << nl << "#include <xdrpp/types.h>";
 
   int last_type = -1;
 

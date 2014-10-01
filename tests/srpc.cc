@@ -3,9 +3,9 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <thread>
-#include <xdrc/srpc.h>
-#include <xdrc/rpcbind.hh>
-#include <xdrc/socket.h>
+#include <xdrpp/srpc.h>
+#include <xdrpp/rpcbind.hh>
+#include <xdrpp/socket.h>
 #include "tests/xdrtest.hh"
 
 using namespace std;

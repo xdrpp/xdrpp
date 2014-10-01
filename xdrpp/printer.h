@@ -1,10 +1,10 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_PRINT_H_HEADER_INCLUDED_
-#define _XDRC_PRINT_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_PRINT_H_HEADER_INCLUDED_
+#define _XDRPP_PRINT_H_HEADER_INCLUDED_ 1
 
 #include <sstream>
-#include <xdrc/types.h>
+#include <xdrpp/types.h>
 
 namespace xdr {
 
@@ -120,4 +120,4 @@ xdr_to_string(const T &t, const char *name = nullptr, int indent = 0)
 
 }
 
-#endif // !_XDRC_PRINT_H_HEADER_INCLUDED_
+#endif // !_XDRPP_PRINT_H_HEADER_INCLUDED_

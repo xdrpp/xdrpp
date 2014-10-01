@@ -1,12 +1,12 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_MARSHAL_H_HEADER_INCLUDED_
-#define _XDRC_MARSHAL_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_MARSHAL_H_HEADER_INCLUDED_
+#define _XDRPP_MARSHAL_H_HEADER_INCLUDED_ 1
 
 #include <cstring>
-#include <xdrc/endian.h>
-#include <xdrc/message.h>
-#include <xdrc/types.h>
+#include <xdrpp/endian.h>
+#include <xdrpp/message.h>
+#include <xdrpp/types.h>
 
 namespace xdr {
 
@@ -214,5 +214,5 @@ xdr_from_msg(const msg_ptr &m, T &t)
 
 }
 
-#endif // !_XDRC_MARSHAL_H_HEADER_INCLUDED_
+#endif // !_XDRPP_MARSHAL_H_HEADER_INCLUDED_
 

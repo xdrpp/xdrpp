@@ -1,13 +1,13 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_MESSAGE_H_HEADER_INCLUDED_
-#define _XDRC_MESSAGE_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_MESSAGE_H_HEADER_INCLUDED_
+#define _XDRPP_MESSAGE_H_HEADER_INCLUDED_ 1
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <xdrc/endian.h>
+#include <xdrpp/endian.h>
 
 //! \file msgbuf.h Message buffer with space for marshaled length.
 
@@ -40,4 +40,4 @@ public:
 
 }
 
-#endif // !_XDRC_MESSAGE_H_HEADER_INCLUDED_
+#endif // !_XDRPP_MESSAGE_H_HEADER_INCLUDED_

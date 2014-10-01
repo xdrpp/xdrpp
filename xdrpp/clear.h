@@ -1,11 +1,11 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_CLEAR_H_HEADER_INCLUDED_
-#define _XDRC_CLEAR_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_CLEAR_H_HEADER_INCLUDED_
+#define _XDRPP_CLEAR_H_HEADER_INCLUDED_ 1
 
 #include <cstring>
 #include <type_traits>
-#include <xdrc/types.h>
+#include <xdrpp/types.h>
 
 namespace xdr {
 
@@ -51,4 +51,4 @@ xdr_clear(T &t)
 
 }
 
-#endif // !_XDRC_CLEAR_H_HEADER_INCLUDED
+#endif // !_XDRPP_CLEAR_H_HEADER_INCLUDED

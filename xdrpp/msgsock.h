@@ -1,14 +1,14 @@
 // -*- C++ -*-
 
-#ifndef _MSGSOCK_H_
-#define _MSGSOCK_H_ 1
+#ifndef _XDRPP_MSGSOCK_H_INCLUDED_
+#define _XDRPP_MSGSOCK_H_INCLUDED_ 1
 
 //! \file msgsock.h Send and receive delimited messages over
 //! non-blocking sockets.
 
 #include <deque>
-#include <xdrc/message.h>
-#include <xdrc/pollset.h>
+#include <xdrpp/message.h>
+#include <xdrpp/pollset.h>
 
 namespace xdr {
 
@@ -79,4 +79,4 @@ private:
 
 }
 
-#endif /* !_MSGSOCK_H_ */
+#endif // !_XDRPP_MSGSOCK_H_INCLUDED_

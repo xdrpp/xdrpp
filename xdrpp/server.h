@@ -1,13 +1,13 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_SERVER_H_HEADER_INCLUDED_
-#define _XDRC_SERVER_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_SERVER_H_HEADER_INCLUDED_
+#define _XDRPP_SERVER_H_HEADER_INCLUDED_ 1
 
-#include <xdrc/marshal.h>
-#include <xdrc/printer.h>
-#include <xdrc/msgsock.h>
-#include <xdrc/socket.h>
-#include <xdrc/rpc_msg.hh>
+#include <xdrpp/marshal.h>
+#include <xdrpp/printer.h>
+#include <xdrpp/msgsock.h>
+#include <xdrpp/socket.h>
+#include <xdrpp/rpc_msg.hh>
 #include <map>
 
 namespace xdr {
@@ -129,4 +129,4 @@ public:
 
 }
 
-#endif // !_XDRC_SERVER_H_HEADER_INCLUDED_
+#endif // !_XDRPP_SERVER_H_HEADER_INCLUDED_

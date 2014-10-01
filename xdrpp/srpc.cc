@@ -4,8 +4,8 @@
 #include <iostream>
 #include <system_error>
 #include <unistd.h>
-#include <xdrc/srpc.h>
-#include <xdrc/types.h>
+#include <xdrpp/srpc.h>
+#include <xdrpp/types.h>
 
 namespace xdr {
 

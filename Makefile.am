@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
+AM_CPPFLAGS = $(cereal_CPPFLAGS)
 
 bin_PROGRAMS = xdrc/xdrc
 
@@ -10,23 +10,24 @@ xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
 BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
-	include/xdrc/rpc_msg.hh include/xdrc/rpcbind.hh
+	xdrpp/rpc_msg.hh xdrpp/rpcbind.hh
 
-lib_LIBRARIES = xmsg/libxmsg.a
-xmsg_libxmsg_a_SOURCES = xmsg/iniparse.cc xmsg/marshal.cc		\
-	xmsg/msgsock.cc xmsg/printer.cc xmsg/pollset.cc			\
-	xmsg/rpc_msg.cc xmsg/server.cc xmsg/socket.cc xmsg/srpc.cc
+lib_LIBRARIES = xdrpp/libxdrpp.a
+xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
+	xdrpp/msgsock.cc xdrpp/printer.cc xdrpp/pollset.cc	\
+	xdrpp/rpc_msg.cc xdrpp/server.cc xdrpp/socket.cc	\
+	xdrpp/srpc.cc
 
-nodist_pkginclude_HEADERS = include/xdrc/endian.h
-pkginclude_HEADERS = include/xdrc/types.h include/xdrc/cereal.h	\
-	include/xdrc/clear.h include/xdrc/exception.h		\
-	include/xdrc/iniparse.h include/xdrc/marshal.h		\
-	include/xdrc/printer.h include/xdrc/rpc_msg.hh		\
-	include/xdrc/message.h include/xdrc/msgsock.h		\
-	include/xdrc/pollset.h include/xdrc/server.h		\
-	include/xdrc/socket.h include/xdrc/srpc.h
+nodist_pkginclude_HEADERS = xdrpp/endian.h
+pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h	\
+	xdrpp/clear.h xdrpp/exception.h		\
+	xdrpp/iniparse.h xdrpp/marshal.h		\
+	xdrpp/printer.h xdrpp/rpc_msg.hh		\
+	xdrpp/message.h xdrpp/msgsock.h		\
+	xdrpp/pollset.h xdrpp/server.h		\
+	xdrpp/socket.h xdrpp/srpc.h
 
-LDADD = $(top_builddir)/xmsg/libxmsg.a
+LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 
 check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
 	tests/test-srpc tests/test-printer tests/test-listener
@@ -34,12 +35,12 @@ if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 endif
 #TESTS = $(check_PROGRAMS)
-tests_test_printer_SOURCES = tests/printer.cc xmsg/libxmsg.a
-tests_test_msgsock_SOURCES = tests/msgsock.cc xmsg/libxmsg.a
-tests_test_marshal_SOURCES = tests/marshal.cc xmsg/libxmsg.a
-tests_test_cereal_SOURCES = tests/cereal.cc xmsg/libxmsg.a
-tests_test_srpc_SOURCES = tests/srpc.cc xmsg/libxmsg.a
-tests_test_listener_SOURCES = tests/listener.cc xmsg/libxmsg.a
+tests_test_printer_SOURCES = tests/printer.cc xdrpp/libxdrpp.a
+tests_test_msgsock_SOURCES = tests/msgsock.cc xdrpp/libxdrpp.a
+tests_test_marshal_SOURCES = tests/marshal.cc xdrpp/libxdrpp.a
+tests_test_cereal_SOURCES = tests/cereal.cc xdrpp/libxdrpp.a
+tests_test_srpc_SOURCES = tests/srpc.cc xdrpp/libxdrpp.a
+tests_test_listener_SOURCES = tests/listener.cc xdrpp/libxdrpp.a
 tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
@@ -50,11 +51,11 @@ SUFFIXES = .x .hh
 .x.hh:
 	$(XDRC) -hh -o $@ $<
 $(top_builddir)/tests/xdrtest.hh: $(XDRC)
-$(top_builddir)/include/xdrc/rpc_msg.hh: $(XDRC)
-$(top_builddir)/include/xdrc/rpcbind.hh: $(XDRC)
+$(top_builddir)/xdrpp/rpc_msg.hh: $(XDRC)
+$(top_builddir)/xdrpp/rpcbind.hh: $(XDRC)
 
 CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh	\
-	include/xdrc/rpc_msg.hh include/xdrc/rpcbind.hh
+	xdrpp/rpc_msg.hh xdrpp/rpcbind.hh
 
 $(srcdir)/xdrc/xdrc.1: $(srcdir)/xdrc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/xdrc/xdrc.1.md -o $(srcdir)/xdrc/xdrc.1
@@ -68,7 +69,7 @@ maintainer-clean-local:
 
 man_MANS = xdrc/xdrc.1
 EXTRA_DIST = .gitignore xdrc/xdrc.1 xdrc/xdrc.1.md	\
-	include/xdrc/endian.h.in include/xdrc/rpc_msg.x	\
-	include/xdrc/rpcbind.x tests/xdrtest.x
+	xdrpp/endian.h.in xdrpp/rpc_msg.x	\
+	xdrpp/rpcbind.x tests/xdrtest.x
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 	$(srcdir)/xdrc/xdrc.1

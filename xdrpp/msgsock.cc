@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <sys/uio.h>
 
-#include <xdrc/msgsock.h>
+#include <xdrpp/msgsock.h>
 
 namespace xdr {
 

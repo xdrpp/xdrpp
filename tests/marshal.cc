@@ -1,9 +1,9 @@
 
 #include <cassert>
 #include <iostream>
-#include <xdrc/clear.h>
-#include <xdrc/marshal.h>
-#include <xdrc/printer.h>
+#include <xdrpp/clear.h>
+#include <xdrpp/marshal.h>
+#include <xdrpp/printer.h>
 #include "tests/xdrtest.hh"
 
 using namespace std;

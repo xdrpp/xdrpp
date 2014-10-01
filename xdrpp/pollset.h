@@ -1,7 +1,7 @@
 // -*- C++ -*-
 
-#ifndef _POLLSET_H_
-#define _POLLSET_H_ 1
+#ifndef _XDRPP_POLLSET_H_INCLUDED_
+#define _XDRPP_POLLSET_H_INCLUDED_ 1
 
 /** \file pollset.h Asynchronous I/O and event harness. */
 
@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <vector>
 #include <poll.h>
-#include <xdrc/socket.h>
+#include <xdrpp/socket.h>
 
 namespace xdr {
 
@@ -276,4 +276,4 @@ public:
 
 }
 
-#endif /* !_POLLSET_H_ */
+#endif // !_XDRPP_POLLSET_H_INCLUDED_

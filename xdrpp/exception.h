@@ -1,9 +1,9 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_EXCEPTION_H_HEADER_INCLUDED_
-#define _XDRC_EXCEPTION_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_EXCEPTION_H_HEADER_INCLUDED_
+#define _XDRPP_EXCEPTION_H_HEADER_INCLUDED_ 1
 
-#include <xdrc/rpc_msg.hh>
+#include <xdrpp/rpc_msg.hh>
 #include <system_error>
 
 namespace std {
@@ -32,4 +32,4 @@ make_error_code(auth_stat s)
 
 }
 
-#endif // !_XDRC_EXCEPTION_H_HEADER_INCLUDED_
+#endif // !_XDRPP_EXCEPTION_H_HEADER_INCLUDED_

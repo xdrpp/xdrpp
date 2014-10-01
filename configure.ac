@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([xdrc],[0])
+AC_INIT([xdrpp],[0])
 AM_INIT_AUTOMAKE([-Wall subdir-objects])
 AC_CONFIG_SRCDIR([configure.ac])
 AC_CONFIG_MACRO_DIR([m4])
@@ -35,12 +35,18 @@ AC_C_BIGENDIAN
 AC_C_BIGENDIAN(IS_BIG_ENDIAN=1, IS_BIG_ENDIAN=0)
 AC_SUBST(IS_BIG_ENDIAN)
 
-AC_MSG_CHECKING(for cereal in include/cereal)
-if test -d include/cereal -o -d "$ac_top_srcdir/cereal"; then
+AC_MSG_CHECKING(for cereal)
+cereal_CPPFLAGS=
+if -d "$ac_top_srcdir/cereal/include/cereal"; then
+   cereal_CPPFLAGS='-I$(top_srcdir)/cereal/include'
+   USE_CEREAL=yes
+elif -d cereal/include/cereal; then
+   cereal_CPPFLAGS='-I$(top_builddir)/cereal/include'
    USE_CEREAL=yes
 fi
 AM_CONDITIONAL([USE_CEREAL], [test yes = "$USE_CEREAL"])
 AC_MSG_RESULT(${USE_CEREAL:-no})
+AC_SUBST(cereal_CPPFLAGS)
 
 test -z "$XDRC" -a "x$cross_compiling" != xyes \
      && XDRC='$(top_builddir)/xdrc/xdrc$(EXEEXT)'
@@ -52,6 +58,6 @@ if test -z "$XDRC"; then
 fi
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile include/xdrc/endian.h])
+AC_CONFIG_FILES([Makefile xdrpp/endian.h])
 AC_OUTPUT
 

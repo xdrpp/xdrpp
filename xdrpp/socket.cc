@@ -5,9 +5,9 @@
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
-#include <xdrc/rpcbind.hh>
-#include <xdrc/socket.h>
-#include <xdrc/srpc.h>
+#include <xdrpp/rpcbind.hh>
+#include <xdrpp/socket.h>
+#include <xdrpp/srpc.h>
 
 namespace xdr {
 

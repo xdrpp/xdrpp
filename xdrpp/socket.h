@@ -1,7 +1,7 @@
 // -*- C++ -*-
 
-#ifndef _XDRC_SOCKET_H_HEADER_INCLUDED_
-#define _XDRC_SOCKET_H_HEADER_INCLUDED_ 1
+#ifndef _XDRPP_SOCKET_H_HEADER_INCLUDED_
+#define _XDRPP_SOCKET_H_HEADER_INCLUDED_ 1
 
 //! \file socket.h Simplified support for creatins sockets.
 
@@ -99,4 +99,4 @@ void rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers);
 
 }
 
-#endif // !_XDRC_SOCKET_H_HEADER_INCLUDED_
+#endif // !_XDRPP_SOCKET_H_HEADER_INCLUDED_

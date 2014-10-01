@@ -1,7 +1,7 @@
 
 #include <iomanip>
 #include <iostream>
-#include <xdrc/printer.h>
+#include <xdrpp/printer.h>
 #include "tests/xdrtest.hh"
 
 using namespace std;

@@ -2,7 +2,7 @@
 #include <cstring>
 #include <fstream>
 #include <type_traits>
-#include "xdrc/iniparse.h"
+#include <xdrpp/iniparse.h>
 
 namespace xdr {
 
