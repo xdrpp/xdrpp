@@ -84,7 +84,7 @@ rpc_server_base::dispatch(msg_ptr m)
 }
 
 rpc_tcp_listener::rpc_tcp_listener(unique_fd &&fd, bool reg)
-  : listen_fd_(fd ? tcp_listen() : std::move(fd)),
+  : listen_fd_(fd ? std::move(fd) : tcp_listen()),
     use_rpcbind_(reg)
 {
   set_close_on_exec(listen_fd_.get());
@@ -122,7 +122,7 @@ rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
   try {
     ms->putmsg(dispatch(std::move(mp)));
   }
-  catch (const std::exception &e) {
+  catch (const xdr_runtime_error &e) {
     std::cerr << e.what() << std::endl;
     delete ms;
   }

@@ -4,31 +4,36 @@
 #define _XDRPP_EXCEPTION_H_HEADER_INCLUDED_ 1
 
 #include <xdrpp/rpc_msg.hh>
-#include <system_error>
-
-namespace std {
-
-template<> struct is_error_code_enum<xdr::accept_stat> : true_type {};
-template<> struct is_error_code_enum<xdr::auth_stat> : true_type {};
-
-}
+#include <cerrno>
+#include <cstring>
 
 namespace xdr {
 
-const std::error_category &accept_stat_category();
-const std::error_category &auth_stat_category();
+const char *rpc_errmsg(accept_stat ev);
+const char *rpc_errmsg(auth_stat ev);
+const char *rpc_errmsg(reject_stat ev);
 
-inline std::error_code
-make_error_code(accept_stat s)
-{
-  return std::error_code(s, accept_stat_category());
-}
+//! Exception representing errors returned by the server
+struct xdr_call_error : xdr_runtime_error {
+  union {
+    accept_stat accept_;
+    auth_stat auth_;
+    reject_stat reject_;
+  };
+  enum { ACCEPT_STAT, AUTH_STAT, REJECT_STAT } type_;
+  xdr_call_error(accept_stat);
+  xdr_call_error(auth_stat);
+  xdr_call_error(reject_stat);
+};
 
-inline std::error_code
-make_error_code(auth_stat s)
-{
-  return std::error_code(s, auth_stat_category());
-}
+//! Check that a header has a result.  \throws xdr_call_error if the
+//! reply does not contain a response.
+void check_call_hdr(const rpc_msg &hdr);
+
+struct xdr_system_error : xdr_runtime_error {
+  xdr_system_error(const char *what, int no = errno)
+    : xdr_runtime_error(std::string(what) + std::strerror(no)) {}
+};
 
 }
 

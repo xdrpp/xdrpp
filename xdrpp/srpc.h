@@ -5,6 +5,7 @@
 
 //! \file srpc.h Simple synchronous RPC functions.
 
+#include <xdrpp/exception.h>
 #include <xdrpp/server.h>
 
 namespace xdr {
@@ -58,20 +59,15 @@ public:
 
     xdr_get g(m);
     archive(g, hdr);
-    if (hdr.xid != xid || hdr.body.mtype() != REPLY)
-      throw xdr_runtime_error("synchronous_client: unexpected message");
-    if (hdr.body.rbody().stat() != MSG_ACCEPTED)
-      throw xdr_runtime_error(xdr_to_string(hdr.body.rbody().rreply(),
-					    "rejected_reply"));
-    if (hdr.body.rbody().areply().reply_data.stat() != SUCCESS)
-      throw xdr_runtime_error
-	(xdr_to_string(hdr.body.rbody().areply().reply_data, "reply_data"));
+    check_call_hdr(hdr);
+    if (hdr.xid != xid)
+      throw xdr_runtime_error("synchronous_client: unexpected xid");
 
     std::unique_ptr<typename P::res_wire_type> r{new typename P::res_wire_type};
     archive(g, *r);
     if (g.p_ != g.e_)
-      throw xdr_runtime_error("synchronous_client: "
-			      "did not consume whole message");
+      throw xdr_bad_message_size("synchronous_client: "
+				 "did not consume whole message");
     if (xdr_trace_client) {
       std::string s = "REPLY ";
       s += P::proc_name;

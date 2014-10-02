@@ -2,10 +2,9 @@
 #include <cerrno>
 #include <cstring>
 #include <iostream>
-#include <system_error>
 #include <unistd.h>
+#include <xdrpp/exception.h>
 #include <xdrpp/srpc.h>
-#include <xdrpp/types.h>
 
 namespace xdr {
 
@@ -17,7 +16,7 @@ read_message(int fd)
   std::uint32_t len;
   ssize_t n = read(fd, &len, 4);
   if (n == -1)
-    throw std::system_error(errno, std::system_category(), "xdr::read_message");
+    throw xdr_system_error("xdr::read_message");
   if (n < 4)
     throw xdr_bad_message_size("read_message: premature EOF");
   if (n & 3)
@@ -34,8 +33,7 @@ read_message(int fd)
   msg_ptr m = message_t::alloc(len);
   n = read(fd, m->data(), len);
   if (n == -1)
-    throw std::system_error(errno, std::system_category(),
-			    "xdr::read_message");
+    throw xdr_system_error("xdr::read_message");
   if (n != len)
     throw xdr_bad_message_size("read_message: premature EOF");
 
@@ -46,9 +44,8 @@ void
 write_message(int fd, const msg_ptr &m)
 {
   ssize_t n = write(fd, m->raw_data(), m->raw_size());
-  if (n < 0)
-    throw std::system_error(errno, std::system_category(),
-			    "xdr::write_message");
+  if (n == -1)
+    throw xdr_system_error("xdr::write_message");
   // If this assertion fails, the file descriptor may have had
   // O_NONBLOCK set, which is not allowed for the synchronous
   // interface.

@@ -42,7 +42,11 @@ struct xdr_should_be_zero : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
 };
 
-//! Attempt to access wrong field of a union.
+//! Attempt to access wrong field of a union.  Note that this is not
+//! an \c xdr_runtime_error, because it cannot result from
+//! unmarshalling garbage arguments.  Rather it is a logic error in
+//! application code that neglected to check the union discriminant
+//! before accessing the wrong field.
 struct xdr_wrong_union : std::logic_error {
   using std::logic_error::logic_error;
 };
