@@ -112,15 +112,15 @@ class rpc_tcp_listener : rpc_server_base {
   void receive_cb(msg_sock *ms, msg_ptr mp);
 
 public:
-  rpc_tcp_listener(int fd, bool use_rpcbind = false);
-  rpc_tcp_listener() : rpc_tcp_listener(-1, true) {}
+  rpc_tcp_listener(unique_fd &&fd, bool use_rpcbind = false);
+  rpc_tcp_listener() : rpc_tcp_listener(unique_fd(-1), true) {}
   virtual ~rpc_tcp_listener();
 
   //! Add objects implementing RPC program interfaces to the server.
   template<typename T> void register_service(T &t) {
     register_service_base(new synchronous_server<T>(t));
     if(use_rpcbind_)
-      rpcbind_register(listen_fd_, T::rpc_interface_type::program,
+      rpcbind_register(listen_fd_.get(), T::rpc_interface_type::program,
 		       T::rpc_interface_type::version);
   }
   void run();

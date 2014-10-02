@@ -83,24 +83,24 @@ rpc_server_base::dispatch(msg_ptr m)
   }
 }
 
-rpc_tcp_listener::rpc_tcp_listener(int fd, bool reg)
-  : listen_fd_(fd == -1 ? tcp_listen() : unique_fd{fd}),
+rpc_tcp_listener::rpc_tcp_listener(unique_fd &&fd, bool reg)
+  : listen_fd_(fd ? tcp_listen() : std::move(fd)),
     use_rpcbind_(reg)
 {
-  set_close_on_exec(listen_fd_);
-  ps_.fd_cb(listen_fd_, pollset::Read,
+  set_close_on_exec(listen_fd_.get());
+  ps_.fd_cb(listen_fd_.get(), pollset::Read,
 	    std::bind(&rpc_tcp_listener::accept_cb, this));
 }
 
 rpc_tcp_listener::~rpc_tcp_listener()
 {
-  ps_.fd_cb(listen_fd_, pollset::Read);
+  ps_.fd_cb(listen_fd_.get(), pollset::Read);
 }
 
 void
 rpc_tcp_listener::accept_cb()
 {
-  int fd = accept(listen_fd_, nullptr, 0);
+  int fd = accept(listen_fd_.get(), nullptr, 0);
   if (fd == -1) {
     std::cerr << "rpc_tcp_listener: accept: " << std::strerror(errno)
 	      << std::endl;

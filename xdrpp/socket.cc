@@ -254,8 +254,9 @@ tcp_connect1(const addrinfo *ai, bool ndelay)
   if (!fd)
     throw std::system_error(errno, std::system_category(), "socket");
   if (ndelay)
-    set_nonblock(fd);
-  if (connect(fd, ai->ai_addr, ai->ai_addrlen) == -1 && errno != EINPROGRESS)
+    set_nonblock(fd.get());
+  if (connect(fd.get(), ai->ai_addr, ai->ai_addrlen) == -1
+      && errno != EINPROGRESS)
     fd.clear();
   return fd;
 }
@@ -292,7 +293,7 @@ tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
       arg.r_prog = prog;
       arg.r_vers = vers;
       arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
-      arg.r_addr = make_uaddr(fd);
+      arg.r_addr = make_uaddr(fd.get());
       auto res = c.RPCBPROC_GETADDR(arg);
 
       int port = parse_uaddr_port(*res);
@@ -334,11 +335,11 @@ tcp_listen(const char *service, int family)
   //std::cerr << "listening at " << addrinfo_to_string(ai.get()) << std::endl;
 
   unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
-  if (fd == -1)
+  if (!fd)
     throw std::system_error(errno, std::system_category(), "socket");
-  if (bind(fd, ai->ai_addr, ai->ai_addrlen) == -1)
+  if (bind(fd.get(), ai->ai_addr, ai->ai_addrlen) == -1)
     throw std::system_error(errno, std::system_category(), "bind");
-  if (listen (fd, 5) == -1)
+  if (listen (fd.get(), 5) == -1)
     throw std::system_error(errno, std::system_category(), "listen");
   return fd;
 }

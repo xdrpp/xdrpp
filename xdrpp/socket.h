@@ -58,7 +58,6 @@ public:
   }
 
   int get() const { return fd_; }
-  operator int() const { return fd_; }
   explicit operator bool() const { return fd_ != -1; }
   int release() {
     int ret = fd_;
