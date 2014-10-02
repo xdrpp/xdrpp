@@ -52,7 +52,7 @@ private:
   pollset &ps_;
   const int fd_;
   const size_t maxmsglen_;
-  bool *destroyedp_ {nullptr};
+  std::shared_ptr<bool> destroyed_{new bool {false}};
 
   rcb_t rcb_;
   uint32_t nextlen_;

@@ -12,10 +12,9 @@ namespace xdr {
 
 msg_sock::~msg_sock()
 {
-  ps_.fd_cb(fd_, pollset_plus::ReadWrite);
+  ps_.fd_cb(fd_, pollset::ReadWrite);
   really_close(fd_);
-  if (destroyedp_)
-    *destroyedp_ = true;
+  *destroyed_ = true;
 }
 
 void
@@ -29,94 +28,91 @@ void
 msg_sock::initcb()
 {
   if (rcb_)
-    ps_.fd_cb(fd_, pollset_plus::Read, [this](){ input(); });
+    ps_.fd_cb(fd_, pollset::Read, [this](){ input(); });
   else
-    ps_.fd_cb(fd_, pollset_plus::Read);
+    ps_.fd_cb(fd_, pollset::Read);
 }
 
 void
 msg_sock::input()
 {
-  if (rdmsg_) {
-    iovec iov[2];
-    iov[0].iov_base = rdmsg_->data() + rdpos_;
-    iov[0].iov_len = rdmsg_->size() - rdpos_;
-    iov[1].iov_base = nextlenp();
-    iov[1].iov_len = sizeof nextlen_;
-    ssize_t n = readv(fd_, iov, 2);
-    if (n <= 0) {
-      std::cerr << "rdmsg_->size() = " << rdmsg_->size()
-		<< ", rdpos_ = " << rdpos_
-		<< ", iov[0].iov_len = " << iov[0].iov_len
-		<< std::endl;
-      std::cerr << "msg_sock::input: " << std::strerror(errno) << std::endl;
-      if (n < 0 && eagain(errno))
+  std::shared_ptr<bool> destroyed{destroyed_};
+  for (int i = 0; i < 3 && !*destroyed; i++) {
+    if (rdmsg_) {
+      iovec iov[2];
+      iov[0].iov_base = rdmsg_->data() + rdpos_;
+      iov[0].iov_len = rdmsg_->size() - rdpos_;
+      iov[1].iov_base = nextlenp();
+      iov[1].iov_len = sizeof nextlen_;
+      ssize_t n = readv(fd_, iov, 2);
+      if (n <= 0) {
+	if (n < 0 && eagain(errno))
+	  return;
+	if (n == 0)
+	  errno = ECONNRESET;
+	else
+	  std::cerr << "msg_sock::input: " << std::strerror(errno) << std::endl;
+	rcb_(nullptr);
 	return;
-      if (n == 0)
-	errno = ECONNRESET;
+      }
+      rdpos_ += n;
+      if (rdpos_ >= rdmsg_->size()) {
+	rdpos_ -= rdmsg_->size();
+	rcb_(std::move(rdmsg_));
+	if (*destroyed)
+	  return;
+      }
+    }
+    else if (rdpos_ < sizeof nextlen_) {
+      ssize_t n = read(fd_, nextlenp() + rdpos_, sizeof nextlen_ - rdpos_);
+      if (n <= 0) {
+	if (n < 0 && eagain(errno))
+	  return;
+	if (n == 0)
+	  errno = rdpos_ ? ECONNRESET : 0;
+	else
+	  std::cerr << "msg_sock::input: " << std::strerror(errno) << std::endl;
+	rcb_(nullptr);
+	return;
+      }
+      rdpos_ += n;
+    }
+
+    if (rdmsg_ || rdpos_ < sizeof nextlen_)
+      return;
+    size_t len = nextlen();
+    if (!(len & 0x80000000)) {
+      std::cerr << "msgsock: message fragments unimplemented" << std::endl;
+      errno = ECONNRESET;
       rcb_(nullptr);
       return;
     }
-    rdpos_ += n;
-    if (rdpos_ >= rdmsg_->size()) {
-      rdpos_ -= rdmsg_->size();
-
-      bool destroyed {false};
-      destroyedp_ = &destroyed;
-      rcb_(std::move(rdmsg_));
-      if (destroyed)
-	return;
-      destroyedp_ = nullptr;
+    len &= 0x7fffffff;
+    if (!len) {
+      rdpos_ = 0;
+      rcb_(message_t::alloc(0));
+      continue;
     }
-  }
-  else if (rdpos_ < sizeof nextlen_) {
-    ssize_t n = read(fd_, nextlenp() + rdpos_, sizeof nextlen_ - rdpos_);
-    if (n <= 0) {
-      std::cerr << "read failed with " << strerror(errno) << std::endl;
-      if (n < 0 && eagain(errno))
-	return;
-      if (n == 0)
-	errno = rdpos_ ? ECONNRESET : 0;
-      rcb_(nullptr);
-      return;
+
+    if (len <= maxmsglen_) {
+      // Length comes from untrusted source; don't crash if can't alloc
+      try { rdmsg_ = message_t::alloc(len); }
+      catch (const std::bad_alloc &) {
+	std::cerr << "msg_sock: allocation of " << len << "-byte message failed"
+		  << std::endl;
+      }
     }
-    rdpos_ += n;
-  }
-
-  if (rdmsg_ || rdpos_ < sizeof nextlen_)
-    return;
-  size_t len = nextlen();
-  if (!(len & 0x80000000)) {
-    std::cerr << "msgsock: message fragments unimplemented" << std::endl;
-    errno = ECONNRESET;
-    rcb_(nullptr);
-    return;
-  }
-  len &= 0x7fffffff;
-  if (!len) {
-    rdpos_ = 0;
-    rcb_(message_t::alloc(0));
-    return;
-  }
-
-  if (len <= maxmsglen_) {
-    // Length comes from untrusted source; don't crash if can't alloc
-    try { rdmsg_ = message_t::alloc(len); }
-    catch (const std::bad_alloc &) {
-      std::cerr << "msg_sock: allocation of " << len << "-byte message failed"
+    else {
+      std::cerr << "msg_sock: rejecting " << len << "-byte message (too long)"
 		<< std::endl;
+      ps_.fd_cb(fd_, pollset::Read);
     }
-  }
-  else {
-    std::cerr << "msg_sock: rejecting " << len << "-byte message (too long)"
-	      << std::endl;
-    ps_.fd_cb(fd_, pollset_plus::Read);
-  }
-  if (rdmsg_)
-    rdpos_ = 0;
-  else {
-    errno = E2BIG;
-    rcb_(nullptr);
+    if (rdmsg_)
+      rdpos_ = 0;
+    else {
+      errno = E2BIG;
+      rcb_(nullptr);
+    }
   }
 }
 
@@ -184,9 +180,9 @@ msg_sock::output(bool cbset)
   pop_wbytes(n);
 
   if (wsize_ && !cbset)
-    ps_.fd_cb(fd_, pollset_plus::Write, [this](){ output(true); });
+    ps_.fd_cb(fd_, pollset::Write, [this](){ output(true); });
   else if (!wsize_ && cbset)
-    ps_.fd_cb(fd_, pollset_plus::Write);
+    ps_.fd_cb(fd_, pollset::Write);
 }
 
 }
