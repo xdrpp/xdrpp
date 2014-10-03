@@ -36,12 +36,12 @@ if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 endif
 #TESTS = $(check_PROGRAMS)
-tests_test_printer_SOURCES = tests/printer.cc xdrpp/libxdrpp.a
-tests_test_msgsock_SOURCES = tests/msgsock.cc xdrpp/libxdrpp.a
-tests_test_marshal_SOURCES = tests/marshal.cc xdrpp/libxdrpp.a
-tests_test_cereal_SOURCES = tests/cereal.cc xdrpp/libxdrpp.a
-tests_test_srpc_SOURCES = tests/srpc.cc xdrpp/libxdrpp.a
-tests_test_listener_SOURCES = tests/listener.cc xdrpp/libxdrpp.a
+tests_test_printer_SOURCES = tests/printer.cc
+tests_test_msgsock_SOURCES = tests/msgsock.cc
+tests_test_marshal_SOURCES = tests/marshal.cc
+tests_test_cereal_SOURCES = tests/cereal.cc
+tests_test_srpc_SOURCES = tests/srpc.cc
+tests_test_listener_SOURCES = tests/listener.cc
 tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
