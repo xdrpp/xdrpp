@@ -239,6 +239,18 @@ code like the following:
       return 0;
     }
 
+## Compilation
+
+The generated `xdrc` output files must be compiled with a compiler
+supporting C++11 (or later, such as C++14) and expect to be used with
+libxdrpp.  This typically requires extra compiler flags (e.g.,
+`-std=c++11`).  You can use pkgconfig to find the location of the
+headers and libraries.  With CXX set to both g++ and clang++, the
+following Makefile variables work:
+
+    CXXFLAGS = -std=c++11 `pkg-config --cflags xdrpp`
+    LIBS = `pkg-config --libs xdrpp`
+
 # FILES
 
 PREFIX/include/xdrc/types.h
