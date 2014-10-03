@@ -77,13 +77,24 @@ public:
   }
 };
 
+//! Create an RPC client from an interface type and connected stream
+//! socket.  Note that the file descriptor is not closed afterwards
+//! (as you may wish to use different interfaces over the same file
+//! descriptor).  A simple example looks like this:
+//!
+//! \code
+//!    unique_fd fd = tcp_connect_rpc(argc > 2 ? argv[2] : nullptr,
+//!                                   MyProg1::program, MyProg1::version);
+//!    srpc_client<MyProg1> c{fd.get()};
+//!    unique_ptr<big_string> result = c.hello(5);
+//! \endcode
 template<typename T> using srpc_client =
   typename T::template client<synchronous_client_base>;
 
 
-//! Attach an RPC server to a stream socket.  No procedures will be
-//! implemented by the RPC server until interface objects are
-//! reigstered with \c register_server.
+//! Attach a RPC services to a single, connected stream socket.  No
+//! procedures will be implemented by the RPC server until interface
+//! objects are reigstered with \c register_server.
 class srpc_server : public rpc_server_base {
   const int fd_;
   bool close_on_destruction_;
