@@ -74,7 +74,7 @@ gen_server_internal(std::ostream &os, bool cc)
     os << nl << "#ifndef " << guard
        << nl << "#define " << guard << " 1"
        << nl
-       << nl << "#include \"" << file_prefix << ".hh\"";
+       << nl << "#include \"" << strip_suffix(output_file, ".cc") << ".hh\"";
 
   int last_type = -1;
 

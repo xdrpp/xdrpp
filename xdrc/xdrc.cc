@@ -26,7 +26,7 @@ guard_token(const string &extra)
   if (!output_file.empty() && output_file != "-")
     in = output_file;
   else
-    in = strip_directory(strip_dot_x(input_file)) + extra + ".hh";
+    in = strip_directory(strip_suffix(input_file, ".x")) + extra + ".hh";
 
   string ret = "__XDR_";
   for (char c : in)
@@ -68,13 +68,13 @@ strip_directory(string in)
 }
 
 string
-strip_dot_x(string in)
+strip_suffix(string in, string suffix)
 {
   size_t r = in.size();
-  if (r < 2)
+  if (r < suffix.size())
     return in;
-  if (in.substr(r-2) == ".x")
-    return in.substr(0,r-2);
+  if (in.substr(r-suffix.size()) == suffix)
+    return in.substr(0,r-suffix.size());
   return in;
 }
 
@@ -192,7 +192,7 @@ main(int argc, char **argv)
     exit(1);
 
   if (output_file.empty()) {
-    output_file = strip_dot_x(input_file);
+    output_file = strip_suffix(input_file, ".x");
     if (output_file == input_file)
       usage();
     output_file = strip_directory(output_file);
@@ -209,7 +209,7 @@ main(int argc, char **argv)
       && output_file.substr(output_file.size() - suffix.size()) == suffix)
     file_prefix = output_file.substr(0, output_file.size() - suffix.size());
   else
-    file_prefix = strip_dot_x(input_file);
+    file_prefix = strip_suffix(input_file, ".x");
 
   if (output_file == "-")
     gen(cout);

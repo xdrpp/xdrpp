@@ -229,7 +229,7 @@ extern strlist_t litq;
 
 string guard_token(const string &extra);
 string strip_directory(string in);
-string strip_dot_x(string in);
+string strip_suffix(string in, string suffix);
 void gen_hh(std::ostream &os);
 void gen_server(std::ostream &os);
 void gen_servercc(std::ostream &os);
