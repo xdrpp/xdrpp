@@ -1,5 +1,7 @@
 // -*- C++ -*-
 
+/** \file clear.h Support for clearing an XDR data structure. */
+
 #ifndef _XDRPP_CLEAR_H_HEADER_INCLUDED_
 #define _XDRPP_CLEAR_H_HEADER_INCLUDED_ 1
 
@@ -9,6 +11,8 @@
 
 namespace xdr {
 
+namespace detail{
+//! Helper type for xdr::xdr_clear function.
 struct xdr_clear_t {
   constexpr xdr_clear_t() {}
 
@@ -41,11 +45,16 @@ struct xdr_clear_t {
   std::enable_if<xdr_traits<T>::is_numeric || xdr_traits<T>::is_enum>::type
   operator()(T &t) const { t = T{}; }
 };
+}
 
+//! Reset XDR data structure to its default contents.  All vectors and
+//! strings are set to length 0, all fixed-size opaque arrays zeroed
+//! out, and all numeric and enum types sent to their default values
+//! (generally 0).
 template<typename T> void
 xdr_clear(T &t)
 {
-  static constexpr xdr_clear_t c;
+  static constexpr detail::xdr_clear_t c;
   archive(c, t);
 }
 

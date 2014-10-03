@@ -1,5 +1,9 @@
 // -*- C++ -*-
 
+/** \file marshal.h Support for marshaling XDR types in the format
+ * specified by [RFC4506](http://tools.ietf.org/html/rfc4506).
+ */
+
 #ifndef _XDRPP_MARSHAL_H_HEADER_INCLUDED_
 #define _XDRPP_MARSHAL_H_HEADER_INCLUDED_ 1
 
@@ -10,6 +14,7 @@
 
 namespace xdr {
 
+//! Common utility types and functions for all the marshaling classes.
 struct marshal_base {
   struct u64conv {
     union {
@@ -29,6 +34,8 @@ struct marshal_base {
   static void put_bytes(std::uint32_t *&pr, const void *buf, std::size_t len);
 };
 
+//! Numeric marshaling mixin that does not byteswap any numeric values
+//! (which will produce RFC4506 output on a big-endian machine).
 struct marshal_noswap : marshal_base {
   static void put32(std::uint32_t *&p, std::uint32_t v) { *p++ = v; }
   static void put64(std::uint32_t *&p, u64conv u) {
@@ -45,6 +52,8 @@ struct marshal_noswap : marshal_base {
   }
 };
 
+//! Numeric marshaling mixin that byteswaps all numeric values (thus
+//! producing RFC4506 output on a little-endian machine).
 struct marshal_swap : marshal_base {
   static void put32(std::uint32_t *&p, std::uint32_t v) {
     *p++ = swap32(v);
@@ -62,6 +71,8 @@ struct marshal_swap : marshal_base {
   }
 };
 
+//! Archive type for marshaling to a buffer.  Depending on the `Base`
+//! type, will marshal in either big- or little-endian order.
 template<typename Base> struct xdr_generic_put : Base {
   using Base::put32;
   using Base::put64;
@@ -108,6 +119,9 @@ template<typename Base> struct xdr_generic_put : Base {
   operator()(const T &t) { xdr_traits<T>::save(*this, t); }
 };
 
+//! Archive type for unmarshaling from a buffer.  Depending on the
+//! `Base` type, will expect input in either big- or little-endian
+//! order.
 template<typename Base> struct xdr_generic_get : Base {
   using Base::get32;
   using Base::get64;
@@ -164,7 +178,9 @@ template<typename Base> struct xdr_generic_get : Base {
 using xdr_put = xdr_generic_put<marshal_noswap>;
 using xdr_get = xdr_generic_get<marshal_noswap>;
 #else // !WORDS_BIGENDIAN
+//! Archive for marshaling in RFC4506 big-endian order.
 using xdr_put = xdr_generic_put<marshal_swap>;
+//! Archive for unmarshaling in RFC4506 big-endian order.
 using xdr_get = xdr_generic_get<marshal_swap>;
 #endif // !WORDS_BIGENDIAN
 
@@ -173,6 +189,8 @@ xdr_argpack_size()
 {
   return 0;
 }
+//! Returns the sum of bytes required to marshal all of the argument
+//! values.
 template<typename T, typename...Args> inline std::size_t
 xdr_argpack_size(const T &t, const Args &...a)
 {
@@ -183,6 +201,7 @@ template<typename Archive> inline void
 xdr_argpack_archive(Archive &)
 {
 }
+//! Applies an archive to each argument.
 template<typename Archive, typename T, typename...Args> inline void
 xdr_argpack_archive(Archive &ar, T &&t, Args &&...args)
 {
@@ -190,6 +209,10 @@ xdr_argpack_archive(Archive &ar, T &&t, Args &&...args)
   xdr_argpack_archive(ar, std::forward<Args>(args)...);
 }
 
+//! Marshal one or a series of XDR types into a newly allocated buffer
+//! referenced xdr::msg_ptr.  If more than one argument is given, each
+//! XDR value is marshaled in turn.  (In particular, this allows one
+//! to marshal a header followed by a message body.)
 template<typename...Args> msg_ptr
 xdr_to_msg(const Args &...args)
 {
@@ -200,7 +223,13 @@ xdr_to_msg(const Args &...args)
   return m;
 }
 
-/* XXX - Not really useful, since we have to unmarshal header then body */
+//! This does the reverse of xdr::xdr_to_msg, but is only useful for
+//! debugging.  In real code, you generally first want to unmarshal
+//! the header, then decide what type the body is.  Since this
+//! function expects to consume the entire buffer, you cannot use it
+//! for decoding incoming RPC messages.  \throws xdr_bad_message_size
+//! if it fails to consume the whole buffer or would need to overrun
+//! the buffer.
 template<typename T> T &
 xdr_from_msg(const msg_ptr &m, T &t)
 {

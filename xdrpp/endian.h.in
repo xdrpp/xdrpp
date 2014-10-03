@@ -1,8 +1,7 @@
 // -*- C++ -*-
 // Warning: Make sure to edit xdrc_endian.h.in, not xdrc_endian.h.
-# 4 "include/xdrc/endian.h.in"
 
-/** \file xdrc/endian.h Endianness of build machine. */
+/** \file endian.h Endianness of build machine. */
 
 #ifndef _XDRC_ENDIAN_H_HEADER_INCLUDED_
 #define _XDRC_ENDIAN_H_HEADER_INCLUDED_ 1
@@ -24,40 +23,43 @@ constexpr bool is_big_endian = true;
 constexpr bool is_big_endian = false;
 #endif // !WORDS_BIGENDIAN
 
+//! Byteswap 32-bit number.
 constexpr std::uint32_t
 swap32(std::uint32_t v)
 {
   return v << 24 | (v & 0xff00) << 8 | (v >> 8 & 0xff00) | v >> 24;
 }
 
+//! Byteswap 64-bit number.
 constexpr std::uint64_t
 swap64(std::uint64_t v)
 {
   return std::uint64_t(swap32(v))<<32 | swap32(v>>32);
 }
 
-//! Byteswap 32-bit value only on little-endian machines
+//! Byteswap 32-bit value only on little-endian machines, identity
+//! function on big-endian machines.
 constexpr std::uint32_t
 swap32le(std::uint32_t v)
 {
   return xdr::is_big_endian ? v : swap32(v);
 }
 
-//! Byteswap 32-bit value only on little-endian machines
+//! Byteswap 32-bit value only on big-endian machines
 constexpr std::uint32_t
 swap32be(std::uint32_t v)
 {
   return xdr::is_big_endian ? swap32(v) : v;
 }
 
-//! Byteswap 64-bit value only on big-endian machines
+//! Byteswap 64-bit value only on little-endian machines
 constexpr std::uint64_t
 swap64le(std::uint64_t v)
 {
   return xdr::is_big_endian ? v : swap64(v);
 }
 
-//! Byteswap 64-bit value only on little-endian machines
+//! Byteswap 64-bit value only on big-endian machines
 constexpr std::uint64_t
 swap64be(std::uint64_t v)
 {

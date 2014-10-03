@@ -8,7 +8,7 @@ xdrc - RFC4506 XDR compiler for libxdrpp
 
 # SYNOPSIS
 
-xdrc {-hh|-serverhh|-servercc} [-o _outfile_] [-DMACRO=val...] __input__.x
+xdrc {-hh|-serverhh|-servercc} [-o _outfile_] [-DMACRO=val...] _input_.x
 
 # DESCRIPTION
 

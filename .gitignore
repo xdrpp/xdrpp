@@ -18,6 +18,7 @@
 /configure
 /depcomp
 /doc/html
+/doc/xdrc.1
 /install-sh
 /missing
 /stamp-*
@@ -28,7 +29,6 @@
 /xdrc/parse.hh
 /xdrc/scan.cc
 /xdrc/xdrc
-/xdrc/xdrc.1
 /xdrpp/*.hh
 /xdrpp/endian.h
 /ylwrap

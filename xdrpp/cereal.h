@@ -1,8 +1,19 @@
 // -*- C++ -*-
 
-/** \file cereal.h Interface for cereal serealization back ends.  By
- * including this file, you can archive any XDR data structure with
- * cereal. */
+/** \file cereal.h Interface for
+ * [cereal](http://uscilab.github.io/cereal/) serealization back ends.
+ * By including this file, you can archive any XDR data structure
+ * using any format supported by [cereal].  Note that only the binary
+ * structures actually sanity-check the lengths of strings.  You don't
+ * need to do anything with this file other than include it. Simply
+ * follow the [cereal] archive documentation to proceed, without the
+ * need to implement your own `archive` (or `save`/`load`) methods.
+ *
+ * Note you still need to include the cereal archive headers you want
+ * to use, e.g., <tt>#include &lt;<cereal/archives/json.hpp&gt;</tt>.
+ *
+ * [cereal]: http://uscilab.github.io/cereal/
+ */
 
 #ifndef _XDRPP_CEREAL_H_HEADER_INCLUDED_
 #define _XDRPP_CEREAL_H_HEADER_INCLUDED_ 1
@@ -25,6 +36,7 @@ class XMLInputArchive;
 
 namespace xdr {
 
+namespace detail {
 template<typename Archive, typename T> typename
 std::enable_if<xdr_traits<T>::is_class>::type
 save(Archive &ar, const T &t)
@@ -86,23 +98,25 @@ template<typename Archive> struct nvp_adapter {
     apply(ar, field, static_cast<const std::string &>(s));
   }
 };
+}
 
-//! \hideinitializer
+//! \hideinitializer \cond
 #define CEREAL_ARCHIVE_TAKES_NAME(archive)		\
 template<> struct archive_adapter<cereal::archive>	\
-  : nvp_adapter<cereal::archive> {}
+ : detail::nvp_adapter<cereal::archive> {}
 CEREAL_ARCHIVE_TAKES_NAME(JSONInputArchive);
 CEREAL_ARCHIVE_TAKES_NAME(JSONOutputArchive);
 CEREAL_ARCHIVE_TAKES_NAME(XMLOutputArchive);
 CEREAL_ARCHIVE_TAKES_NAME(XMLInputArchive);
 #undef CEREAL_ARCHIVE_TAKES_NAME
+//! \endcond
 
 
 }
 
 namespace cereal {
-using xdr::load;
-using xdr::save;
+using xdr::detail::load;
+using xdr::detail::save;
 }
 
 #endif // !_XDRPP_CEREAL_H_HEADER_INCLUDED_

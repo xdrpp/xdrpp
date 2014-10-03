@@ -57,8 +57,8 @@ $(top_builddir)/xdrpp/rpcbind.hh: $(XDRC)
 CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh	\
 	xdrpp/rpc_msg.hh xdrpp/rpcbind.hh
 
-$(srcdir)/xdrc/xdrc.1: $(srcdir)/xdrc/xdrc.1.md
-	-pandoc -s -w man $(srcdir)/xdrc/xdrc.1.md -o $(srcdir)/xdrc/xdrc.1
+$(srcdir)/doc/xdrc.1: $(srcdir)/doc/xdrc.1.md
+	-pandoc -s -w man $(srcdir)/doc/xdrc.1.md -o $(srcdir)/doc/xdrc.1
 
 distclean-local:
 	rm -rf autom4te.cache
@@ -67,9 +67,10 @@ maintainer-clean-local:
 	+@echo rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 	rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 
-man_MANS = xdrc/xdrc.1
-EXTRA_DIST = .gitignore xdrc/xdrc.1 xdrc/xdrc.1.md	\
-	xdrpp/endian.h.in xdrpp/rpc_msg.x	\
-	xdrpp/rpcbind.x tests/xdrtest.x
+man_MANS = doc/xdrc.1
+EXTRA_DIST = .gitignore xdrc/xdrc.1 xdrc/xdrc.1.md xdrpp/endian.h.in	\
+	xdrpp/rpc_msg.x xdrpp/rpcbind.x tests/xdrtest.x			\
+	doc/rfc1833.txt doc/rfc4506.txt doc/rfc5531.txt			\
+	doc/rfc5665.txt
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
-	$(srcdir)/xdrc/xdrc.1
+	$(srcdir)/doc/xdrc.1

@@ -1,8 +1,5 @@
 // -*- C++ -*-
 
-#ifndef _INIPARSE_H_
-#define _INIPARSE_H_ 1
-
 /** \file iniparse.h
  * \brief Parser for .ini style files.
  *
@@ -32,6 +29,9 @@
  * \endcode
  */
 
+#ifndef _INIPARSE_H_
+#define _INIPARSE_H_ 1
+
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -45,7 +45,7 @@ namespace xdr {
 
 using std::string;
 
-//! Used internally to generate a bunch of `from_string` functions.
+//! \cond
 #define FROM_STRING(T) void from_string(const string &, T *);
 FROM_STRING(string)
 FROM_STRING(bool)
@@ -61,6 +61,7 @@ FROM_STRING(float)
 FROM_STRING(double)
 FROM_STRING(long double)
 #undef FROM_STRING
+//! \endcond
 
 //! Contents of a specific property.
 class IniLine {

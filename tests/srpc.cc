@@ -6,6 +6,7 @@
 #include <xdrpp/srpc.h>
 #include <xdrpp/rpcbind.hh>
 #include <xdrpp/socket.h>
+#include <xdrpp/clear.h>
 #include "tests/xdrtest.hh"
 
 using namespace std;
@@ -37,6 +38,8 @@ xdrtest2_server::nonnull2(std::unique_ptr<u_4_12> arg)
   cerr << "I got a nonnull request" << endl
        << xdr_to_string(*arg, "arg");
   res->c(::REDDER).num() = ContainsEnum::TWO;
+
+  xdr_clear(*arg);
   
   return res;
 }
