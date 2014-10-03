@@ -19,13 +19,14 @@ xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
 	xdrpp/srpc.cc
 
 nodist_pkginclude_HEADERS = xdrpp/endian.h
-pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h	\
-	xdrpp/clear.h xdrpp/exception.h		\
-	xdrpp/iniparse.h xdrpp/marshal.h		\
-	xdrpp/printer.h xdrpp/rpc_msg.hh		\
-	xdrpp/message.h xdrpp/msgsock.h		\
-	xdrpp/pollset.h xdrpp/server.h		\
-	xdrpp/socket.h xdrpp/srpc.h
+pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
+	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
+	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
+	xdrpp/msgsock.h xdrpp/pollset.h xdrpp/server.h xdrpp/socket.h	\
+	xdrpp/srpc.h
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = xdrpp.pc
 
 LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 
