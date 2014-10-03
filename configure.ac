@@ -23,7 +23,7 @@ AC_DEFINE_UNQUOTED([CPP_COMMAND], "$CPP", [Shell command for C preprocessor])
 
 test "${WFLAGS+set}" || WFLAGS="-Wall"
 AM_PROG_LEX
-AC_PROG_YACC
+AC_CHECK_PROGS(YACC, 'bison -y', bison -y)
 AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r xlC])
 AX_CXX_COMPILE_STDCXX_11(noext,mandatory)
 test -z "$WFLAGS" || CXXFLAGS="$CXXFLAGS $WFLAGS"
