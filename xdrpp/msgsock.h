@@ -1,10 +1,10 @@
 // -*- C++ -*-
 
-#ifndef _XDRPP_MSGSOCK_H_INCLUDED_
-#define _XDRPP_MSGSOCK_H_INCLUDED_ 1
-
 //! \file msgsock.h Send and receive delimited messages over
 //! non-blocking sockets.
+
+#ifndef _XDRPP_MSGSOCK_H_INCLUDED_
+#define _XDRPP_MSGSOCK_H_INCLUDED_ 1
 
 #include <deque>
 #include <xdrpp/message.h>
@@ -22,9 +22,9 @@ namespace xdr {
  *
  * Currently this calls read once or twice per message to get the
  * exact length before allocating buffer space and reading the message
- * body (possibly including the next message length).  This should
- * really be fixed to read at least a little bit more data
- * speculatively and reduce the number of system calls.
+ * body (possibly including the next message length).  This could be
+ * fixed to read at least a little bit more data speculatively and
+ * reduce the number of system calls.
  */
 class msg_sock {
 public:

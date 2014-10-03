@@ -1,5 +1,7 @@
 // -*- C++ -*-
 
+//! \file printer.h Support for pretty-printing XDR data types.
+
 #ifndef _XDRPP_PRINT_H_HEADER_INCLUDED_
 #define _XDRPP_PRINT_H_HEADER_INCLUDED_ 1
 
@@ -11,8 +13,13 @@ namespace xdr {
 //! Poor man's version of C++14 enable_if_t.
 #define ENABLE_IF(expr) typename std::enable_if<expr>::type
 
+//! Use octal escapes for non-printable characters, and prefix
+//! backslashes and quotes with backslash.
 std::string escape_string(const std::string &s);
+//! Turn a string into a double-length sequence of hex nibbles.
 std::string hexdump(const void *data, size_t len);
+
+namespace detail {
 
 struct Printer {
   std::ostringstream buf_;
@@ -78,7 +85,11 @@ struct Printer {
   }
 };
 
-template<> struct archive_adapter<Printer> {
+}
+
+template<> struct archive_adapter<detail::Printer> {
+  using Printer = detail::Printer;
+
   template<std::uint32_t N>
   static void apply(Printer &p, const xstring<N> &s, const char *field) {
     p(field, escape_string(s));
@@ -109,10 +120,15 @@ template<> struct archive_adapter<Printer> {
   apply(Printer &p, const T &obj, const char *field) { p(field, obj); }
 };
 
+//! Return a std::string containing a pretty-printed version an XDR
+//! data type.  The string will contain multiple lines and end with a
+//! newline.  \arg name if non-NULL, the string begins with the name
+//! and an equals sign.  \arg indent specifies a non-zero minimum
+//! indentation.
 template<typename T> std::string
 xdr_to_string(const T &t, const char *name = nullptr, int indent = 0)
 {
-  Printer p;
+  detail::Printer p;
   archive(p, t, name);
   p.buf_ << std::endl;
   return p.buf_.str();

@@ -1,5 +1,7 @@
 // -*- C++ -*-
 
+//! \file server.h Classes for implementing RPC servers.
+
 #ifndef _XDRPP_SERVER_H_HEADER_INCLUDED_
 #define _XDRPP_SERVER_H_HEADER_INCLUDED_ 1
 
@@ -103,6 +105,9 @@ public:
   msg_ptr dispatch(msg_ptr m);
 };
 
+//! Listens for connections on a TCP socket (optionally registering
+//! the socket with \c rpcbind), and then serves one or more
+//! program/version interfaces to accepted connections.
 class rpc_tcp_listener : rpc_server_base {
   pollset ps_;
   unique_fd listen_fd_;

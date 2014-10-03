@@ -27,6 +27,8 @@ void really_close(int fd);
 //! Category for system errors dealing with DNS (getaddrinfo, etc.).
 const std::error_category &gai_category();
 
+//! A deleter to use \c std::unique_ptr with \c addrinfo structures
+//! (which must be freed recursively).
 struct delete_addrinfo {
   constexpr delete_addrinfo() {}
   void operator()(addrinfo *ai) const { freeaddrinfo(ai); }
@@ -34,6 +36,9 @@ struct delete_addrinfo {
 //! Automatically garbage-collected addrinfo pointer.
 using unique_addrinfo = std::unique_ptr<addrinfo, delete_addrinfo>;
 
+//! Wrapper around \c getaddrinfo that returns a garbage-collected
+//! xdr::unique_addrinfo.  \throws std::system_error with
+//! xdr::gai_category on failure.
 unique_addrinfo get_addrinfo(const char *host,
 			     int socktype = SOCK_STREAM,
 			     const char *service = nullptr,
@@ -85,16 +90,26 @@ tcp_connect(const unique_addrinfo &ai)
 }
 unique_fd tcp_connect(const char *host, const char *service,
 		      int family = AF_UNSPEC);
+
+//! Create a TCP connection to an RPC server on \c host, first
+//! querying \c rpcbind on \c host to determine the port.
 unique_fd tcp_connect_rpc(const char *host,
 			  std::uint32_t prog, std::uint32_t vers,
 			  int family = AF_UNSPEC);
 
+//! Create and bind a TCP socket on which it is suitable to called \c
+//! listen.  (Note that this function doesn't call \c listen itself,
+//! but binds the socket so you can.)
 unique_fd tcp_listen(const char *service = "0", int family = AF_UNSPEC);
 
+//! Extract the port number from an RFC1833 / RFC5665 universal
+//! network address (uaddr).
 int parse_uaddr_port(const std::string &uaddr);
 
+//! Create a uaddr for a local address or file descriptor.
 std::string make_uaddr(const sockaddr *sa, socklen_t salen);
 std::string make_uaddr(int fd);
+//! Register a service listening on \c sa with \c rpcbind.
 void rpcbind_register(const sockaddr *sa, socklen_t salen,
 		      std::uint32_t prog, std::uint32_t vers);
 void rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers);

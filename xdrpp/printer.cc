@@ -51,6 +51,8 @@ hexdump(const void *_data, size_t len)
   return os.str();
 }
 
+namespace detail {
+
 std::ostream &
 Printer::bol(const char *name)
 {
@@ -65,6 +67,8 @@ Printer::bol(const char *name)
   if (name)
     buf_ << name << " = ";
   return buf_;
+}
+
 }
 
 }

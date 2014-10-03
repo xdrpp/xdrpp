@@ -9,13 +9,14 @@
 #include <memory>
 #include <xdrpp/endian.h>
 
-//! \file msgbuf.h Message buffer with space for marshaled length.
+//! \file message.h Message buffer with space for marshaled length.
 
 namespace xdr {
 
 class message_t;
 using msg_ptr = std::unique_ptr<message_t>;
 
+//! Fixed-size message buffer, with room at beginning for 4-byte length.
 class message_t {
   const std::size_t size_;
   alignas(std::uint32_t) char buf_[4];
@@ -29,12 +30,13 @@ public:
   char *end() { return buf_ + 4 + size_; }
   const char *end() const { return buf_ + 4 + size_; }
 
-  //! 4-byte size in network byte order, followed by data.
+  //! 4-byte buffer to store size in network byte order, followed by data.
   char *raw_data() { return buf_; }
   const char *raw_data() const { return buf_; }
-  //! Size 4-byte length plus data.
+  //! Size of 4-byte length plus data.
   std::size_t raw_size() const { return size_ + 4; }
 
+  //! Allocate a new buffer.
   static msg_ptr alloc(std::size_t size);
 };
 
