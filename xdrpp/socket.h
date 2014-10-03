@@ -48,7 +48,11 @@ unique_addrinfo get_addrinfo(const char *host,
 void get_numinfo(const sockaddr *sa, socklen_t salen,
 		 std::string *host, std::string *serv);
 
-//! Self-closing file descriptor.
+//! Self-closing file descriptor.  Note that this file descriptor will
+//! be closed as soon as it goes out of scope, hence it is important
+//! to see whether functions you pass it to take a "unique_fd &" or a
+//! "const unique_fd &&".  In the latter case, you are expected to
+//! keep the file descriptor around.
 class unique_fd {
   int fd_;
 public:
@@ -62,8 +66,13 @@ public:
     return *this;
   }
 
+  //! Return the file descriptor number, but maintain ownership.
   int get() const { return fd_; }
+  //! True if the file descriptor is not -1.
   explicit operator bool() const { return fd_ != -1; }
+  //! Return the file descriptor number, relinquishing ownership of
+  //! it.  The \c unique_fd will have file descriptor -1 after this
+  //! method returns.
   int release() {
     int ret = fd_;
     fd_ = -1;

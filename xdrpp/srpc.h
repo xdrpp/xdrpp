@@ -33,7 +33,6 @@ class synchronous_client_base {
 
 public:
   synchronous_client_base(int fd) : fd_(fd) {}
-  synchronous_client_base(const unique_fd &fd) : fd_(fd.get()) {}
   synchronous_client_base(const synchronous_client_base &c) : fd_(c.fd_) {}
 
   template<typename P> typename P::res_type invoke() {

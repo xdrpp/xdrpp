@@ -101,7 +101,7 @@ void
 test_rpcb()
 {
   auto fd = tcp_connect(nullptr, "sunrpc");
-  srpc_client<xdr::RPCBVERS4> rpcb(fd);
+  srpc_client<xdr::RPCBVERS4> rpcb(fd.get());
 
   xdr::rpcb arg;
   arg.r_prog = xdrtest2::program;

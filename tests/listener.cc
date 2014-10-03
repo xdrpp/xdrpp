@@ -63,7 +63,7 @@ main(int argc, char **argv)
   else if (argc > 1 && !strcmp(argv[1], "-c")) {
     auto fd = tcp_connect_rpc(argc > 2 ? argv[2] : nullptr,
 			      xdrtest2::program, xdrtest2::version);
-    srpc_client<xdrtest2> c{fd};
+    srpc_client<xdrtest2> c{fd.get()};
 
     c.null2();
 

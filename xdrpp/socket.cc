@@ -23,7 +23,7 @@ run_cleanup()
 {
   try {
     auto fd = tcp_connect(nullptr, "sunrpc");
-    srpc_client<xdr::RPCBVERS4> c{fd};
+    srpc_client<xdr::RPCBVERS4> c{fd.get()};
     for (const auto &arg : registered_services)
       c.RPCBPROC_UNSET(arg);
   }
@@ -199,7 +199,7 @@ rpcbind_register(const sockaddr *sa, socklen_t salen,
   set_cleanup();
 
   auto fd = tcp_connect(nullptr, "sunrpc", sa->sa_family);
-  srpc_client<xdr::RPCBVERS4> c{fd};
+  srpc_client<xdr::RPCBVERS4> c{fd.get()};
 
   rpcb arg;
   arg.r_prog = prog;
@@ -288,7 +288,7 @@ tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
   for (const addrinfo *ai = ail.get(); ai; ai = ai->ai_next) {
     try {
       auto fd = tcp_connect1(ai);
-      srpc_client<xdr::RPCBVERS4> c{fd};
+      srpc_client<xdr::RPCBVERS4> c{fd.get()};
 
       rpcb arg;
       arg.r_prog = prog;
