@@ -49,7 +49,7 @@ void check_call_hdr(const rpc_msg &hdr);
 //! attempting to send RPC messages over a socket.
 struct xdr_system_error : xdr_runtime_error {
   xdr_system_error(const char *what, int no = errno)
-    : xdr_runtime_error(std::string(what) + std::strerror(no)) {}
+    : xdr_runtime_error(std::string(what) + ": " + std::strerror(no)) {}
 };
 
 }
