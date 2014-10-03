@@ -29,6 +29,8 @@
 /xdrc/parse.hh
 /xdrc/scan.cc
 /xdrc/xdrc
+/xdrpp-uninstalled.pc
+/xdrpp.pc
 /xdrpp/*.hh
 /xdrpp/endian.h
 /ylwrap

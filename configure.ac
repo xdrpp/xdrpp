@@ -58,6 +58,6 @@ if test -z "$XDRC"; then
 fi
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile xdrpp/endian.h])
+AC_CONFIG_FILES([Makefile xdrpp/endian.h xdrpp.pc xdrpp-uninstalled.pc])
 AC_OUTPUT
 

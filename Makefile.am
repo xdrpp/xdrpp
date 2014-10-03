@@ -68,9 +68,11 @@ maintainer-clean-local:
 	rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 
 man_MANS = doc/xdrc.1
-EXTRA_DIST = .gitignore xdrc/xdrc.1 xdrc/xdrc.1.md xdrpp/endian.h.in	\
+EXTRA_DIST = .gitignore doc/xdrc.1 doc/xdrc.1.md xdrpp/endian.h.in	\
 	xdrpp/rpc_msg.x xdrpp/rpcbind.x tests/xdrtest.x			\
-	doc/rfc1833.txt doc/rfc4506.txt doc/rfc5531.txt			\
-	doc/rfc5665.txt
+	doc/rfc1833.txt doc/rfc4506.txt doc/rfc5531.txt doc/rfc5665.txt
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 	$(srcdir)/doc/xdrc.1
+
+#xdrpp.pc.in xdrpp-uninstalled.pc.in 
+
