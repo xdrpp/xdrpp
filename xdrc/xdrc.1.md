@@ -4,11 +4,11 @@
 
 # NAME
 
-xdrc - RFC4506 XDR compiler
+xdrc - RFC4506 XDR compiler for libxdrpp
 
 # SYNOPSIS
 
-xdrc -hh [-o _outfile_.hh] [-DMACRO=val...] __input__.x
+xdrc {-hh|-serverhh|-servercc} [-o _outfile_] [-DMACRO=val...] __input__.x
 
 # DESCRIPTION
 
@@ -26,7 +26,7 @@ defined in XDR.
   actually a method that either returns a reference to the underlying
   value, or throws an exception if that field is not currently
   selected.  The discriminant method with no arguments returns the
-  value, and with a value sets the discriminant (also activating the
+  value, and with a value sets the discriminant (also constructing the
   appropriate union field).  For example, if the XDR file contains:
 
         union MyType switch (unsigned discriminant) {
@@ -47,12 +47,12 @@ defined in XDR.
         mt.discriminant(0);
         mt.zero() = 5;
 
-        std::cout << mt.one() << std::endl; // throws xrd::wrong_union
+        std::cout << mt.one() << std::endl; // throws xdr_wrong_union
 
-* XDR `bool` is translated into a C++ `bool` (with XDR's `TRUE`
+* XDR `bool` is represented as a C++ `bool` (with XDR's `TRUE`
   translated to `true` and `FALSE` to `false`).
 
-* XDR [unsigned] `int` and `hyper` types are translated into the
+* XDR [unsigned] `int` and `hyper` types are represented as the
   cstdint types `std::int32_t`, `std::uint32_t`, `std::int64_t`, and
   `std::uint64_t`.  As per RFC4506, no types narrower than 32 bits
   exist.
@@ -60,13 +60,17 @@ defined in XDR.
 * XDR enums are translated into simple (non-class) unions with
   underlying type `std::uint32_t`.
 
-* XDR pointers (`*`) are translated into C++ `std::unique_ptr`.
+* XDR pointers (`*`) are translated into C++ `xdr:pointer`, a subtype
+  of `std::unique_ptr`.  `xdr::pointer` adds an `activate()` method
+  that allocates an object of the appropriate type (if the pointer is
+  null) and returns a reference to the current object.
 
-* XDR fixed-length arrays are translated into C++ `std::array`.
+* XDR fixed-length arrays are translated into C++ `xdr::xarray`, a
+  subtype of `std::array`.
 
 * XDR variable-length arrays (`type field<N>`) are translated into C++
-  `xdr::xvector<T,N>`.  `xvector` is a subtype of `std::vector<T>`,
-  where `N` represents the maximum size.  Static method `max_size()`
+  `xdr::xvector<T,N>`, a subtype of `std::vector<T>`, where `N`
+  represents the maximum size.  Static constexpr method `max_size()`
   returns the maximum size.
 
 * XDR opaque is translated into C++ `std::uint8_t`, but as per
@@ -74,8 +78,8 @@ defined in XDR.
   variable-length array declaration.
 
 * XDR `string<N>` is translated into `xdr::xstring<N>`, a subtype of
-  string encoding the maximum size.  Static method `max_size()`
-  returns the maximum size.
+  string encoding the maximum size.  Static constexpr method
+  `max_size()` returns the maximum size.
 
 ## Extensions to RFC4506
 
@@ -95,13 +99,16 @@ RFC4506:
 
 ## Serialization and traversing data structures
 
-Each XDR data type has two extra methods:
+A template class `xdr::xdr_traits<T>` is used to hold metadata for
+each native C++ type `T` representing an XDR type.  For XDR structs,
+unions, arrays and pointers, this traits class contains two important
+static methods:
 
-    template<class _Archive> void save(_Archive &_archive) const;
-    template<class _Archive> void load(_Archive &_archive);
+    template<class Archive> void save(Archive &archive, const T &);
+    template<class Archive> void load(Archive &archive, T &);
 
-These methods use `_archive` as a function object and call it on every
-field in the data structure.  Hence, the type `_Archive` can have an
+These methods use `archive` as a function object and call it on every
+field in the data structure.  Hence, the type `Archive` can have an
 overloaded `operator()` that does different things for different
 types.  To implement an archive, you will need to support the
 following types:
@@ -112,41 +119,100 @@ following types:
   specially not considered containers).
 
 > * The `xdr::xarray`, `xdr:xvector`, and `xdr::pointer` containers of
->   the above types (or their supertypes).
+>   the above types (or their supertypes `std::array`, `std::vector`,
+>   and `std::unique_ptr`).
 
 > * Any field types that are themselves XDR structures.
 
 For debugging purposes and formats (such as JSON) that need access to
-field names, it is also possible for the `_Archive` type to receive
-the field names of fields that are traversed.  The following template
-(in the `xdr::` namespace) can be specialized to prepare arguments by
+field names, it is also possible for the `Archive` type to receive the
+field names of fields that are traversed.  The following template (in
+the `xdr::` namespace) can be specialized to prepare arguments by
 bundling them with their names:
 
-    template<typename Archive> struct prepare_field {
-      template<typename T> static inline T&&nvp(const char *, T &&t) {
-        return std::forward<T>(t);
+    template<typename Archive> struct archive_adapter {
+      template<typename T> static void
+      apply(Archive &ar, T &&t, const char *) {
+        ar(std::forward<T>(t));
       }
     };
 
 # OPTIONS
 
 \-hh
-:   Selects C++ header file output.  This is currently the only output
-    format, and hence is mandatory as an option.
+:   Selects C++ header file output.  This is the main output format,
+    and its output is required for use with libxdrpp.
+
+\-serverhh
+:   Generates a C++ header file containing declarations of objects you
+    can use to implement a server for each interface, using
+    `rpc_tcp_listener`.  See the EXAMPLES section.
+
+\-servercc
+:   Generates a .cc file containing empty method definitions
+    corresponding to the object files created with `-serverhh`.
 
 \-o _outfile_
-:   Specifies the output file into which to write the generated code.
-    The default is to replace `.x` with `.hh` at the end of the input
-    file name.  The special _outfile_ `-` sends output to standard
-    output.
+:  Specifies the output file into which to write the generated code.
+    The default, for `-hh`, is to replace `.x` with `.hh` at the end
+    of the input file name.  `-serverhh` and `-servercc` append
+    `.server.hh` and `.server.cc`, respectively.  The special
+    _outfile_ `-` sends output to standard output.
 
 \-DMACRO=val
 :   The input file is run through the C preprocessor, and this option
-    adds additional defines.  (Note that the symbol `XDRC_CC` is
-    always defined to 1, if you wish to test for xdrc vs. other RPC
+    adds additional defines.  (Note that the symbol `XDRC` is always
+    defined to 1, if you wish to test for xdrc vs. other RPC
     compilers.)
 
-<!-- # EXAMPLES -->
+# EXAMPLES
+
+Consider the following XDR program definition:
+
+    typedef string big_string<>;
+
+    program MyProg {
+      version MyProg1 {
+        void null(void) = 0;
+        big_string hello(int) = 1;
+        big_string goodbye(big_string) = 2;
+      } = 1;
+    } = 0x2dee1645;
+
+The `-serverhh` option will generate a header with the following
+class:
+
+    class MyProg1_server {
+    public:
+      using rpc_interface_type = MyProg1;
+
+      void null();
+
+      unique_ptr<big_string>
+      hello(unique_ptr<int> arg);
+
+      unique_ptr<big_string>
+      goodbye(unique_ptr<big_string> arg);
+    };
+
+You have to add any fields you need to this structure, then
+implement the three methods corresponding to the interface.  (Note
+the very important type `rpc_interface_type` tells the library
+which interface this object implements.)  Given such an object,
+you can then implement a TCP RPC server (that registers its TCP
+port with rpcbind) as follows:
+
+    #include <xdrpp/server.h>
+
+    int
+    main(int argc, char **argv)
+    {
+      MyProg1_server s;
+      rpc_tcp_listener rl;
+      rl.register_service(s);
+      rl.run();
+    }
+
 
 # FILES
 
@@ -159,19 +225,18 @@ PREFIX/include/xdrc/cereal.h
 
 # SEE ALSO
 
-<http://tools.ietf.org/html/rfc4506>
+<http://tools.ietf.org/html/rfc4506>,
 <http://tools.ietf.org/html/rfc5531>
 
 # BUGS
 
-`xdrc` does not currently support `program` definitions.
-
 Certain names that are legal in XDR cannot be used as type or field
 names.  For example, C++ keywords are not allowed (`namespace`,
-`template`, etc.), while cereal reserves `archive`, `load`, and
-`save`.  In addition, `xdrc` uses much larger number of names
-beginning with underscores (often derived from field names).  Hence
-you should avoid starting your field names with underscore.
+`template`, etc.).  In addition, `xdrc` uses a number of names
+beginning with underscores (especially names beginning with prefix
+`_xdr_`).  Hence you should avoid starting your field names with
+underscore.
 
-`xdrc` translates XDR `quadruple` to C++ `quadruple`, but most
-compilers do not have such a type.
+`xdrc` translates XDR `quadruple` to C++ type called `quadruple`, but
+most compilers do not have such a type.  Moreover, libxdrpp does
+nothing to support such a type.
