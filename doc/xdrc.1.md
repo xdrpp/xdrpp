@@ -168,7 +168,7 @@ bundling them with their names:
 
 # EXAMPLES
 
-Consider the following XDR program definition:
+Consider the following XDR program definition in a file myprog.x:
 
     typedef string big_string<>;
 
@@ -204,6 +204,9 @@ you can then implement a TCP RPC server (that registers its TCP
 port with rpcbind) as follows:
 
     #include <xdrpp/server.h>
+    #include "xdrpp/myprog.server.h"
+
+    using namespace xdr;
 
     int
     main(int argc, char **argv)
@@ -212,8 +215,29 @@ port with rpcbind) as follows:
       rpc_tcp_listener rl;
       rl.register_service(s);
       rl.run();
+      return 1;
     }
 
+To implement a simple client that talks to this server, you can use
+code like the following:
+
+    #include <iostream>
+    #include <xdrpp/srpc.h>
+    #include "myprog.h"
+
+    using namespace std;
+    using namespace xdr;
+
+    int
+    main(int argc, char **argv)
+    {
+      unique_fd fd = tcp_connect_rpc(argc > 2 ? argv[2] : nullptr,
+                                     MyProg1::program, MyProg1::version);
+      srpc_client<MyProg1> c{fd.get()};
+      unique_ptr<big_string> result = c.hello(5);
+      cout << "The result of hello(5) is " << *result << endl;
+      return 0;
+    }
 
 # FILES
 
