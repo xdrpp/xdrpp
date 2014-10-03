@@ -1,6 +1,8 @@
 // -*- C++ -*-
 
-/** \file exception.h Exceptions raised by RPC calls. */
+/** \file exception.h Exceptions raised by RPC calls.  These depend on
+ * the RPC message format.  Other exceptions may be found in \c
+ * types.h.*/
 
 #ifndef _XDRPP_EXCEPTION_H_HEADER_INCLUDED_
 #define _XDRPP_EXCEPTION_H_HEADER_INCLUDED_ 1

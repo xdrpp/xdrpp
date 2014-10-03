@@ -95,13 +95,15 @@ template<typename T> struct xdr_traits {
   static constexpr bool has_fixed_size = false;
 };
 
+//! Return the marshaled size of an XDR data type.
 template<typename T> std::size_t
 xdr_size(const T&t)
 {
   return xdr_traits<T>::serial_size(t);
 }
 
-//! Default xdr_traits values for actual XDR types.
+//! Default xdr_traits values for actual XDR types, used as a
+//! supertype for most xdr::xdr_traits specializations.
 struct xdr_traits_base {
   static constexpr bool valid = true;
   static constexpr bool is_bytes = false;
@@ -115,7 +117,12 @@ struct xdr_traits_base {
 };
 
 
-template<typename To, typename From> To
+//! A reinterpret-cast like function that works between types such as
+//! floating-point and integers of the same size.  Used in marshaling,
+//! so that a single set of byteswap routines can be used on all
+//! numeric types including floating point.  Uses a union to avoid
+//! strict pointer aliasing problems.
+template<typename To, typename From> inline To
 xdr_reinterpret(From f)
 {
   static_assert(sizeof(To) == sizeof(From),
@@ -128,6 +135,8 @@ xdr_reinterpret(From f)
   return to;
 }
 
+//! Default traits for use as supertype of specializations of \c
+//! xdr_traits for integral types.
 template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   using type = T;
   using uint_type = U;
@@ -136,7 +145,9 @@ template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   static constexpr std::size_t fixed_size = sizeof(uint_type);
   static constexpr std::size_t serial_size(type) { return fixed_size; }
   static uint_type to_uint(type t) { return t; }
-  static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
+  static type from_uint(uint_type u) {
+    return xdr_reinterpret<type>(u);
+  }
 };
 template<> struct xdr_traits<std::int32_t>
   : xdr_integral_base<std::int32_t, std::uint32_t> {};
@@ -147,6 +158,8 @@ template<> struct xdr_traits<std::int64_t>
 template<> struct xdr_traits<std::uint64_t>
   : xdr_integral_base<std::uint64_t, std::uint64_t> {};
 
+//! Default traits for use as supertype of specializations of \c
+//! xdr_traits for floating-point types.
 template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
   using type = T;
   using uint_type = U;
@@ -160,11 +173,14 @@ template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
   static uint_type to_uint(type t) { return xdr_reinterpret<uint_type>(t); }
   static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
 };
-template<> struct xdr_traits<float> : xdr_fp_base<float, std::uint32_t> {};
-template<> struct xdr_traits<double> : xdr_fp_base<double, std::uint64_t> {};
+template<> struct xdr_traits<float>
+  : xdr_fp_base<float, std::uint32_t> {};
+template<> struct xdr_traits<double>
+  : xdr_fp_base<double, std::uint64_t> {};
 
 
-template<> struct xdr_traits<bool> : xdr_integral_base<bool, std::uint32_t> {
+template<> struct xdr_traits<bool>
+  : xdr_integral_base<bool, std::uint32_t> {
   static constexpr bool is_enum = true;
   static constexpr bool is_numeric = false;
   static type from_uint(uint_type u) { return u; }
@@ -178,6 +194,9 @@ template<> struct xdr_traits<bool> : xdr_integral_base<bool, std::uint32_t> {
 //! in 32 bits when rounded up to a multiple of four.)
 static constexpr uint32_t XDR_MAX_LEN = 0xfffffffc;
 
+namespace detail {
+//! Convenience supertype for traits of the three container types
+//! (xarray, xvectors, and pointer).
 template<typename T, bool variable,
 	 bool VFixed = xdr_traits<typename T::value_type>::has_fixed_size>
 struct xdr_container_base : xdr_traits_base {
@@ -228,13 +247,23 @@ template<typename T> struct xdr_container_base<T, false, true>
     T::size() * xdr_traits<typename T::value_type>::fixed_size;
   static std::size_t serial_size(const T &) { return fixed_size; }
 };
+}
 
+namespace detail {
+//! Placeholder type to avoid clearing array
+struct no_clear_t {};
+constexpr no_clear_t no_clear;
+};
 
 //! XDR arrays are implemented using std::array as a supertype.
 template<typename T, uint32_t N> struct xarray
   : std::array<T, size_t(N)> {
   using array = std::array<T, size_t(N)>;
-  using array::array;
+  xarray() { array::fill(T{}); }
+  xarray(detail::no_clear_t) {}
+  xarray(const xarray &) = default;
+  xarray &operator=(const xarray &) = default;
+
   static constexpr std::size_t size() { return N; }
   static void validate() {}
   static void check_size(uint32_t i) {
@@ -253,14 +282,16 @@ template<typename T, uint32_t N> struct xarray
 };
 
 template<typename T, uint32_t N>
-struct xdr_traits<xarray<T,N>> : xdr_container_base<xarray<T,N>, false> {};
+struct xdr_traits<xarray<T,N>>
+  : detail::xdr_container_base<xarray<T,N>, false> {};
 
 //! XDR \c opaque is represented as std::uint8_t;
 template<uint32_t N = XDR_MAX_LEN> struct opaque_array
   : xarray<std::uint8_t,N> {
-  using xarray<std::uint8_t,N>::xarray;
+  using xarray = xdr::xarray<std::uint8_t,N>;
+  using xarray::xarray;
   // Pay a little performance to avoid heartbleed-type errors...
-  opaque_array() { std::memset(this->data(), 0, N); }
+  opaque_array() : xarray(detail::no_clear) { std::memset(this->data(), 0, N); }
 };
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr bool is_bytes = true;
@@ -307,7 +338,7 @@ struct xvector : std::vector<T> {
 };
 
 template<typename T, uint32_t N> struct xdr_traits<xvector<T,N>>
-  : xdr_container_base<xvector<T,N>, true> {};
+  : detail::xdr_container_base<xvector<T,N>, true> {};
 
 //! Variable-length opaque data is just a vector of std::uint8_t.
 template<uint32_t N = XDR_MAX_LEN> using opaque_vec = xvector<std::uint8_t, N>;
@@ -428,10 +459,13 @@ template<typename T> struct pointer : std::unique_ptr<T> {
 // have xdr_traits<T> available at the time we instantiate
 // xdr_traits<pointer<T>>.
 template<typename T> struct xdr_traits<pointer<T>>
-  : xdr_container_base<pointer<T>, true, false> {};
+  : detail::xdr_container_base<pointer<T>, true, false> {};
 
 
-//! Type-level representation of a pointer-to-member value.
+//! Type-level representation of a pointer-to-member value.  When used
+//! as a function object, dereferences the field, and returns it as
+//! the same reference type as its argument (lvalue rference, const
+//! lvalue reference, or const rvalue reference).
 template<typename T, typename F, F T::*Ptr> struct field_ptr {
   using class_type = T;
   using field_type = F;
@@ -444,8 +478,10 @@ template<typename T, typename F, F T::*Ptr> struct field_ptr {
 
 template<typename ...Fields> struct xdr_struct_base;
 
+namespace detail {
+//! Default traits for fixed-size structures.
 template<typename FP, typename ...Fields>
-  struct _xdr_struct_base_fs : xdr_struct_base<Fields...> {
+  struct xdr_struct_base_fs : xdr_struct_base<Fields...> {
   static constexpr bool has_fixed_size = true;
   static constexpr std::size_t fixed_size =
     (xdr_traits<typename FP::field_type>::fixed_size
@@ -454,15 +490,19 @@ template<typename FP, typename ...Fields>
     return fixed_size;
   }
 };
+//! Default traits for variable-size structures.
 template<typename FP, typename ...Fields>
-  struct _xdr_struct_base_vs : xdr_struct_base<Fields...> {
+  struct xdr_struct_base_vs : xdr_struct_base<Fields...> {
   static constexpr bool has_fixed_size = false;
   static std::size_t serial_size(const typename FP::class_type &t) {
     return (xdr_size(t.*(FP::value))
 	    + xdr_struct_base<Fields...>::serial_size(t));
   }
 };
+}
 
+//! Supertype to construct XDR traits of structure objects, used in
+//! output of the \c xdrc compiler.
 template<> struct xdr_struct_base<> : xdr_traits_base {
   static constexpr bool is_class = true;
   static constexpr bool is_struct = true;
@@ -475,8 +515,8 @@ template<> struct xdr_struct_base<> : xdr_traits_base {
 template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
   : std::conditional<(xdr_traits<typename FP::field_type>::has_fixed_size
 		      && xdr_struct_base<Rest...>::has_fixed_size),
-                     _xdr_struct_base_fs<FP, Rest...>,
-                     _xdr_struct_base_vs<FP, Rest...>>::type {
+                      detail::xdr_struct_base_fs<FP, Rest...>,
+                      detail::xdr_struct_base_vs<FP, Rest...>>::type {
   using field_info = FP;
   using next_field = xdr_struct_base<Rest...>;
 };
@@ -491,6 +531,7 @@ template<> struct xdr_traits<xdr_void> : xdr_struct_base<> {
 };
 
 
+namespace detail {
 //! Dereference a pointer to a member of type \c F of a class of type
 //! \c T, preserving reference types.  Hence applying to an lvalue
 //! reference \c T returns an lvalue reference \c F, while an rvalue
@@ -510,6 +551,7 @@ member(T &&t, F T::*mp)
 {
   return std::move(t.*mp);
 }
+}
 
 struct field_constructor_t {
   constexpr field_constructor_t() {}
@@ -518,7 +560,7 @@ struct field_constructor_t {
   }
   template<typename T, typename F, typename TT> void
   operator()(F T::*mp, T &t, TT &&tt) const {
-    new (&(t.*mp)) F (member(std::forward<TT>(tt), mp));
+    new (&(t.*mp)) F (detail::member(std::forward<TT>(tt), mp));
   }
 };
 constexpr field_constructor_t field_constructor;
@@ -526,7 +568,7 @@ constexpr field_constructor_t field_constructor;
 struct field_destructor_t {
   constexpr field_destructor_t() {}
   template<typename T, typename F> void
-  operator()(F T::*mp, T &t) const { member(t, mp).~F(); }
+  operator()(F T::*mp, T &t) const { detail::member(t, mp).~F(); }
 };
 constexpr field_destructor_t field_destructor;
 
@@ -534,7 +576,7 @@ struct field_assigner_t {
   constexpr field_assigner_t() {}
   template<typename T, typename F, typename TT> void
   operator()(F T::*mp, T &t, TT &&tt) const {
-    member(t, mp) = member(std::forward<TT>(tt), mp);
+    detail::member(t, mp) = detail::member(std::forward<TT>(tt), mp);
   }
 };
 constexpr field_assigner_t field_assigner;
@@ -544,11 +586,11 @@ struct field_archiver_t {
 
   template<typename F, typename T, typename Archive> void
   operator()(F T::*mp, Archive &ar, T &t, const char *name) const {
-    archive(ar, member(t, mp), name);
+    archive(ar, detail::member(t, mp), name);
   }
   template<typename F, typename T, typename Archive> void
   operator()(F T::*mp, Archive &ar, const T &t, const char *name) const {
-    archive(ar, member(t, mp), name);
+    archive(ar, detail::member(t, mp), name);
   }
 };
 constexpr field_archiver_t field_archiver;
@@ -557,7 +599,7 @@ struct field_size_t {
   constexpr field_size_t() {}
   template<typename F, typename T> void
   operator()(F T::*mp, const T &t, std::size_t &size) const {
-    size = xdr_traits<F>::serial_size(member(t, mp));
+    size = xdr_traits<F>::serial_size(detail::member(t, mp));
   }
 };
 constexpr field_size_t field_size;
