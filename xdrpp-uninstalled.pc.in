@@ -1,7 +1,7 @@
-xdrc=${pc_top_builddir}/${pcfiledir}/xdrc/xdrc
+xdrc=${pcfiledir}/xdrc/xdrc
 
 Name: xdrpp
 Description: RFC5531 RPC library
 Version: @PACKAGE_VERSION@
-Libs: -L${pc_top_builddir}/${pcfiledir}/xdrpp -lxdrpp
-Cflags: -I${pc_top_builddir}/${pcfiledir} -I${pcfiledir}
+Libs: -L$${pcfiledir}/xdrpp -lxdrpp
+Cflags: -I@abs_top_srcdir@ -I${pcfiledir}

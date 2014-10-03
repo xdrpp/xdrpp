@@ -137,7 +137,7 @@ main(int argc, char **argv)
       output_file = optarg;
       break;
     case OPT_VERSION:
-      cout << PACKAGE_STRING << endl;
+      cout << "xdrc " PACKAGE_VERSION << endl;
       exit(0);
       break;
     case OPT_HELP:
