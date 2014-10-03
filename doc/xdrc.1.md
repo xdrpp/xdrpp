@@ -114,9 +114,10 @@ types.  To implement an archive, you will need to support the
 following types:
 
 > * `bool`, `std::int32_t`, `std::uint32_t`, `std::int64_t`,
-  `std::uint64_t`, `float`, `double`, `xdr::xstring`,
-  `xdr::xarray<uint8_t,N>`, `xdr::xvector<uint8_t,N>` (the latter are
-  specially not considered containers).
+>   `std::uint64_t`, `float`, `double`, `xdr::xstring`,
+>   `xdr::opaque_array` and `xdr::opaque_vec` (the latter two are not
+>   considered containers, despite being implemented in terms of
+>   `xarray` and `xvector`).
 
 > * The `xdr::xarray`, `xdr:xvector`, and `xdr::pointer` containers of
 >   the above types (or their supertypes `std::array`, `std::vector`,
@@ -235,7 +236,9 @@ names.  For example, C++ keywords are not allowed (`namespace`,
 `template`, etc.).  In addition, `xdrc` uses a number of names
 beginning with underscores (especially names beginning with prefix
 `_xdr_`).  Hence you should avoid starting your field names with
-underscore.
+underscore.  Union types use private fields that have the names of the
+XDR fields with underscore appended.  Hence, in a union you cannot use
+two field names one of which is the other with an underscore appended.
 
 `xdrc` translates XDR `quadruple` to C++ type called `quadruple`, but
 most compilers do not have such a type.  Moreover, libxdrpp does

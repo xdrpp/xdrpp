@@ -251,7 +251,9 @@ template<typename T> struct xdr_container_base<T, false, true>
 
 namespace detail {
 //! Placeholder type to avoid clearing array
-struct no_clear_t {};
+struct no_clear_t {
+  constexpr no_clear_t() {}
+};
 constexpr no_clear_t no_clear;
 };
 
