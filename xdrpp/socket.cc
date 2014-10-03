@@ -5,6 +5,7 @@
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
+#include <netinet/in.h>
 #include <xdrpp/rpcbind.hh>
 #include <xdrpp/socket.h>
 #include <xdrpp/srpc.h>
