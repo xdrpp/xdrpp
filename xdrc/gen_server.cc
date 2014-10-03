@@ -68,13 +68,18 @@ gen_server_internal(std::ostream &os, bool cc)
 
   string guard = guard_token(".server");
 
-  if (cc)
-    os << nl << "#include \"" << file_prefix << ".server.hh\"";
+  if (cc) {
+    string output_prefix = strip_suffix(output_file, ".cc");
+    if (output_prefix != output_file)
+      os << nl << "#include \"" << output_prefix << ".hh\"";
+    else
+      os << nl << "#include \"" << file_prefix << ".server.hh\"";
+  }
   else
     os << nl << "#ifndef " << guard
        << nl << "#define " << guard << " 1"
        << nl
-       << nl << "#include \"" << strip_suffix(output_file, ".cc") << ".hh\"";
+       << nl << "#include \"" << file_prefix << ".hh\"";
 
   int last_type = -1;
 
