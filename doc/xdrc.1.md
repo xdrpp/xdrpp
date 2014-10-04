@@ -57,7 +57,7 @@ defined in XDR.
   `std::uint64_t`.  As per RFC4506, no types narrower than 32 bits
   exist.
 
-* XDR enums are translated into simple (non-class) unions with
+* XDR enums are translated into simple (non-class) enums with
   underlying type `std::uint32_t`.
 
 * XDR pointers (`*`) are translated into C++ `xdr:pointer`, a subtype
