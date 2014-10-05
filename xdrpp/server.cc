@@ -120,7 +120,9 @@ rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
     return;
   }
   try {
-    ms->putmsg(dispatch(std::move(mp)));
+    msg_ptr rp = dispatch(std::move(mp));
+    if (rp)
+      ms->putmsg(std::move(rp));
   }
   catch (const xdr_runtime_error &e) {
     std::cerr << e.what() << std::endl;
