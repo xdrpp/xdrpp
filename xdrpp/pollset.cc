@@ -349,9 +349,12 @@ pollset_plus::signal_cb(int sig, cb_t cb)
     sa.sa_handler = signal_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    if (sigaction(sig, &sa, nullptr) == -1)
+    if (sigaction(sig, &sa, nullptr) == -1) {
+      signal_owners[sig] = nullptr;
       throw std::system_error(errno, std::system_category(), "sigaction");
+    }
   }
+  std::atomic_thread_fence(std::memory_order_seq_cst);
   if (signal_flags[sig])
     wake(wake_type::Signal);
 }

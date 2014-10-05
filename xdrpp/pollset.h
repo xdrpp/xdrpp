@@ -142,7 +142,7 @@ public:
   Timeout timeout_null() { return time_cbs_.end(); }
 
   //! Returns \b true if a timeout is not equal to
-  //! PollSet::timeout_invalid().  Note that a PollSet::Timeout is
+  //! PollSet::timeout_null().  Note that a PollSet::Timeout is
   //! invalid but not null after firing.  Hence, additional care must
   //! be taken by the programmer to avoid canceling already executed
   //! `Timeout`s.
