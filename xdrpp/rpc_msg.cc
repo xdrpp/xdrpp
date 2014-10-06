@@ -67,19 +67,6 @@ rpc_errmsg(auth_stat ev)
 }
 
 const char *
-rpc_errmsg(reject_stat ev)
-{
-  switch (ev) {
-  case RPC_MISMATCH:
-    return "rpcvers field mismatch";
-  case AUTH_ERROR:
-    return rpc_errmsg(AUTH_FAILED);
-  default:
-    return "unknown reject_stat status";
-  }
-}
-
-const char *
 rpc_call_stat::message() const
 {
   switch (type_) {
@@ -87,8 +74,14 @@ rpc_call_stat::message() const
     return rpc_errmsg(accept_);
   case AUTH_STAT:
     return rpc_errmsg(auth_);
-  case REJECT_STAT:
-    return rpc_errmsg(reject_);
+  case RPCVERS_MISMATCH:
+    return "server reported rpcvers field with wrong value";
+  case GARBAGE_RES:
+    return "unable to unmarshal reply value sent by server";
+  case NETWORK_ERROR:
+    return "network error when communicating with server";
+  case BAD_ALLOC:
+    return "insufficient memory to unmarshal result";
   default:
     std::cerr << "rpc_call_stat: invalid type" << std::endl;
     std::terminate();
@@ -108,7 +101,7 @@ check_call_hdr(const rpc_msg &hdr)
   case MSG_DENIED:
     if (hdr.body.rbody().rreply().stat() == AUTH_ERROR)
       throw xdr_call_error(hdr.body.rbody().rreply().rj_why());
-    throw xdr_call_error(hdr.body.rbody().rreply().stat());
+    throw xdr_call_error(rpc_call_stat::RPCVERS_MISMATCH);
   default:
     throw xdr_runtime_error("check_call_hdr: garbage reply_stat");
   }

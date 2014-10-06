@@ -1,3 +1,4 @@
+
 // -*- C++ -*-
 
 /** \file exception.h Exceptions raised by RPC calls.  These depend on
@@ -21,23 +22,27 @@ const char *rpc_errmsg(accept_stat ev);
 //! [RFC5531](https://tools.ietf.org/html/rfc5531) for an unexecuted
 //! call into a string.
 const char *rpc_errmsg(auth_stat ev);
-//! Return <tt>"rpcvers field mismatch"</tt> in response to constant
-//! \c RPC_MISMATCH.
-const char *rpc_errmsg(reject_stat ev);
 
 //! Structure encoding all the various reasons a server can decline to
 //! process an RPC call it received.
 struct rpc_call_stat {
-  enum { ACCEPT_STAT, AUTH_STAT, REJECT_STAT } type_;
+  enum stat_type {
+    ACCEPT_STAT,
+    AUTH_STAT,
+    RPCVERS_MISMATCH,
+    GARBAGE_RES,
+    NETWORK_ERROR,
+    BAD_ALLOC,
+  };
+  stat_type type_;
   union {
     accept_stat accept_;
     auth_stat auth_;
-    reject_stat reject_;
   };
   rpc_call_stat() : type_(ACCEPT_STAT), accept_(SUCCESS) {}
   rpc_call_stat(accept_stat s) : type_(ACCEPT_STAT), accept_(s) {}
   rpc_call_stat(auth_stat s) : type_(AUTH_STAT), auth_(s) {}
-  rpc_call_stat(reject_stat s) : type_(REJECT_STAT), reject_(s) {}
+  rpc_call_stat(stat_type type) : type_(type), accept_(SUCCESS) {}
   const char *message() const;
 };
 
