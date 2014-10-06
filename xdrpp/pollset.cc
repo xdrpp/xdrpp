@@ -109,7 +109,7 @@ pollset_plus::run_pending_asyncs()
 
 void
 pollset_plus::inject_cb_vec(std::vector<cb_t>::iterator b,
-		       std::vector<cb_t>::iterator e)
+			    std::vector<cb_t>::iterator e)
 {
   if (b != e) {
     std::lock_guard<std::mutex> lk {async_cbs_lock_};

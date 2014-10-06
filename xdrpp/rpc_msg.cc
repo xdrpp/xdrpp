@@ -1,4 +1,5 @@
 
+#include <iostream>
 #include <xdrpp/exception.h>
 
 namespace xdr {
@@ -78,12 +79,21 @@ rpc_errmsg(reject_stat ev)
   }
 }
 
-xdr_call_error::xdr_call_error(accept_stat ev)
-  : xdr_runtime_error(rpc_errmsg(ev)), accept_(ev), type_(ACCEPT_STAT) {}
-xdr_call_error::xdr_call_error(auth_stat ev)
-  : xdr_runtime_error(rpc_errmsg(ev)), auth_(ev), type_(AUTH_STAT) {}
-xdr_call_error::xdr_call_error(reject_stat ev)
-  : xdr_runtime_error(rpc_errmsg(ev)), reject_(ev), type_(REJECT_STAT) {}
+const char *
+rpc_call_stat::message() const
+{
+  switch (type_) {
+  case ACCEPT_STAT:
+    return rpc_errmsg(accept_);
+  case AUTH_STAT:
+    return rpc_errmsg(auth_);
+  case REJECT_STAT:
+    return rpc_errmsg(reject_);
+  default:
+    std::cerr << "rpc_call_stat: invalid type" << std::endl;
+    std::terminate();
+  }
+}
 
 void
 check_call_hdr(const rpc_msg &hdr)
