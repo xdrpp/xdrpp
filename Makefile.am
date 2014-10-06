@@ -16,14 +16,14 @@ lib_LIBRARIES = xdrpp/libxdrpp.a
 xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
 	xdrpp/msgsock.cc xdrpp/printer.cc xdrpp/pollset.cc	\
 	xdrpp/rpc_msg.cc xdrpp/server.cc xdrpp/socket.cc	\
-	xdrpp/srpc.cc
+	xdrpp/srpc.cc xdrpp/arpc.cc
 
 nodist_pkginclude_HEADERS = xdrpp/endian.h
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
 	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
 	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
-	xdrpp/msgsock.h xdrpp/pollset.h xdrpp/server.h xdrpp/socket.h	\
-	xdrpp/srpc.h
+	xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h xdrpp/server.h	\
+	xdrpp/socket.h xdrpp/srpc.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xdrpp.pc
@@ -31,7 +31,8 @@ pkgconfig_DATA = xdrpp.pc
 LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 
 check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
-	tests/test-srpc tests/test-printer tests/test-listener
+	tests/test-srpc tests/test-printer tests/test-listener	\
+	tests/test-arpc
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 endif
@@ -42,11 +43,13 @@ tests_test_marshal_SOURCES = tests/marshal.cc
 tests_test_cereal_SOURCES = tests/cereal.cc
 tests_test_srpc_SOURCES = tests/srpc.cc
 tests_test_listener_SOURCES = tests/listener.cc
+tests_test_arpc_SOURCES = tests/arpc.cc
 tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
 tests/srpc.o: tests/xdrtest.hh
 tests/listener.o: tests/xdrtest.hh
+tests/arpc.o: tests/xdrtest.hh
 
 SUFFIXES = .x .hh
 .x.hh:

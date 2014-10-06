@@ -78,6 +78,25 @@ rpc_errmsg(reject_stat ev)
   }
 }
 
+rpc_call_stat::rpc_call_stat(accept_stat ev)
+  : type_(ACCEPT_STAT), accept_(ev) {}
+rpc_call_stat::rpc_call_stat(auth_stat ev)
+  : type_(AUTH_STAT), auth_(ev) {}
+rpc_call_stat::rpc_call_stat(reject_stat ev)
+  : type_(REJECT_STAT), reject_(ev) {}
+
+const char *
+rpc_call_stat::message() const
+{
+  switch (type_) {
+  case ACCEPT_STAT:
+    
+  case AUTH_STAT:
+  case REJECT_STAT:
+  }
+}
+
+
 xdr_call_error::xdr_call_error(accept_stat ev)
   : xdr_runtime_error(rpc_errmsg(ev)), accept_(ev), type_(ACCEPT_STAT) {}
 xdr_call_error::xdr_call_error(auth_stat ev)

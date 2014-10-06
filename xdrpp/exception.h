@@ -25,17 +25,33 @@ const char *rpc_errmsg(auth_stat ev);
 //! \c RPC_MISMATCH.
 const char *rpc_errmsg(reject_stat ev);
 
-//! This is the exception raised in an RPC client when it reaches the
-//! server and transmits a call, with no connection or communication
-//! errors, but the server replies with an RPC-level message header
-//! refusing to execute the call.
-struct xdr_call_error : xdr_runtime_error {
+//! Structure encoding all the various reasons a server can decline to
+//! process an RPC call it received.
+struct rpc_call_stat {
   union {
     accept_stat accept_;
     auth_stat auth_;
     reject_stat reject_;
   };
   enum { ACCEPT_STAT, AUTH_STAT, REJECT_STAT } type_;
+  rpc_call_stat() : accept_(SUCCESS), type_(ACCEPT_STAT) {}
+  rpc_call_stat(accept_stat);
+  rpc_call_stat(auth_stat);
+  rpc_call_stat(reject_stat);
+  const char *message() const;
+};
+
+//! This is the exception raised in an RPC client when it reaches the
+//! server and transmits a call, with no connection or communication
+//! errors, but the server replies with an RPC-level message header
+//! refusing to execute the call.
+struct xdr_call_error : xdr_runtime_error {
+  enum { ACCEPT_STAT, AUTH_STAT, REJECT_STAT } type_;
+  union {
+    accept_stat accept_;
+    auth_stat auth_;
+    reject_stat reject_;
+  };
   xdr_call_error(accept_stat);
   xdr_call_error(auth_stat);
   xdr_call_error(reject_stat);
