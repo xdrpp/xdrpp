@@ -72,7 +72,7 @@ private:
 
   std::unique_ptr<msg_sock> ms_;
   std::uint32_t xid_counter_{0};
-  std::map<uint32_t, client_cb_t> calls_;
+  std::map<uint32_t, std::unique_ptr<call_state_base>> calls_;
   std::map<uint32_t, std::map<uint32_t, server_cb_t>> services_;
 
   void prepare_call(rpc_msg &hdr, std::uint32_t prog,
