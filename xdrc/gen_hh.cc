@@ -646,14 +646,16 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 
   // client
   os << endl
-     << nl << "template<typename _XDRBASE> struct client : _XDRBASE {";
+     << nl << "template<typename _XDR_INVOKER> struct _xdr_client {";
   ++nl;
-  os << nl << "using _XDRBASE::_XDRBASE;";
+  os << nl << "_XDR_INVOKER _xdr_invoker_;"
+     << nl << "template<typename...ARGS> _xdr_client(ARGS...args)"
+     << nl << "  : _xdr_invoker_(std::forward<ARGS>(args)...) {}";
   for (const rpc_proc &p : v.procs) {
-    string invoke = string("this->_XDRBASE::template invoke<") + p.id + "_t>("
-      + "_xdr_args...)";
-    os << endl << nl << "template<typename..._XDRARGS> auto"
-       << nl << p.id << "(_XDRARGS &&..._xdr_args) ->"
+    string invoke = string("_xdr_invoker_->template invoke<")
+      + p.id + "_t>(" + "\n             std::forward<_XDR_ARGS>(_xdr_args)...)";
+    os << endl << nl << "template<typename..._XDR_ARGS> auto"
+       << nl << p.id << "(_XDR_ARGS &&..._xdr_args) ->"
        << nl << "decltype(" << invoke << ") {"
        << nl << "  return " << invoke << ";"
        << nl << "}";

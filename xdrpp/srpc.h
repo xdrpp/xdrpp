@@ -75,6 +75,9 @@ public:
     }
     return moveret(r);
   }
+
+  // because _xdr_client expects a pointer type
+  synchronous_client_base *operator->() { return this; }
 };
 
 //! Create an RPC client from an interface type and connected stream
@@ -89,7 +92,7 @@ public:
 //!    unique_ptr<big_string> result = c.hello(5);
 //! \endcode
 template<typename T> using srpc_client =
-  typename T::template client<synchronous_client_base>;
+  typename T::template _xdr_client<synchronous_client_base>;
 
 
 //! Attach a RPC services to a single, connected stream socket.  No
