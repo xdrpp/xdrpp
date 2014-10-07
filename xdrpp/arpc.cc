@@ -3,6 +3,21 @@
 
 namespace xdr {
 
+void
+reply_cb_base::reject(accept_stat stat)
+{
+  hdr_.body.rbody().stat(MSG_ACCEPTED).areply().reply_data.stat(stat);
+  send_reply(xdr_void{});
+}
+
+void
+reply_cb_base::reject(auth_stat stat)
+{
+  hdr_.body.rbody().stat(MSG_DENIED).rreply().stat(AUTH_ERROR).rj_why() = stat;
+  send_reply(xdr_void{});
+}
+
+
 arpc_sock::arpc_sock(pollset &ps, int fd)
   : ms_(new msg_sock(ps, fd, std::bind(&arpc_sock::receive, this,
 				       std::placeholders::_1)))

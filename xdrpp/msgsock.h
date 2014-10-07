@@ -47,12 +47,15 @@ public:
   size_t wsize() const { return wsize_; }
   void putmsg(msg_ptr &b);
   void putmsg(msg_ptr &&b) { putmsg(b); }
+  //! Returns pointer to a \c bool that becomes \c true once the
+  //! msg_sock has been deleted.
+  std::shared_ptr<const bool> destroyed_ptr() const { return destroyed_; }
 
 private:
   pollset &ps_;
   const int fd_;
   const size_t maxmsglen_;
-  std::shared_ptr<bool> destroyed_{new bool {false}};
+  std::shared_ptr<bool> destroyed_{std::make_shared<bool>(false)};
 
   rcb_t rcb_;
   uint32_t nextlen_;

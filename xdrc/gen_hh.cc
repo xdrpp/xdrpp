@@ -172,6 +172,40 @@ gen(std::ostream &os, const rpc_struct &s)
 
   for (auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << "{};";
+  if (s.decls.size()) {
+    os << nl
+       << nl << s.id << "() = default;"
+       << nl << "template<";
+    bool first{true};
+    for (auto &d : s.decls) {
+      if (first)
+	first = false;
+      else
+	os << "," << nl << "         ";
+      os << "typename _" << d.id << "_T";
+    }
+    os << ">"
+       << nl << "explicit " << s.id << "(";
+    first = true;
+    for (auto &d : s.decls) {
+      if (first)
+	first = false;
+      else
+	os << "," << nl << string(10 + s.id.size(), ' ');
+      os << "_" << d.id << "_T &&_" << d.id;
+    }
+    os << ")"
+       << nl << "  : ";
+    first = true;
+    for (auto &d : s.decls) {
+      if (first)
+	first = false;
+      else
+	os << "," << nl << "    ";
+      os << d.id << "(std::forward<_" << d.id << "_T>(_" << d.id << "))";
+    }
+    os << " {}";
+  }
   os << nl.close << "}";
 
   top_material

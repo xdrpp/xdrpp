@@ -10,11 +10,48 @@
 
 namespace xdr {
 
-//! A pointer to a call result
+class reply_cb_base {
+  msg_sock *ms_;
+  std::shared_ptr<const bool> ms_destroyed_;
+  rpc_msg hdr_;
+
+protected:
+  reply_cb_base(msg_sock *ms, std::uint32_t xid)
+    : ms_(ms), ms_destroyed_(ms->destroyed_ptr()), hdr_(xid, REPLY) {}
+  reply_cb_base(reply_cb_base &&rcb)
+    : ms_(rcb.ms_), ms_destroyed_(std::move(rcb.ms_destroyed_)),
+      hdr_(std::move(rcb.hdr_)) { rcb.ms_ = nullptr; }
+  ~reply_cb_base() { if (ms_) reject(PROC_UNAVAIL); }
+  template<typename T> void send_reply(const T &t) {
+    assert(ms_);
+    if (*ms_destroyed_)
+      return;
+    ms_->putmsg(xdr_to_msg(hdr_, t));
+    ms_ = nullptr;
+  }
+
+public:
+  opaque_auth &reply_verf() {
+    assert(ms_);
+    return hdr_.body.rbody().areply().verf;
+  }
+  void reject(accept_stat stat);
+  void reject(auth_stat stat);
+};
+
+template<typename T> class reply_cb : public reply_cb_base {
+  using type = T;
+  using reply_cb_base::reply_cb_base;
+  void operator()(const T &t) { send_reply(t); }
+};
+
+//! A \c unique_ptr to a call result, or NULL if the call failed (in
+//! which case \c message returns an error message).
 template<typename T> struct call_result : std::unique_ptr<T> {
   rpc_call_stat stat_;
   using std::unique_ptr<T>::unique_ptr;
   call_result(const rpc_call_stat &stat) : stat_(stat) {}
+  const char *message() const { return *this ? nullptr : stat_.message(); }
 };
 
 class arpc_sock {
