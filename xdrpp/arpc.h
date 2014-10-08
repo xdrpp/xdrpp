@@ -10,31 +10,58 @@
 
 namespace xdr {
 
+//! Structure that gets marshalled as an RPC success header.
+struct rpc_success_hdr {
+  std::uint32_t xid;
+  explicit constexpr rpc_success_hdr(std::uint32_t x) : xid(x) {}
+};
+template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
+  static constexpr bool valid = true;
+  static constexpr bool is_class = true;
+  static constexpr bool is_struct = true;
+  static constexpr bool has_fixed_size = true;
+  template<typename Archive> static void save(Archive &a, rpc_success_hdr &t) {
+    archive(a, t.xid, "xid");
+    archive(a, REPLY, "mtype");
+    archive(a, MSG_ACCEPTED, "stat");
+    archive(a, AUTH_NONE, "flavor");
+    archive(a, std::uint32_t(0), "body");
+    archive(a, SUCCESS, "stat");
+  }
+};
+
 class reply_cb_base {
   msg_sock *ms_;
   std::shared_ptr<const bool> ms_destroyed_;
-  rpc_msg hdr_;
+  std::uint32_t xid_;
 
 protected:
   reply_cb_base(msg_sock *ms, std::uint32_t xid)
-    : ms_(ms), ms_destroyed_(ms->destroyed_ptr()), hdr_(xid, REPLY) {}
+    : ms_(ms), ms_destroyed_(ms->destroyed_ptr()), xid_(xid) {}
   reply_cb_base(reply_cb_base &&rcb)
     : ms_(rcb.ms_), ms_destroyed_(std::move(rcb.ms_destroyed_)),
-      hdr_(std::move(rcb.hdr_)) { rcb.ms_ = nullptr; }
+      xid_(rcb.xid_) { rcb.ms_ = nullptr; }
+
   ~reply_cb_base() { if (ms_) reject(PROC_UNAVAIL); }
+
+  reply_cb_base &operator=(reply_cb_base &&rcb) {
+    ms_ = rcb.ms_;
+    ms_destroyed_ = std::move(rcb.ms_destroyed_);
+    xid_ = rcb.xid_;
+    rcb.ms_ = nullptr;
+    return *this;
+  }
+
   template<typename T> void send_reply(const T &t) {
     assert(ms_);
     if (*ms_destroyed_)
       return;
-    ms_->putmsg(xdr_to_msg(hdr_, t));
+    ms_->putmsg(xdr_to_msg(rpc_success_hdr(xid_), t));
     ms_ = nullptr;
   }
+  void send_reject(const rpc_msg &hdr);
 
 public:
-  opaque_auth &reply_verf() {
-    assert(ms_);
-    return hdr_.body.rbody().areply().verf;
-  }
   void reject(accept_stat stat);
   void reject(auth_stat stat);
 };
@@ -42,8 +69,11 @@ public:
 template<typename T> class reply_cb : public reply_cb_base {
   using type = T;
   using reply_cb_base::reply_cb_base;
+  reply_cb(reply_cb &&) = default;
+  reply_cb &operator=(reply_cb &&) = default;
   void operator()(const T &t) { send_reply(t); }
 };
+
 
 //! A \c unique_ptr to a call result, or NULL if the call failed (in
 //! which case \c message returns an error message).

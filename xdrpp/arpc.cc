@@ -4,17 +4,29 @@
 namespace xdr {
 
 void
+reply_cb_base::send_reject(const rpc_msg &hdr)
+{
+  assert(ms_);
+  if (*ms_destroyed_)
+    return;
+  ms_->putmsg(xdr_to_msg(hdr));
+  ms_ = nullptr;
+}
+
+void
 reply_cb_base::reject(accept_stat stat)
 {
-  hdr_.body.rbody().stat(MSG_ACCEPTED).areply().reply_data.stat(stat);
-  send_reply(xdr_void{});
+  rpc_msg hdr(xid_, REPLY);
+  hdr.body.rbody().stat(MSG_ACCEPTED).areply().reply_data.stat(stat);
+  send_reject(hdr);
 }
 
 void
 reply_cb_base::reject(auth_stat stat)
 {
-  hdr_.body.rbody().stat(MSG_DENIED).rreply().stat(AUTH_ERROR).rj_why() = stat;
-  send_reply(xdr_void{});
+  rpc_msg hdr(xid_, REPLY);
+  hdr.body.rbody().stat(MSG_DENIED).rreply().stat(AUTH_ERROR).rj_why() = stat;
+  send_reject(hdr);
 }
 
 
