@@ -59,9 +59,7 @@ template<typename T> struct synchronous_server : service_base {
     std::unique_ptr<typename P::arg_wire_type>
       arg(new typename P::arg_wire_type);
     archive(g, *arg);
-    if (g.p_ != g.e_)
-      throw xdr_bad_message_size("synchronous_server did not consume"
-				 " whole message");
+    g.done();
 
     if (xdr_trace_server) {
       std::string s = "CALL ";
@@ -88,9 +86,7 @@ template<typename T> struct synchronous_server : service_base {
     std::unique_ptr<typename P::arg_wire_type>
       arg(new typename P::arg_wire_type);
     archive(g, *arg);
-    if (g.p_ != g.e_)
-      throw xdr_bad_message_size("synchronous_server did not consume"
-				 " whole message");
+    g.done();
     P::dispatch_dropvoid(server_, std::move(arg));
     ret = xdr_to_msg(rhdr);
   }

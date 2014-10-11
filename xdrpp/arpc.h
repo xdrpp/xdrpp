@@ -12,8 +12,8 @@ namespace xdr {
 
 //! Structure that gets marshalled as an RPC success header.
 struct rpc_success_hdr {
-  std::uint32_t xid;
-  explicit constexpr rpc_success_hdr(std::uint32_t x) : xid(x) {}
+  uint32_t xid;
+  explicit constexpr rpc_success_hdr(uint32_t x) : xid(x) {}
 };
 template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
   static constexpr bool valid = true;
@@ -30,7 +30,7 @@ template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
     archive(a, REPLY, "mtype");
     archive(a, MSG_ACCEPTED, "stat");
     archive(a, AUTH_NONE, "flavor");
-    archive(a, std::uint32_t(0), "body");
+    archive(a, uint32_t(0), "body");
     archive(a, SUCCESS, "stat");
   }
 };
@@ -38,10 +38,10 @@ template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
 class reply_cb_base {
   msg_sock *ms_;
   std::shared_ptr<const bool> ms_destroyed_;
-  std::uint32_t xid_;
+  uint32_t xid_;
 
 protected:
-  reply_cb_base(msg_sock *ms, std::uint32_t xid)
+  reply_cb_base(msg_sock *ms, uint32_t xid)
     : ms_(ms), ms_destroyed_(ms->destroyed_ptr()), xid_(xid) {}
   reply_cb_base(reply_cb_base &&rcb)
     : ms_(rcb.ms_), ms_destroyed_(std::move(rcb.ms_destroyed_)),
@@ -72,11 +72,59 @@ public:
 };
 
 template<typename T> class reply_cb : public reply_cb_base {
+public:
   using type = T;
   using reply_cb_base::reply_cb_base;
   reply_cb(reply_cb &&) = default;
   reply_cb &operator=(reply_cb &&) = default;
   void operator()(const T &t) { send_reply(t); }
+};
+template<> class reply_cb<void> : public reply_cb_base {
+public:
+  using type = void;
+  using reply_cb_base::reply_cb_base;
+  reply_cb(reply_cb &&) = default;
+  reply_cb &operator=(reply_cb &&) = default;
+  void operator()() { send_reply(xdr_void{}); }
+  void operator()(xdr_void v) { send_reply(v); }
+};
+
+struct arpc_service_base {
+  const uint32_t prog_;
+  const uint32_t vers_;
+  arpc_service_base(uint32_t prog, uint32_t vers)
+    : prog_(prog), vers_(vers) {}
+  virtual ~arpc_service_base() {}
+  virtual void receive(msg_sock *ms, rpc_msg &hdr, xdr_get &g) = 0;
+};
+
+template<typename T> struct arpc_service : public arpc_service_base {
+  using interface = typename T::arpc_interface_type;
+  T &server_;
+
+  arpc_service(T &server)
+    : arpc_service_base(interface::program, interface::version),
+      server_(server) {}
+  void receive(msg_sock *ms, rpc_msg &hdr, xdr_get &g) override {
+    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, ms, hdr, g)) {
+      hdr.body.mtype(REPLY).rbody().areply().reply_data.stat(PROC_UNAVAIL);
+      ms->putmsg(xdr_to_msg(hdr));
+    }
+  }
+
+  template<typename P> void dispatch(msg_sock *ms, rpc_msg &hdr, xdr_get &g) {
+    reply_cb<typename P::res_type> cb(ms, hdr.xid);
+    typename P::arg_wire_type arg;
+    try {
+      archive(g, arg);
+      g.done();
+    }
+    catch (const xdr_runtime_error &) {
+      cb(GARBAGE_ARGS);
+      return;
+    }
+    P::dispatch_dropvoid(server_, arg, std::move(cb));
+  }
 };
 
 
@@ -143,12 +191,12 @@ private:
   };
 
   std::unique_ptr<msg_sock> ms_;
-  std::uint32_t xid_counter_{0};
+  uint32_t xid_counter_{0};
   std::map<uint32_t, std::unique_ptr<call_state_base>> calls_;
   std::map<uint32_t, std::map<uint32_t, server_cb_t>> services_;
 
-  void prepare_call(rpc_msg &hdr, std::uint32_t prog,
-		    std::uint32_t vers, std::uint32_t proc);
+  void prepare_call(rpc_msg &hdr, uint32_t prog,
+		    uint32_t vers, uint32_t proc);
   void receive(msg_ptr buf);
 
 };

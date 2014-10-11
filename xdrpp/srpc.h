@@ -64,9 +64,7 @@ public:
 
     std::unique_ptr<typename P::res_wire_type> r{new typename P::res_wire_type};
     archive(g, *r);
-    if (g.p_ != g.e_)
-      throw xdr_bad_message_size("synchronous_client: "
-				 "did not consume whole message");
+    g.done();
     if (xdr_trace_client) {
       std::string s = "REPLY ";
       s += P::proc_name;

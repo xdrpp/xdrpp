@@ -172,6 +172,11 @@ template<typename Base> struct xdr_generic_get : Base {
   template<typename T> typename std::enable_if<
     xdr_traits<T>::is_class || xdr_traits<T>::is_container>::type
   operator()(T &t) { xdr_traits<T>::load(*this, t); }
+
+  void done() {
+    if (p_ != e_)
+      throw xdr_bad_message_size("unmarshaling did not consume whole message");
+  }
 };
 
 #if WORDS_BIGENDIAN
@@ -235,9 +240,7 @@ xdr_from_msg(const msg_ptr &m, T &t)
 {
   xdr_get g(m);
   archive(g, t);
-  if (g.p_ != g.e_)
-    throw xdr_bad_message_size("xdr_from_message did not"
-			       " consume whole message");
+  g.done();
   return t;
 }
 
