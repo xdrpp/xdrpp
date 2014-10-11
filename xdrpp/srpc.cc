@@ -65,11 +65,13 @@ prepare_call(uint32_t prog, uint32_t vers, uint32_t proc, rpc_msg &hdr)
   hdr.body.cbody().proc = proc;
 }
 
+#if 0
 void
 srpc_server::run()
 {
   for (;;)
     write_message(fd_, dispatch(read_message(fd_)));
 }
+#endif
 
 }

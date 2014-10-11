@@ -98,19 +98,9 @@ struct arpc_service_base {
   virtual void receive(msg_sock *ms, rpc_msg &hdr, xdr_get &g) = 0;
 };
 
-template<typename T> struct arpc_service : public arpc_service_base {
+template<typename T> class arpc_service : public arpc_service_base {
   using interface = typename T::arpc_interface_type;
   T &server_;
-
-  arpc_service(T &server)
-    : arpc_service_base(interface::program, interface::version),
-      server_(server) {}
-  void receive(msg_sock *ms, rpc_msg &hdr, xdr_get &g) override {
-    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, ms, hdr, g)) {
-      hdr.body.mtype(REPLY).rbody().areply().reply_data.stat(PROC_UNAVAIL);
-      ms->putmsg(xdr_to_msg(hdr));
-    }
-  }
 
   template<typename P> void dispatch(msg_sock *ms, rpc_msg &hdr, xdr_get &g) {
     reply_cb<typename P::res_type> cb(ms, hdr.xid);
@@ -125,6 +115,24 @@ template<typename T> struct arpc_service : public arpc_service_base {
     }
     P::dispatch_dropvoid(server_, arg, std::move(cb));
   }
+
+public:
+  arpc_service(T &server)
+    : arpc_service_base(interface::program, interface::version),
+      server_(server) {}
+  void receive(msg_sock *ms, rpc_msg &hdr, xdr_get &g) override {
+    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, ms, hdr, g)) {
+      hdr.body.mtype(REPLY).rbody().areply().reply_data.stat(PROC_UNAVAIL);
+      ms->putmsg(xdr_to_msg(hdr));
+    }
+  }
+};
+
+class arpc_server {
+  std::map<std::pair<uint32_t, uint32_t>,
+	   std::unique_ptr<arpc_service_base>> services_;
+public:
+  void receive(msg_sock *ms, msg_ptr buf);
 };
 
 

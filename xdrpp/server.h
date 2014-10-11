@@ -22,7 +22,7 @@ struct service_base {
 
   service_base(uint32_t prog, uint32_t vers) : prog_(prog), vers_(vers) {}
   virtual ~service_base() {}
-  virtual msg_ptr process(const rpc_msg &hdr, xdr_get &g) = 0;
+  virtual void process(msg_sock *ms, const rpc_msg &hdr, xdr_get &g) = 0;
 };
 
 template<typename T> struct synchronous_server : service_base {
@@ -32,12 +32,12 @@ template<typename T> struct synchronous_server : service_base {
   synchronous_server(T &server)
     : service_base(interface::program, interface::version), server_(server) {}
 
-  msg_ptr process(const rpc_msg &chdr, xdr_get &g) override {
+  void process(msg_sock *ms, const rpc_msg &chdr, xdr_get &g) override {
     if (chdr.body.mtype() != CALL
 	|| chdr.body.cbody().rpcvers != 2
 	|| chdr.body.cbody().prog != prog_
 	|| chdr.body.cbody().vers != vers_)
-      return nullptr;
+      return; // XXX return some error?
 
     rpc_msg rhdr;
     rhdr.xid = chdr.xid;
@@ -50,7 +50,7 @@ template<typename T> struct synchronous_server : service_base {
       rhdr.body.rbody().areply().reply_data.stat(PROC_UNAVAIL);
       ret = xdr_to_msg(rhdr);
     }
-    return ret;
+    ms->putmsg(std::move(ret));
   }
 
   template<typename P> typename std::enable_if<
@@ -98,7 +98,7 @@ class rpc_server_base {
 protected:
   void register_service_base(service_base *s);
 public:
-  msg_ptr dispatch(msg_ptr m);
+  void dispatch(msg_sock *ms, msg_ptr m);
 };
 
 //! Listens for connections on a TCP socket (optionally registering

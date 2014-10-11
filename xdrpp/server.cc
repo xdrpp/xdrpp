@@ -50,8 +50,8 @@ rpc_server_base::register_service_base(service_base *s)
   servers_[s->prog_][s->vers_].reset(s);
 }
 
-msg_ptr
-rpc_server_base::dispatch(msg_ptr m)
+void
+rpc_server_base::dispatch(msg_sock *ms, msg_ptr m)
 {
   xdr_get g(m);
   rpc_msg hdr;
@@ -60,11 +60,11 @@ rpc_server_base::dispatch(msg_ptr m)
     throw xdr_runtime_error("rpc_server received non-CALL message");
 
   if (hdr.body.cbody().rpcvers != 2)
-    return xdr_to_msg(rpc_mkerr(hdr, RPC_MISMATCH));
+    return ms->putmsg(xdr_to_msg(rpc_mkerr(hdr, RPC_MISMATCH)));
 
   auto prog = servers_.find(hdr.body.cbody().prog);
   if (prog == servers_.end())
-    return xdr_to_msg(rpc_mkerr(hdr, PROG_UNAVAIL));
+    return ms->putmsg(xdr_to_msg(rpc_mkerr(hdr, PROG_UNAVAIL)));
 
   auto vers = prog->second.find(hdr.body.cbody().vers);
   if (vers == prog->second.end()) {
@@ -73,13 +73,13 @@ rpc_server_base::dispatch(msg_ptr m)
       prog->second.cbegin()->first;
     hdr.body.rbody().areply().reply_data.mismatch_info().high =
       prog->second.crbegin()->first;
-    return xdr_to_msg(hdr);
+    return ms->putmsg(xdr_to_msg(hdr));
   }
 
-  try { return vers->second->process(hdr, g); }
+  try { ms->putmsg(vers->second->process(ms, hdr, g)); }
   catch (const xdr_runtime_error &e) {
     std::cerr << xdr_to_string(hdr, e.what());
-    return xdr_to_msg(rpc_mkerr(hdr, GARBAGE_ARGS));
+    ms->putmsg(xdr_to_msg(rpc_mkerr(hdr, GARBAGE_ARGS)));
   }
 }
 
@@ -120,9 +120,7 @@ rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
     return;
   }
   try {
-    msg_ptr rp = dispatch(std::move(mp));
-    if (rp)
-      ms->putmsg(std::move(rp));
+    dispatch(ms, std::move(mp));
   }
   catch (const xdr_runtime_error &e) {
     std::cerr << e.what() << std::endl;

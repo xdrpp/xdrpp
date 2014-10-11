@@ -75,10 +75,13 @@ getmsg(int fd)
   close(fd);
 #endif
 
+#if 0
+  // XXX got rid of srpc_server
   xdrtest2_server s;
   srpc_server sfd(fd);
   sfd.register_service(s);
   sfd.run();
+#endif
   
   close(fd);
 }
