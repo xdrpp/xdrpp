@@ -5,35 +5,9 @@
 #include <map>
 #include <mutex>
 #include <xdrpp/exception.h>
-#include <xdrpp/marshal.h>
-#include <xdrpp/msgsock.h>
+#include <xdrpp/server.h>
 
 namespace xdr {
-
-//! Structure that gets marshalled as an RPC success header.
-struct rpc_success_hdr {
-  uint32_t xid;
-  explicit constexpr rpc_success_hdr(uint32_t x) : xid(x) {}
-};
-template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
-  static constexpr bool valid = true;
-  static constexpr bool is_class = true;
-  static constexpr bool is_struct = true;
-  static constexpr bool has_fixed_size = true;
-  static constexpr std::size_t fixed_size = 24;
-  static constexpr std::size_t serial_size(const rpc_success_hdr &) {
-    return fixed_size;
-  }
-  template<typename Archive> static void save(Archive &a,
-					      const rpc_success_hdr &t) {
-    archive(a, t.xid, "xid");
-    archive(a, REPLY, "mtype");
-    archive(a, MSG_ACCEPTED, "stat");
-    archive(a, AUTH_NONE, "flavor");
-    archive(a, uint32_t(0), "body");
-    archive(a, SUCCESS, "stat");
-  }
-};
 
 class reply_cb_base {
   msg_sock *ms_;

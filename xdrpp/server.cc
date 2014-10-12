@@ -8,6 +8,39 @@ bool xdr_trace_server = std::getenv("XDR_TRACE_SERVER");
 
 namespace {
 
+msg_ptr
+rpc_accepted_error_msg(uint32_t xid, accept_stat stat)
+{
+  assert(stat != SUCCESS && stat != PROG_MISMATCH);
+  msg_ptr buf(message_t::alloc(24));
+  xdr_put p(buf);
+  p(xid);
+  p(REPLY);
+  p(MSG_ACCEPTED);
+  p(AUTH_NONE);
+  p(uint32_t(0));
+  p(stat);
+  assert(p.p_ == p.e_);
+  return buf;
+}
+
+msg_ptr
+rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high)
+{
+  msg_ptr buf(message_t::alloc(32));
+  xdr_put p(buf);
+  p(xid);
+  p(REPLY);
+  p(MSG_ACCEPTED);
+  p(AUTH_NONE);
+  p(uint32_t(0));
+  p(PROG_MISMATCH);
+  p(low);
+  p(high);
+  assert(p.p_ == p.e_);
+  return buf;
+}
+
 rpc_msg &
 rpc_mkerr(rpc_msg &m, accept_stat stat)
 {
