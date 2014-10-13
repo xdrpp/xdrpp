@@ -44,6 +44,7 @@ template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
 
 msg_ptr rpc_accepted_error_msg(uint32_t xid, accept_stat stat);
 msg_ptr rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high);
+msg_ptr rpc_auth_error_msg(uint32_t xid, auth_stat stat);
 msg_ptr rpc_rpc_mismatch_msg(uint32_t xid);
 
 struct service_base {

@@ -10,39 +10,42 @@
 namespace xdr {
 
 class reply_cb_base {
-  msg_sock *ms_;
-  std::shared_ptr<const bool> ms_destroyed_;
+  using cb_t = service_base::cb_t;
   uint32_t xid_;
+  cb_t cb_;
 
 protected:
-  reply_cb_base(msg_sock *ms, uint32_t xid)
-    : ms_(ms), ms_destroyed_(ms->destroyed_ptr()), xid_(xid) {}
+  template<typename CB>
+  reply_cb_base(uint32_t xid, CB &&cb)
+    : xid_(xid), cb_(std::forward<CB>(cb)) {}
   reply_cb_base(reply_cb_base &&rcb)
-    : ms_(rcb.ms_), ms_destroyed_(std::move(rcb.ms_destroyed_)),
-      xid_(rcb.xid_) { rcb.ms_ = nullptr; }
+    : xid_(rcb.xid_), cb_(std::move(rcb.cb_)) { rcb.cb_ = nullptr; }
 
-  ~reply_cb_base() { if (ms_) reject(PROC_UNAVAIL); }
+  ~reply_cb_base() { if (cb_) reject(PROC_UNAVAIL); }
 
   reply_cb_base &operator=(reply_cb_base &&rcb) {
-    ms_ = rcb.ms_;
-    ms_destroyed_ = std::move(rcb.ms_destroyed_);
     xid_ = rcb.xid_;
-    rcb.ms_ = nullptr;
+    cb_ = std::move(rcb.cb_);
+    rcb.cb_ = nullptr;
     return *this;
   }
 
-  template<typename T> void send_reply(const T &t) {
-    assert(ms_);
-    if (*ms_destroyed_)
-      return;
-    ms_->putmsg(xdr_to_msg(rpc_success_hdr(xid_), t));
-    ms_ = nullptr;
+  void send_reply_msg(msg_ptr &&b) {
+    cb_(std::move(b));
+    cb_ = nullptr;
   }
-  void send_reject(const rpc_msg &hdr);
+
+  template<typename T> void send_reply(const T &t) {
+    send_reply_msg(xdr_to_msg(rpc_success_hdr(xid_), t));
+  }
 
 public:
-  void reject(accept_stat stat);
-  void reject(auth_stat stat);
+  void reject(accept_stat stat) {
+    send_reply_msg(rpc_accepted_error_msg(xid_, stat));
+  }
+  void reject(auth_stat stat) {
+    send_reply_msg(rpc_auth_error_msg(xid_, stat));
+  }
 };
 
 template<typename T> class reply_cb : public reply_cb_base {

@@ -40,6 +40,20 @@ rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high)
 }
 
 msg_ptr
+rpc_auth_error_msg(uint32_t xid, auth_stat stat)
+{
+  msg_ptr buf(message_t::alloc(20));
+  xdr_put p(buf);
+  p(xid);
+  p(REPLY);
+  p(MSG_DENIED);
+  p(AUTH_ERROR);
+  p(stat);
+  assert(p.p_ == p.e_);
+  return buf;
+}
+
+msg_ptr
 rpc_rpc_mismatch_msg(uint32_t xid)
 {
   msg_ptr buf(message_t::alloc(24));
