@@ -27,7 +27,7 @@ xdr_getsize(const T &t)
 do {									\
   size_t __s = xdr_getsize(v);						\
   if (__s != s) {							\
-    cerr << #v << " has size " << __s << " shoudl have " << s << endl;	\
+    cerr << #v << " has size " << __s << " should have " << s << endl;	\
     terminate();							\
   }									\
 } while (0)
@@ -60,6 +60,23 @@ test_size()
   CHECK_SIZE(xdr::xstring<>(), 4);
   CHECK_SIZE(xdr::xstring<>("123"), 8);
   CHECK_SIZE((xdr::xvector<int32_t,5>()), 4);
+
+  tuple<uint32_t, double> tn {99, 3.141592654};
+  assert(xdr::xdr_traits<decltype(tn)>::has_fixed_size);
+  CHECK_SIZE(tn, 12);
+
+  tuple<xdr::xvector<int>, int, xdr::xstring<>> tv{{1, 2, 3}, 99, "hello"};
+  assert(!xdr::xdr_traits<decltype(tv)>::has_fixed_size);
+  CHECK_SIZE(tv, 32);
+}
+
+void
+test_tuple()
+{
+  auto foo = make_tuple(6, 3.1415, xdr::xstring<>("Hello world"), true);
+  decltype(foo) bar;
+  xdr::xdr_from_msg(xdr_to_msg(foo), bar);
+  assert (foo == bar);
 }
 
 int

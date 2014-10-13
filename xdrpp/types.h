@@ -11,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace xdr {
@@ -247,15 +248,13 @@ template<typename T> struct xdr_container_base<T, false, true>
     T::size() * xdr_traits<typename T::value_type>::fixed_size;
   static std::size_t serial_size(const T &) { return fixed_size; }
 };
-}
 
-namespace detail {
 //! Placeholder type to avoid clearing array
 struct no_clear_t {
   constexpr no_clear_t() {}
 };
 constexpr no_clear_t no_clear;
-};
+}
 
 //! XDR arrays are implemented using std::array as a supertype.
 template<typename T, uint32_t N> struct xarray
@@ -524,13 +523,91 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 };
 
 
-//! Placehoder type representing void values marshaled as 0 bytes.
-struct xdr_void {};
-template<> struct xdr_traits<xdr_void> : xdr_struct_base<> {
-  template<typename Archive> static void
-  save(Archive &ar, const xdr_void &obj) {}
-  template<typename Archive> static void load(Archive &ar, xdr_void &obj) {}
+namespace detail {
+
+template<std::size_t N, typename T> struct tuple_base;
+
+template<std::size_t N, typename T> struct tuple_base_fs;
+template<std::size_t N, typename...T>
+struct tuple_base_fs<N, std::tuple<T...>> : xdr_traits_base {
+  using type = std::tuple<T...>;
+  using elem_type = typename std::tuple_element<N, type>::type;
+  using next = tuple_base<N+1, type>;
+  static constexpr bool is_class = true;
+  static constexpr bool is_struct = true;
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::uint32_t fixed_size =
+    xdr_traits<elem_type>::fixed_size + next::fixed_size;
+  static constexpr std::size_t serial_size(const type &) { return fixed_size; }
 };
+
+template<std::size_t N, typename T> struct tuple_base_vs;
+template<std::size_t N, typename...T>
+struct tuple_base_vs<N, std::tuple<T...>> : xdr_traits_base {
+  using type = std::tuple<T...>;
+  using elem_type = typename std::tuple_element<N, type>::type;
+  using next = tuple_base<N+1, type>;
+  static constexpr bool is_class = true;
+  static constexpr bool is_struct = true;
+  static constexpr bool has_fixed_size = false;
+  static std::size_t serial_size(const type &t) {
+    return (xdr_traits<elem_type>::serial_size(std::get<N>(t))
+	    + next::serial_size(t));
+  }
+};
+
+template<typename...T> struct tuple_base<sizeof...(T), std::tuple<T...>>
+  : xdr_traits_base {
+  using type = std::tuple<T...>;
+  static constexpr bool is_class = true;
+  static constexpr bool is_struct = true;
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size = 0;
+  static constexpr std::size_t serial_size(const type &) { return fixed_size; }
+
+  template<typename Archive> static void
+    save(Archive &ar, const type &obj) {}
+  template<typename Archive> static void
+    load(Archive &ar, type &obj) {}
+};
+
+template<std::size_t N, typename...T> struct tuple_suffix_fixed_size {
+  using type = std::tuple<T...>;
+  using elem_type = typename std::tuple_element<N, type>::type;
+  static constexpr bool value =
+    xdr_traits<elem_type>::has_fixed_size 
+    && tuple_suffix_fixed_size<N+1, T...>::value;
+};
+template<typename...T> struct tuple_suffix_fixed_size<sizeof...(T), T...> {
+  static constexpr bool value = true;
+};
+
+template<std::size_t N, typename...T> struct tuple_base<N, std::tuple<T...>>
+  : std::conditional<tuple_suffix_fixed_size<N, T...>::value,
+		     tuple_base_fs<N, std::tuple<T...>>,
+		     tuple_base_vs<N, std::tuple<T...>>>::type {
+  using type = std::tuple<T...>;
+
+  static const char *name() {
+    static std::string n = "<" + std::to_string(N) + ">";
+    return n.c_str();
+  }
+  template<typename Archive> static void save(Archive &ar, const type &obj) {
+    archive(ar, std::get<N>(obj), name());
+    tuple_base<N+1, type>::save(ar, obj);
+  }
+  template<typename Archive> static void load(Archive &ar, type &obj) {
+    archive(ar, std::get<N>(obj), name());
+    tuple_base<N+1, type>::load(ar, obj);
+  }
+};
+}
+
+template<typename...T> struct xdr_traits<std::tuple<T...>>
+  : detail::tuple_base<0, std::tuple<T...>> {};
+
+//! Placehoder type representing void values marshaled as 0 bytes.
+using xdr_void = std::tuple<>;
 
 
 namespace detail {
