@@ -71,11 +71,35 @@ test_size()
 }
 
 void
+udsb(uint32_t, double, xdr::xstring<> &, bool, std::nullptr_t)
+{
+}
+
+void
+dump_indices(xdr::detail::indices<>)
+{
+  cout << endl;
+}
+template<std::size_t N, std::size_t...Ns> void
+dump_indices(xdr::detail::indices<N, Ns...>)
+{
+  cout << " " << N;
+  dump_indices(xdr::detail::indices<Ns...>{});
+}
+
+void
 test_tuple()
 {
-  auto foo = make_tuple(6, 3.1415, xdr::xstring<>("Hello world"), true);
+  using namespace xdr;
+  using namespace detail;
+
+  auto foo = make_tuple(uint32_t(6), 3.1415,
+			xdr::xstring<>("Hello world"), true);
   decltype(foo) bar;
   xdr::xdr_from_msg(xdr_to_msg(foo), bar);
+  xdr::xdr_traits<decltype(foo)>::apply(udsb, foo, nullptr);
+  apply_indices(udsb, foo, indices<0,1,2,3>{}, nullptr);
+  apply_indices(udsb, foo, all_indices<4>{}, nullptr);
   assert (foo == bar);
 }
 
@@ -83,6 +107,7 @@ int
 main()
 {
   test_size();
+  test_tuple();
 
   testns::bytes b1, b2;
   xdr::xdr_clear(b2);

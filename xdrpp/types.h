@@ -115,6 +115,11 @@ struct xdr_traits_base {
   static constexpr bool is_struct = false;
   static constexpr bool is_union = false;
   static constexpr bool has_fixed_size = false;
+  template<typename F, typename T, typename...A> static auto
+  apply(F &&f, T &&t, A &&...a) ->
+    decltype(f(std::forward<T>(t), std::forward<A>(a)...)) {
+    return f(std::forward<T>(t), std::forward<A>(a)...);
+  }
 };
 
 
@@ -525,6 +530,37 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 
 namespace detail {
 
+//! Placeholder type used to contain a parameter pack of tuple
+//! indices, so as to unpack a tuple in function call arguments.
+template<std::size_t...N> struct indices {};
+
+//! Apply a function [object] to elements at a set of tuple indices,
+//! with arbitrary arguments appended.
+template<typename F, typename T, std::size_t...I, typename...A> inline auto
+apply_indices(F &&f, T &&t, indices<I...>, A &&...a) ->
+  decltype(f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...))
+{
+  return f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...);
+}
+
+template<typename T, typename U> struct cat_indices;
+template<std::size_t...M, std::size_t...N>
+struct cat_indices<indices<M...>, indices<N...>> {
+  using type = indices<M..., N...>;
+};
+template<std::size_t N> struct all_indices_helper {
+  using type = typename cat_indices<typename all_indices_helper<N-1>::type,
+				    indices<N-1>>::type;
+};
+template<> struct all_indices_helper<0> {
+  using type = indices<>;
+};
+
+//! A type representing all tuple indices from 0 to N-1, for use with
+//! apply_indices.
+template<std::size_t N> using all_indices =
+  typename all_indices_helper<N>::type;
+
 template<std::size_t N, typename T> struct tuple_base;
 
 template<std::size_t N, typename T> struct tuple_base_fs;
@@ -604,7 +640,19 @@ template<std::size_t N, typename...T> struct tuple_base<N, std::tuple<T...>>
 }
 
 template<typename...T> struct xdr_traits<std::tuple<T...>>
-  : detail::tuple_base<0, std::tuple<T...>> {};
+  : detail::tuple_base<0, std::tuple<T...>> {
+  template<typename F, typename TT, typename...A> static auto
+    apply(F &&f, TT &&tt, A &&...a) ->
+    decltype (detail::apply_indices(std::forward<F>(f),
+			    std::forward<TT>(tt),
+			    detail::all_indices<sizeof...(T)>{},
+			    std::forward<A>(a)...)) {
+    return detail::apply_indices(std::forward<F>(f),
+				 std::forward<TT>(tt),
+				 detail::all_indices<sizeof...(T)>{},
+				 std::forward<A>(a)...);
+  }
+};
 
 //! Placehoder type representing void values marshaled as 0 bytes.
 using xdr_void = std::tuple<>;
