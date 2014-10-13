@@ -75,13 +75,11 @@ getmsg(int fd)
   close(fd);
 #endif
 
-#if 0
   // XXX got rid of srpc_server
   xdrtest2_server s;
   srpc_server sfd(fd);
   sfd.register_service(s);
   sfd.run();
-#endif
   
   close(fd);
 }
@@ -129,9 +127,9 @@ main(int argc, char **argv)
   string host, port;
   get_numinfo(ai->ai_addr, ai->ai_addrlen, &host, &port);
   cout << host << ":" << port << endl;
+#endif
 
   test_rpcb();
-#endif
 
   int fds[2];
   if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == -1) {

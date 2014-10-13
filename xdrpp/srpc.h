@@ -93,7 +93,6 @@ template<typename T> using srpc_client =
   typename T::template _xdr_client<synchronous_client_base>;
 
 
-#if 0
 //! Attach a RPC services to a single, connected stream socket.  No
 //! procedures will be implemented by the RPC server until interface
 //! objects are reigstered with \c register_server.
@@ -108,13 +107,12 @@ public:
 
   //! Add objects implementing RPC program interfaces to the server.
   template<typename T> void register_service(T &t) {
-    register_service_base(new synchronous_server<T>(t));
+    register_service_base(new synchronous_service<T>(t));
   }
 
   //! Start serving requests.  (Loops until an exception.)
   void run();
 };
-#endif
 
 }
 

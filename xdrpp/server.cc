@@ -6,8 +6,6 @@ namespace xdr {
 
 bool xdr_trace_server = std::getenv("XDR_TRACE_SERVER");
 
-namespace {
-
 msg_ptr
 rpc_accepted_error_msg(uint32_t xid, accept_stat stat)
 {
@@ -41,6 +39,25 @@ rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high)
   return buf;
 }
 
+msg_ptr
+rpc_rpc_mismatch_msg(uint32_t xid)
+{
+  msg_ptr buf(message_t::alloc(24));
+  xdr_put p(buf);
+  p(xid);
+  p(REPLY);
+  p(MSG_DENIED);
+  p(RPC_MISMATCH);
+  p(uint32_t(2));
+  p(uint32_t(2));
+  assert(p.p_ == p.e_);
+  return buf;
+}
+
+
+#if 0
+namespace {
+
 rpc_msg &
 rpc_mkerr(rpc_msg &m, accept_stat stat)
 {
@@ -65,7 +82,6 @@ rpc_mkerr(rpc_msg &m, reject_stat stat)
   return m;
 }
 
-#if 0
 rpc_msg &
 rpc_mkerr(rpc_msg &m, auth_stat stat)
 {
@@ -73,9 +89,10 @@ rpc_mkerr(rpc_msg &m, auth_stat stat)
     .stat(AUTH_ERROR).rj_why() = stat;
   return m;
 }
-#endif
 
 }
+#endif
+
 
 void
 rpc_server_base::register_service_base(service_base *s)
@@ -84,36 +101,44 @@ rpc_server_base::register_service_base(service_base *s)
 }
 
 void
-rpc_server_base::dispatch(msg_sock *ms, msg_ptr m)
+rpc_server_base::dispatch(msg_ptr m, service_base::cb_t reply)
 {
   xdr_get g(m);
   rpc_msg hdr;
-  archive(g, hdr);
-  if (hdr.body.mtype() != CALL)
-    throw xdr_runtime_error("rpc_server received non-CALL message");
+
+  try { archive(g, hdr); }
+  catch (const xdr_runtime_error &e) {
+    std::cerr << "rpc_server_base::dispatch: ignoring malformed header: "
+	      << e.what() << std::endl;
+    return;
+  }
+  if (hdr.body.mtype() != CALL) {
+    std::cerr << "rpc_server_base::dispatch: ignoring non-CALL" << std::endl;
+    return;
+  }
 
   if (hdr.body.cbody().rpcvers != 2)
-    return ms->putmsg(xdr_to_msg(rpc_mkerr(hdr, RPC_MISMATCH)));
+    return reply(rpc_rpc_mismatch_msg(hdr.xid));
 
   auto prog = servers_.find(hdr.body.cbody().prog);
   if (prog == servers_.end())
-    return ms->putmsg(xdr_to_msg(rpc_mkerr(hdr, PROG_UNAVAIL)));
+    return reply(rpc_accepted_error_msg(hdr.xid, PROG_UNAVAIL));
 
   auto vers = prog->second.find(hdr.body.cbody().vers);
   if (vers == prog->second.end()) {
-    rpc_mkerr(hdr, PROG_MISMATCH);
-    hdr.body.rbody().areply().reply_data.mismatch_info().low =
-      prog->second.cbegin()->first;
-    hdr.body.rbody().areply().reply_data.mismatch_info().high =
-      prog->second.crbegin()->first;
-    return ms->putmsg(xdr_to_msg(hdr));
+    uint32_t low = prog->second.cbegin()->first;
+    uint32_t high = prog->second.crbegin()->first;
+    return reply(rpc_prog_mismatch_msg(hdr.xid, low, high));
   }
 
-  try { ms->putmsg(vers->second->process(ms, hdr, g)); }
-  catch (const xdr_runtime_error &e) {
-    std::cerr << xdr_to_string(hdr, e.what());
-    ms->putmsg(xdr_to_msg(rpc_mkerr(hdr, GARBAGE_ARGS)));
+  try {
+    vers->second->process(hdr, g, reply);
+    return;
   }
+  catch (const xdr_runtime_error &e) {
+    std::cerr << "rpc_server_base::dispatch: " << e.what() << std::endl;
+  }
+  reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
 }
 
 rpc_tcp_listener::rpc_tcp_listener(unique_fd &&fd, bool reg)
@@ -153,7 +178,7 @@ rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
     return;
   }
   try {
-    dispatch(ms, std::move(mp));
+    dispatch(std::move(mp), msg_sock_put_t(ms));
   }
   catch (const xdr_runtime_error &e) {
     std::cerr << e.what() << std::endl;

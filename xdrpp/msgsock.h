@@ -80,6 +80,15 @@ private:
   void output(bool cbset);
 };
 
+//! Functor wrapper around \c msg_sock::putmsg.  Mostly useful because
+//! std::function implementations avoid memory allocation with \c
+//! operator() but when other methods are passed to \c std::bind.
+struct msg_sock_put_t {
+  msg_sock *ms_;
+  constexpr msg_sock_put_t(msg_sock *ms) : ms_(ms) {}
+  void operator()(msg_ptr b) const { ms_->putmsg(b); }
+};
+
 }
 
 #endif // !_XDRPP_MSGSOCK_H_INCLUDED_

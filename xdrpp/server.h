@@ -44,56 +44,63 @@ template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
 
 msg_ptr rpc_accepted_error_msg(uint32_t xid, accept_stat stat);
 msg_ptr rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high);
+msg_ptr rpc_rpc_mismatch_msg(uint32_t xid);
 
 struct service_base {
+  using cb_t = std::function<void(msg_ptr)>;
+
   const uint32_t prog_;
   const uint32_t vers_;
 
   service_base(uint32_t prog, uint32_t vers) : prog_(prog), vers_(vers) {}
   virtual ~service_base() {}
-  virtual void process(msg_sock *ms, const rpc_msg &hdr, xdr_get &g) = 0;
+  virtual void process(rpc_msg &hdr, xdr_get &g, cb_t reply) = 0;
+
+  bool check_call(const rpc_msg &hdr) {
+    return hdr.body.mtype() == CALL
+      && hdr.body.cbody().rpcvers == 2
+      && hdr.body.cbody().prog == prog_
+      && hdr.body.cbody().vers == vers_;
+  }
+
+  template<typename T> static bool decode_arg(xdr_get &g, T &arg) {
+    try {
+      archive(g, arg);
+      g.done();
+      return true;
+    }
+    catch (const xdr_runtime_error &) {
+      return false;
+    }
+  }
 };
 
-template<typename T> struct synchronous_server : service_base {
+template<typename T> struct synchronous_service : service_base {
   using interface = typename T::rpc_interface_type;
   T &server_;
 
-  synchronous_server(T &server)
+  synchronous_service(T &server)
     : service_base(interface::program, interface::version), server_(server) {}
 
-  void process(msg_sock *ms, const rpc_msg &chdr, xdr_get &g) override {
-    if (chdr.body.mtype() != CALL
-	|| chdr.body.cbody().rpcvers != 2
-	|| chdr.body.cbody().prog != prog_
-	|| chdr.body.cbody().vers != vers_)
-      return; // XXX return some error?
-
-    rpc_msg rhdr;
-    rhdr.xid = chdr.xid;
-    rhdr.body.mtype(REPLY).rbody().stat(MSG_ACCEPTED)
-      .areply().reply_data.stat(SUCCESS);
-
-    msg_ptr ret;
-    if (!interface::call_dispatch(*this, chdr.body.cbody().proc,
-				  g, rhdr, ret)) {
-      rhdr.body.rbody().areply().reply_data.stat(PROC_UNAVAIL);
-      ret = xdr_to_msg(rhdr);
-    }
-    ms->putmsg(std::move(ret));
+  void process(rpc_msg &hdr, xdr_get &g, cb_t reply) override {
+    if (!check_call(hdr))
+      reply(nullptr);
+    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, hdr, g,
+				  std::move(reply)))
+      reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
   }
 
   template<typename P> typename std::enable_if<
     !std::is_same<void, typename P::res_type>::value>::type
-  dispatch(xdr_get &g, rpc_msg rhdr, msg_ptr &ret) {
-    std::unique_ptr<typename P::arg_wire_type>
-      arg(new typename P::arg_wire_type);
-    archive(g, *arg);
-    g.done();
-
+  dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
+    pointer<typename P::arg_wire_type> arg;
+    if (!decode_arg(g, arg.activate()))
+      return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
+    
     if (xdr_trace_server) {
       std::string s = "CALL ";
       s += P::proc_name;
-      s += " <- [xid " + std::to_string(rhdr.xid) + "]";
+      s += " <- [xid " + std::to_string(hdr.xid) + "]";
       std::clog << xdr_to_string(*arg, s.c_str());
     }
 
@@ -103,21 +110,37 @@ template<typename T> struct synchronous_server : service_base {
     if (xdr_trace_server) {
       std::string s = "REPLY ";
       s += P::proc_name;
-      s += " -> [xid " + std::to_string(rhdr.xid) + "]";
+      s += " -> [xid " + std::to_string(hdr.xid) + "]";
       std::clog << xdr_to_string(*res, s.c_str());
     }
 
-    ret = xdr_to_msg(rhdr, *res);
+    reply(xdr_to_msg(rpc_success_hdr(hdr.xid), *res));
   }
+
   template<typename P> typename std::enable_if<
     std::is_same<void, typename P::res_type>::value>::type
-  dispatch(xdr_get &g, rpc_msg rhdr, msg_ptr &ret) {
-    std::unique_ptr<typename P::arg_wire_type>
-      arg(new typename P::arg_wire_type);
-    archive(g, *arg);
-    g.done();
+  dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
+    pointer<typename P::arg_wire_type> arg;
+    if (!decode_arg(g, arg.activate()))
+      return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
+    
+    if (xdr_trace_server) {
+      std::string s = "CALL ";
+      s += P::proc_name;
+      s += " <- [xid " + std::to_string(hdr.xid) + "]";
+      std::clog << xdr_to_string(*arg, s.c_str());
+    }
+
     P::dispatch_dropvoid(server_, std::move(arg));
-    ret = xdr_to_msg(rhdr);
+
+    if (xdr_trace_server) {
+      std::string s = "REPLY ";
+      s += P::proc_name;
+      s += " -> [xid " + std::to_string(hdr.xid) + "]\n";
+      std::clog <<  s;
+    }
+
+    reply(xdr_to_msg(rpc_success_hdr(hdr.xid)));
   }
 };
 
@@ -127,7 +150,7 @@ class rpc_server_base {
 protected:
   void register_service_base(service_base *s);
 public:
-  void dispatch(msg_sock *ms, msg_ptr m);
+  void dispatch(msg_ptr m, service_base::cb_t reply);
 };
 
 //! Listens for connections on a TCP socket (optionally registering
@@ -148,14 +171,13 @@ public:
 
   //! Add objects implementing RPC program interfaces to the server.
   template<typename T> void register_service(T &t) {
-    register_service_base(new synchronous_server<T>(t));
+    register_service_base(new synchronous_service<T>(t));
     if(use_rpcbind_)
       rpcbind_register(listen_fd_.get(), T::rpc_interface_type::program,
 		       T::rpc_interface_type::version);
   }
   void run();
 };
-
 
 }
 
