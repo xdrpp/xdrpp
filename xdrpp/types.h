@@ -567,8 +567,8 @@ template<std::size_t N, typename T> struct tuple_base_fs;
 template<std::size_t N, typename...T>
 struct tuple_base_fs<N, std::tuple<T...>> : xdr_traits_base {
   using type = std::tuple<T...>;
-  using elem_type = typename std::tuple_element<N, type>::type;
-  using next = tuple_base<N+1, type>;
+  using elem_type = typename std::tuple_element<N-1, type>::type;
+  using next = tuple_base<N-1, type>;
   static constexpr bool is_class = true;
   static constexpr bool is_struct = true;
   static constexpr bool has_fixed_size = true;
@@ -581,18 +581,18 @@ template<std::size_t N, typename T> struct tuple_base_vs;
 template<std::size_t N, typename...T>
 struct tuple_base_vs<N, std::tuple<T...>> : xdr_traits_base {
   using type = std::tuple<T...>;
-  using elem_type = typename std::tuple_element<N, type>::type;
-  using next = tuple_base<N+1, type>;
+  using elem_type = typename std::tuple_element<N-1, type>::type;
+  using next = tuple_base<N-1, type>;
   static constexpr bool is_class = true;
   static constexpr bool is_struct = true;
   static constexpr bool has_fixed_size = false;
   static std::size_t serial_size(const type &t) {
-    return (xdr_traits<elem_type>::serial_size(std::get<N>(t))
+    return (xdr_traits<elem_type>::serial_size(std::get<N-1>(t))
 	    + next::serial_size(t));
   }
 };
 
-template<typename...T> struct tuple_base<sizeof...(T), std::tuple<T...>>
+template<typename...T> struct tuple_base<0, std::tuple<T...>>
   : xdr_traits_base {
   using type = std::tuple<T...>;
   static constexpr bool is_class = true;
@@ -601,20 +601,18 @@ template<typename...T> struct tuple_base<sizeof...(T), std::tuple<T...>>
   static constexpr std::size_t fixed_size = 0;
   static constexpr std::size_t serial_size(const type &) { return fixed_size; }
 
-  template<typename Archive> static void
-    save(Archive &ar, const type &obj) {}
-  template<typename Archive> static void
-    load(Archive &ar, type &obj) {}
+  template<typename Archive> static void save(Archive &ar, const type &obj) {}
+  template<typename Archive> static void load(Archive &ar, type &obj) {}
 };
 
 template<std::size_t N, typename...T> struct tuple_suffix_fixed_size {
   using type = std::tuple<T...>;
-  using elem_type = typename std::tuple_element<N, type>::type;
+  using elem_type = typename std::tuple_element<N-1, type>::type;
   static constexpr bool value =
     xdr_traits<elem_type>::has_fixed_size 
-    && tuple_suffix_fixed_size<N+1, T...>::value;
+    && tuple_suffix_fixed_size<N-1, T...>::value;
 };
-template<typename...T> struct tuple_suffix_fixed_size<sizeof...(T), T...> {
+template<typename...T> struct tuple_suffix_fixed_size<0, T...> {
   static constexpr bool value = true;
 };
 
@@ -625,22 +623,22 @@ template<std::size_t N, typename...T> struct tuple_base<N, std::tuple<T...>>
   using type = std::tuple<T...>;
 
   static const char *name() {
-    static std::string n = "<" + std::to_string(N) + ">";
+    static std::string n = "<" + std::to_string(N-1) + ">";
     return n.c_str();
   }
   template<typename Archive> static void save(Archive &ar, const type &obj) {
-    archive(ar, std::get<N>(obj), name());
-    tuple_base<N+1, type>::save(ar, obj);
+    tuple_base<N-1, type>::save(ar, obj);
+    archive(ar, std::get<N-1>(obj), name());
   }
   template<typename Archive> static void load(Archive &ar, type &obj) {
-    archive(ar, std::get<N>(obj), name());
-    tuple_base<N+1, type>::load(ar, obj);
+    tuple_base<N-1, type>::load(ar, obj);
+    archive(ar, std::get<N-1>(obj), name());
   }
 };
 }
 
 template<typename...T> struct xdr_traits<std::tuple<T...>>
-  : detail::tuple_base<0, std::tuple<T...>> {
+  : detail::tuple_base<sizeof...(T), std::tuple<T...>> {
   template<typename F, typename TT, typename...A> static auto
     apply(F &&f, TT &&tt, A &&...a) ->
     decltype (detail::apply_indices(std::forward<F>(f),
