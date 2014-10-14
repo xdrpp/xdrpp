@@ -94,7 +94,7 @@ template<typename T> struct synchronous_service : service_base {
   template<typename P> typename std::enable_if<
     !std::is_same<void, typename P::res_type>::value>::type
   dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
-    pointer<typename P::arg_wire_type> arg;
+    pointer<typename P::arg_tuple_type> arg;
     if (!decode_arg(g, arg.activate()))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
     
@@ -121,7 +121,7 @@ template<typename T> struct synchronous_service : service_base {
   template<typename P> typename std::enable_if<
     std::is_same<void, typename P::res_type>::value>::type
   dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
-    pointer<typename P::arg_wire_type> arg;
+    pointer<typename P::arg_tuple_type> arg;
     if (!decode_arg(g, arg.activate()))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
     

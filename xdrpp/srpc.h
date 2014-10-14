@@ -28,7 +28,7 @@ prepare_call(rpc_msg &hdr)
 class synchronous_client_base {
   const int fd_;
 
-  static void moveret(std::unique_ptr<xdr_void> &) {}
+  static void moveret(pointer<xdr_void> &) {}
   template<typename T> static T &&moveret(T &t) { return std::move(t); }
 
 public:
@@ -42,7 +42,7 @@ public:
   template<typename P> typename std::conditional<
     std::is_void<typename P::res_type>::value, void,
     std::unique_ptr<typename P::res_type>>::type
-  invoke(const typename P::arg_wire_type &a) {
+  invoke(const typename P::arg_tuple_type &a) {
     rpc_msg hdr;
     prepare_call<P>(hdr);
     uint32_t xid = hdr.xid;
@@ -62,8 +62,8 @@ public:
     if (hdr.xid != xid)
       throw xdr_runtime_error("synchronous_client: unexpected xid");
 
-    std::unique_ptr<typename P::res_wire_type> r{new typename P::res_wire_type};
-    archive(g, *r);
+    pointer<typename P::res_tuple_type> r;
+    archive(g, r.activate());
     g.done();
     if (xdr_trace_client) {
       std::string s = "REPLY ";
