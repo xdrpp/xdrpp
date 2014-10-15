@@ -370,7 +370,7 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   //! Check whether a size is in bounds
   static void check_size(size_t n) {
     if (n > max_size())
-      throw xdr_overflow("xvector overflow");
+      throw xdr_overflow("xstring overflow");
   }
 
   //! Check that the string length is not greater than the maximum
