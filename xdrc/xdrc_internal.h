@@ -111,7 +111,7 @@ struct rpc_union {
 struct rpc_proc {
   string id;
   uint32_t val;
-  string arg;
+  vec<string> arg;
   string res;
 };
 
@@ -193,6 +193,7 @@ struct YYSTYPE {
     union_entry<vec<rpc_const>> const_list;
     union_entry<rpc_ufield> ufield;
     union_entry<rpc_union> ubody;
+    union_entry<vec<string>> str_list;
   };
 
   YYSTYPE() : _base() {}
@@ -237,6 +238,18 @@ void gen_servercc(std::ostream &os);
 extern string input_file;
 extern string output_file;
 extern string file_prefix;
+
+template<typename C> void
+comma_sep(std::ostream &os, C &c,
+	  std::function<string(const typename C::value_type &)> f)
+{
+  auto i = c.begin();
+  if (i == c.end())
+    return;
+  os << f(*i);
+  while (++i != c.end())
+    os << ", " << f(*i);
+}
 
 struct omanip : std::function<void(std::ostream&)> {
   using ostream = std::ostream;

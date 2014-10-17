@@ -18,11 +18,13 @@ gen_decl(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   ++nl;
   os << nl << "using rpc_interface_type = " << v.id << ";" << endl;
   for (const rpc_proc &p : v.procs) {
-    string arg = p.arg == "void" ? ""
-      : (string("std::unique_ptr<") + p.arg + "> arg");
+    //    string arg = p.arg == "void" ? ""
+    //  : (string("std::unique_ptr<") + p.arg + "> arg");
     string res = p.res == "void" ? "void"
       : (string("std::unique_ptr<") + p.res + ">");
-    os << nl << res << " " << p.id << "(" << arg << ");";
+    os << nl << res << " " << p.id << "(";
+    comma_sep(os, p.arg, [](const string &s) { return "const " + s + " &"; });
+    os << ");";
   }
   os << nl.close << "};";
 }
@@ -33,14 +35,16 @@ gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   string name = v.id + "_server";
 
   for (const rpc_proc &p : v.procs) {
-    string arg = p.arg == "void" ? ""
-      : (string("std::unique_ptr<") + p.arg + "> arg");
+    //string arg = p.arg == "void" ? ""
+    //  : (string("std::unique_ptr<") + p.arg + "> arg");
     string res = p.res == "void" ? "void"
       : (string("std::unique_ptr<") + p.res + ">");
     os << endl
        << nl << res
        << nl << name << "::" << p.id
-       << "(" << arg << ")"
+       << "(";
+    comma_sep(os, p.arg, [](const string &s){ return "const " + s + " &arg"; });
+    os << ")"
        << nl << "{";
     if (res != "void")
        os << nl.open << "std::unique_ptr<" << p.res << "> res(new "

@@ -1,5 +1,6 @@
 
 %{
+#include <algorithm>
 #include "xdrc_internal.h"
 
   //string xdr_unbounded = "xdr::XDR_MAX_LEN";
@@ -47,6 +48,7 @@ static string getnewid(string, bool repeats_bad);
 %type <const_list> enum_body enum_tag_list
 %type <ufield> union_case_list union_case_spec
 %type <ubody> union_case_spec_list union_body
+%type <str_list> void_or_arg_list arg_list
 
 %%
 file: /* empty */ { checkliterals(); }
@@ -268,14 +270,14 @@ version_decl: T_VERSION newid '{'
 proc_list: proc_decl | proc_list proc_decl
 	;
 
-proc_decl: type_or_void newid '(' type_or_void ')' '=' number ';'
+proc_decl: type_or_void newid '(' void_or_arg_list ')' '=' number ';'
 	{
 	  rpc_sym *s = &symlist.back();
 	  rpc_vers *rv = &s->sprogram->vers.back();
 	  rpc_proc *rp = &rv->procs.push_back();
 	  rp->id = $2;
 	  rp->val = $7;
-	  rp->arg = $4;
+	  rp->arg = std::move(*$4);
 	  rp->res = $1;
 	}
 	;
@@ -342,6 +344,20 @@ declaration: type_specifier T_ID ';'
 	;
 
 type_or_void: type | T_VOID { $$ = "void"; }
+	;
+
+void_or_arg_list: T_VOID { $$.select(); }
+	| arg_list
+	{ $$.select() = std::move(*$1);
+	  std::reverse($$->begin(), $$->end());
+	}
+	;
+
+arg_list: type { $$.select(); }
+        | type arg_list
+	{ $$.select() = std::move(*$2);
+	  $$->push_back($1);
+        }
 	;
 
 type: base_type | qid

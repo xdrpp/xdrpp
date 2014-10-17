@@ -612,9 +612,11 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl.open << "using interface_type = " << v.id << ";"
        << nl << "static constexpr std::uint32_t proc = " << p.val << ";"
        << nl << "static constexpr const char *proc_name = \"" << p.id << "\";"
-       << nl << "using arg_tuple_type = "
-       << (p.arg == "void" ? "xdr::xdr_void" : p.arg) << ";"
-       << nl << "using res_type = " << p.res << ";"
+       << nl << "using arg_tuple_type = std::tuple<";
+    comma_sep(os, p.arg, [](const string &s){ return s; } );
+    os << "/* " << p.arg.size() << "*/";
+    os << ">;";
+    os << nl << "using res_type = " << p.res << ";"
        << nl << "using res_tuple_type = "
        << (p.res == "void" ? "xdr::xdr_void" : p.res) << ";"
        << nl
@@ -625,12 +627,14 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "}"
        << nl;
     call = "c." + p.id + "(";
-    if (p.arg != "void")
-      call += "std::forward<DropIfVoid>(d), ";
-    call += "std::forward<A>(a)...)";
-    os << nl << "template<typename C, typename DropIfVoid, typename...A>"
+    for (size_t i = 0; i < p.arg.size(); ++i) {
+      if (i)
+	call += ",\n" + string(3 + p.id.size() + nl.level_, ' ');
+      call += "std::get<" + std::to_string(i) + ">(std::forward<T>(t))";
+    }
+    os << nl << "template<typename C, typename T, typename...A>"
        << " static auto"
-       << nl << "dispatch_dropvoid(C &&c, DropIfVoid &&d, A &&...a) ->"
+       << nl << "dispatch_dropvoid(C &&c, T &&t, A &&...a) ->"
        << nl << "decltype(" << call << ") {"
        << nl << "  return " << call << ";"
        << nl << "}"
