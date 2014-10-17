@@ -3,7 +3,6 @@
 #include <algorithm>
 #include "xdrc_internal.h"
 
-  //string xdr_unbounded = "xdr::XDR_MAX_LEN";
 string xdr_unbounded = "";
 static int proc_compare(const void *, const void *);
 static int vers_compare(const void *, const void *);
@@ -30,6 +29,9 @@ static string getnewid(string, bool repeats_bad);
 %token T_DOUBLE
 %token T_QUADRUPLE
 %token T_VOID
+
+%precedence T_UNSIGNED
+%precedence T_INT T_HYPER
 
 %token T_VERSION
 %token T_SWITCH
@@ -353,9 +355,9 @@ void_or_arg_list: T_VOID { $$.select(); }
 	}
 	;
 
-arg_list: type { $$.select(); }
-        | type arg_list
-	{ $$.select() = std::move(*$2);
+arg_list: type { $$.select().push_back($1); }
+        | type ',' arg_list
+	{ $$.select() = std::move(*$3);
 	  $$->push_back($1);
         }
 	;
@@ -363,11 +365,11 @@ arg_list: type { $$.select(); }
 type: base_type | qid
 	;
 
-base_type: T_UNSIGNED { $$ = "unsigned"; }
-	| T_INT { $$ = "int"; }
+base_type: T_INT { $$ = "int"; }
 	| T_UNSIGNED T_INT { $$ = "unsigned"; }
 	| T_HYPER { $$ = "hyper"; }
 	| T_UNSIGNED T_HYPER { $$ = "unsigned hyper"; }
+	| T_UNSIGNED { $$ = "unsigned"; }
 	| T_FLOAT { $$ = "float"; }
 	| T_DOUBLE { $$ = "double"; }
 	| T_QUADRUPLE { $$ = "quadruple"; }

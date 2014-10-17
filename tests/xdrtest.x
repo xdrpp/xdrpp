@@ -97,6 +97,7 @@ program xdrtest_prog {
 program other_prog {
   version opv1 {
     void o_null(void) = 1;
+    void multi_arg(u_4_12, ContainsEnum) = 2;
   } = 1;
 }= 0x20000001;
 

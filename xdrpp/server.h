@@ -106,7 +106,7 @@ template<typename T> struct synchronous_service : service_base {
     }
 
     std::unique_ptr<typename P::res_type> res =
-      P::dispatch_dropvoid(server_, std::move(arg));
+      P::unpack_dispatch(server_, std::move(arg));
 
     if (xdr_trace_server) {
       std::string s = "REPLY ";
@@ -132,7 +132,7 @@ template<typename T> struct synchronous_service : service_base {
       std::clog << xdr_to_string(*arg, s.c_str());
     }
 
-    P::dispatch_dropvoid(server_, std::move(arg));
+    P::unpack_dispatch(server_, std::move(arg));
 
     if (xdr_trace_server) {
       std::string s = "REPLY ";
