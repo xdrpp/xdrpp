@@ -619,6 +619,13 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     os << nl << "using arg_tuple_type = std::tuple<";
     comma_sep(os, p.arg, [](const string &s){ return s; } );
     os << ">;";
+    os << nl << "using arg_ptr_tuple_type = std::tuple<";
+    for (size_t i = 0; i < p.arg.size(); ++i) {
+      if (i)
+	os << ',' << nl << "                                      ";
+      os << "xdr::transparent_ptr<" << p.arg[i] << ">";
+    }
+    os << ">;";
     os << nl << "using res_type = " << p.res << ";"
        << nl << "using res_tuple_type = "
        << (p.res == "void" ? "xdr::xdr_void" : p.res) << ";"

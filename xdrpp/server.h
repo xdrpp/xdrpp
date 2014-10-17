@@ -94,15 +94,15 @@ template<typename T> struct synchronous_service : service_base {
   template<typename P> typename std::enable_if<
     !std::is_same<void, typename P::res_type>::value>::type
   dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
-    pointer<typename P::arg_tuple_type> arg;
-    if (!decode_arg(g, arg.activate()))
+    typename P::arg_ptr_tuple_type arg;
+    if (!decode_arg(g, arg))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
     
     if (xdr_trace_server) {
       std::string s = "CALL ";
       s += P::proc_name;
       s += " <- [xid " + std::to_string(hdr.xid) + "]";
-      std::clog << xdr_to_string(*arg, s.c_str());
+      std::clog << xdr_to_string(arg, s.c_str());
     }
 
     std::unique_ptr<typename P::res_type> res =

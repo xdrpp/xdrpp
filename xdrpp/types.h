@@ -656,6 +656,45 @@ template<typename...T> struct xdr_traits<std::tuple<T...>>
 using xdr_void = std::tuple<>;
 
 
+//! A pointer, but that gets marshalled as the underlying object and
+//! can convert to the underlying type.
+template<typename T> struct transparent_ptr : std::unique_ptr<T> {
+  using std::unique_ptr<T>::unique_ptr;
+  transparent_ptr() : std::unique_ptr<T>(new T{}) {}
+  operator T &() { return this->get(); }
+  operator const T &() const { return this->get(); }
+  operator T &&() { return std::move(this->get()); }
+};
+
+namespace detail {
+
+template<typename T, bool fs = xdr_traits<T>::has_fixed_size>
+struct transparent_ptr_base : xdr_traits_base {
+  static constexpr bool has_fixed_size = false;
+};
+template<typename T> struct transparent_ptr_base<T, true> : xdr_traits_base {
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size = xdr_traits<T>::fixed_size;
+};
+
+}
+
+template<typename T> struct xdr_traits<transparent_ptr<T>>
+: detail::transparent_ptr_base<T> {
+  using t_traits = xdr_traits<T>;
+  using ptr_type = std::unique_ptr<T>;
+  template<typename Archive> static void save(Archive &a, const ptr_type &p) {
+    archive(a, *p);
+  }
+  template<typename Archive> static void load(Archive &a, ptr_type &p) {
+    archive(a, *p);
+  }
+  static size_t serial_size(const ptr_type &p) {
+    return t_traits::serial_size(*p);
+  }
+};
+
+
 namespace detail {
 //! Dereference a pointer to a member of type \c F of a class of type
 //! \c T, preserving reference types.  Hence applying to an lvalue
