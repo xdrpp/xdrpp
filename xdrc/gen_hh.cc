@@ -620,7 +620,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     comma_sep(os, p.arg, [](const string &s){ return s; } );
     os << ">;";
     os << nl << "using res_type = " << p.res << ";"
-       << nl << "using res_tuple_type = "
+       << nl << "using res_wire_type = "
        << (p.res == "void" ? "xdr::xdr_void" : p.res) << ";"
        << nl
        << nl << "template<typename C, typename...A> static auto"

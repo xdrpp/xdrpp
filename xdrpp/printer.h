@@ -33,6 +33,7 @@ struct Printer {
   std::ostream &bol(const char *name = nullptr);
   void operator()(const char *field, const char *s) { bol(field) << s; }
   void operator()(const char *field, const std::string &s) { bol(field) << s; }
+  void operator()(const char *field, xdr_void) { bol(field) << "void"; }
 
   template<typename T> void operator()(const char *field, const pointer<T> &t) {
     if (t)
@@ -118,12 +119,12 @@ template<> struct archive_adapter<detail::Printer> {
   template<typename T> static ENABLE_IF(xdr_traits<T>::is_class
 					|| xdr_traits<T>::is_container)
   apply(Printer &p, const T &obj, const char *field) { p(field, obj); }
-#if 0
+
+  // Don't print 1-tuple as tuple (even Haskell doesn't have 1-tuples).
   template<typename T> static void
-  apply(Printer &p, const transparent_ptr<T> &ptr, const char *field) {
-    p(field, *ptr);
+  apply(Printer &p, const std::tuple<T> &t, const char *field) {
+    archive(p, std::get<0>(t), field);
   }
-#endif
 };
 
 //! Return a std::string containing a pretty-printed version an XDR

@@ -76,7 +76,23 @@ struct service_base {
   }
 };
 
-template<typename T> struct synchronous_service : service_base {
+template<typename T> class synchronous_service : public service_base {
+  template<typename P, typename A> typename
+  std::enable_if<std::is_same<void, typename P::res_type>::value,
+		 const xdr_void *>::type
+  dispatch1(A &a) {
+    static xdr_void v;
+    P::unpack_dispatch(server_, std::move(a));
+    return &v;
+  }
+  template<typename P, typename A> typename
+  std::enable_if<!std::is_same<void, typename P::res_type>::value,
+		 std::unique_ptr<typename P::res_type>>::type
+  dispatch1(A &a) {
+    return P::unpack_dispatch(server_, std::move(a));
+  }
+
+public:
   using interface = typename T::rpc_interface_type;
   T &server_;
 
@@ -91,9 +107,8 @@ template<typename T> struct synchronous_service : service_base {
       reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
   }
 
-  template<typename P, typename...A> typename std::enable_if<
-    !std::is_same<void, typename P::res_type>::value>::type
-  dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
+  template<typename P, typename...A>
+  void dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
     std::tuple<transparent_ptr<A>...> arg;
     if (!decode_arg(g, arg))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
@@ -105,8 +120,7 @@ template<typename T> struct synchronous_service : service_base {
       std::clog << xdr_to_string(arg, s.c_str());
     }
 
-    std::unique_ptr<typename P::res_type> res =
-      P::unpack_dispatch(server_, std::move(arg));
+    auto res = this->template dispatch1<P>(arg);
 
     if (xdr_trace_server) {
       std::string s = "REPLY ";
@@ -116,32 +130,6 @@ template<typename T> struct synchronous_service : service_base {
     }
 
     reply(xdr_to_msg(rpc_success_hdr(hdr.xid), *res));
-  }
-
-  template<typename P, typename...A> typename std::enable_if<
-    std::is_same<void, typename P::res_type>::value>::type
-  dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
-    std::tuple<transparent_ptr<A>...> arg;
-    if (!decode_arg(g, arg))
-      return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
-    
-    if (xdr_trace_server) {
-      std::string s = "CALL ";
-      s += P::proc_name;
-      s += " <- [xid " + std::to_string(hdr.xid) + "]";
-      std::clog << xdr_to_string(arg, s.c_str());
-    }
-
-    P::unpack_dispatch(server_, std::move(arg));
-
-    if (xdr_trace_server) {
-      std::string s = "REPLY ";
-      s += P::proc_name;
-      s += " -> [xid " + std::to_string(hdr.xid) + "]\n";
-      std::clog << s;
-    }
-
-    reply(xdr_to_msg(rpc_success_hdr(hdr.xid)));
   }
 };
 
