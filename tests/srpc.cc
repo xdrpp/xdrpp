@@ -21,7 +21,19 @@ public:
   void null2();
   std::unique_ptr<ContainsEnum> nonnull2(std::unique_ptr<u_4_12> arg);
   void ut(std::unique_ptr<uniontest> arg);
+  std::unique_ptr<bigstr>
+  three(const bool &arg1, const int &arg2, const bigstr &arg3);
 };
+
+std::unique_ptr<bigstr>
+xdrtest2_server::three(const bool &arg1, const int &arg2, const bigstr &arg3)
+{
+  std::unique_ptr<bigstr> res(new bigstr);
+  
+  // Fill in function body here
+  
+  return res;
+}
 
 void
 xdrtest2_server::null2()

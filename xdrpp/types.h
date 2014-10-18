@@ -567,7 +567,9 @@ template<std::size_t N, typename T> struct tuple_base_fs;
 template<std::size_t N, typename...T>
 struct tuple_base_fs<N, std::tuple<T...>> : xdr_traits_base {
   using type = std::tuple<T...>;
-  using elem_type = typename std::tuple_element<N-1, type>::type;
+  using elem_type = typename std::remove_cv<
+    typename std::remove_reference<
+      typename std::tuple_element<N-1, type>::type>::type>::type;
   using next = tuple_base<N-1, type>;
   static constexpr bool is_class = true;
   static constexpr bool is_struct = true;
@@ -581,7 +583,9 @@ template<std::size_t N, typename T> struct tuple_base_vs;
 template<std::size_t N, typename...T>
 struct tuple_base_vs<N, std::tuple<T...>> : xdr_traits_base {
   using type = std::tuple<T...>;
-  using elem_type = typename std::tuple_element<N-1, type>::type;
+  using elem_type = typename std::remove_cv<
+    typename std::remove_reference<
+      typename std::tuple_element<N-1, type>::type>::type>::type;
   using next = tuple_base<N-1, type>;
   static constexpr bool is_class = true;
   static constexpr bool is_struct = true;

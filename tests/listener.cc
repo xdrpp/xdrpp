@@ -21,8 +21,15 @@ public:
   void null2();
   std::unique_ptr<ContainsEnum> nonnull2(std::unique_ptr<u_4_12> arg);
   void ut(std::unique_ptr<uniontest> arg);
+  std::unique_ptr<bigstr> three(bool &, int &, const bigstr &);
 };
 
+std::unique_ptr<bigstr>
+xdrtest2_server::three(bool &b, int &i, const bigstr &s)
+{
+  std::unique_ptr <bigstr> res {new bigstr{"three reply string"}};
+  return res;
+}
 
 void
 xdrtest2_server::null2()
@@ -71,6 +78,9 @@ main(int argc, char **argv)
     u.f12().i = 1977;
     auto r = c.nonnull2(u);
     cout << xdr_to_string(*r, "nonnull2 reply");
+
+    auto s = c.three(true, 8, "this is the third argument");
+    cout << *s << endl;
   }
   else
     cerr << "need -s or -c option" << endl;

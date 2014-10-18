@@ -43,7 +43,14 @@ gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << res
        << nl << name << "::" << p.id
        << "(";
-    comma_sep(os, p.arg, [](const string &s){ return "const " + s + " &arg"; });
+    if (p.arg.size() == 1)
+      os << "const " << p.arg[0] << " &arg";
+    else {
+      int i = 0;
+      comma_sep(os, p.arg, [&i](const string &s){
+	  return "const " + s + " &arg" + std::to_string(++i);
+	});
+    }
     os << ")"
        << nl << "{";
     if (res != "void")

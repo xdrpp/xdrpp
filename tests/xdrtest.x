@@ -91,6 +91,7 @@ program xdrtest_prog {
     void null2(void) = 1;
     ContainsEnum nonnull2(u_4_12) = 2;
     void ut(uniontest) = 3;
+    bigstr three(bool, int, bigstr) = 4;
   } = 2;
 } = 0x20000000;
 
