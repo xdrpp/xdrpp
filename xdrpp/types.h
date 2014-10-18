@@ -683,6 +683,9 @@ template<typename T> struct xdr_traits<transparent_ptr<T>>
 : detail::transparent_ptr_base<T> {
   using t_traits = xdr_traits<T>;
   using ptr_type = std::unique_ptr<T>;
+
+  static constexpr bool is_class = true;
+
   template<typename Archive> static void save(Archive &a, const ptr_type &p) {
     archive(a, *p);
   }
@@ -693,6 +696,13 @@ template<typename T> struct xdr_traits<transparent_ptr<T>>
     return t_traits::serial_size(*p);
   }
 };
+
+// This is what makes the pointer transparent
+template<typename Archive, typename T> inline void
+archive(Archive &ar, const transparent_ptr<T> &t, const char *name = nullptr)
+{
+  archive(ar, *t, name);
+}
 
 
 namespace detail {

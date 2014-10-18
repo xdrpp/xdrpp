@@ -658,11 +658,15 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
      << nl << "template<typename T, typename...A> static bool"
      << nl << "call_dispatch(T &&t, std::uint32_t proc, A &&...a) {"
      << nl.open << "switch(proc) {";
-  for (const rpc_proc &p : v.procs)
+  for (const rpc_proc &p : v.procs) {
     os << nl << "case " << p.val << ":"
        << nl << "  t.template dispatch<" << p.id
-       << "_t>(std::forward<A>(a)...);"
+       << "_t";
+    for (size_t i = 0; i < p.arg.size(); ++i)
+      os << ',' << nl << "                      " << p.arg[i];
+    os << ">(std::forward<A>(a)...);"
        << nl << "  return true;";
+  }
   os << nl << "}"
      << nl << "return false;"
      << nl.close << "}";
@@ -703,7 +707,12 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
      << nl << "  : _xdr_invoker_(std::forward<ARGS>(args)...) {}";
   for (const rpc_proc &p : v.procs) {
     string invoke = string("_xdr_invoker_->template invoke<")
-      + p.id + "_t>(" + "\n             std::forward<_XDR_ARGS>(_xdr_args)...)";
+      + p.id + "_t";
+    for (const string &a : p.arg) {
+      invoke += ",\n                                            ";
+      invoke += a;
+    }
+    invoke += ">(\n             std::forward<_XDR_ARGS>(_xdr_args)...)";
     os << endl << nl << "template<typename..._XDR_ARGS> auto"
        << nl << p.id << "(_XDR_ARGS &&..._xdr_args) ->"
        << nl << "decltype(" << invoke << ") {"

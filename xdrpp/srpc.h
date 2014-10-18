@@ -31,29 +31,33 @@ class synchronous_client_base {
   static void moveret(pointer<xdr_void> &) {}
   template<typename T> static T &&moveret(T &t) { return std::move(t); }
 
+  //static xdr_void arg_tuple() { return xdr_void{}; }
+  template<typename T> const T &arg_tuple(const T &t) { return t; }
+  template<typename...T> std::tuple<const T &...> arg_tuple(const T &...t) {
+    return std::make_tuple(std::cref(t)...);
+  }
+
 public:
   synchronous_client_base(int fd) : fd_(fd) {}
   synchronous_client_base(const synchronous_client_base &c) : fd_(c.fd_) {}
 
-  template<typename P> typename P::res_type invoke() {
-    return this->template invoke<P>(xdr::xdr_void{});
-  }
-
-  template<typename P> typename std::conditional<
+  template<typename P, typename...A> typename std::conditional<
     std::is_void<typename P::res_type>::value, void,
     std::unique_ptr<typename P::res_type>>::type
-  invoke(const typename P::arg_tuple_type &a) {
+  invoke(const A &...a) {
     rpc_msg hdr;
     prepare_call<P>(hdr);
     uint32_t xid = hdr.xid;
+
+    auto args = arg_tuple(a...);
 
     if (xdr_trace_client) {
       std::string s = "CALL ";
       s += P::proc_name;
       s += " -> [xid " + std::to_string(xid) + "]";
-      std::clog << xdr_to_string(a, s.c_str());
+      std::clog << xdr_to_string(args, s.c_str());
     }
-    write_message(fd_, xdr_to_msg(hdr, a));
+    write_message(fd_, xdr_to_msg(hdr, args));
     msg_ptr m = read_message(fd_);
 
     xdr_get g(m);

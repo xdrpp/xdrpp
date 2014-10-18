@@ -118,6 +118,12 @@ template<> struct archive_adapter<detail::Printer> {
   template<typename T> static ENABLE_IF(xdr_traits<T>::is_class
 					|| xdr_traits<T>::is_container)
   apply(Printer &p, const T &obj, const char *field) { p(field, obj); }
+#if 0
+  template<typename T> static void
+  apply(Printer &p, const transparent_ptr<T> &ptr, const char *field) {
+    p(field, *ptr);
+  }
+#endif
 };
 
 //! Return a std::string containing a pretty-printed version an XDR
