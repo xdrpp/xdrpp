@@ -657,13 +657,14 @@ using xdr_void = std::tuple<>;
 
 
 //! A pointer, but that gets marshalled as the underlying object and
-//! can convert to the underlying type.
+//! can convert to the underlying type.  A if \c p is a \c
+//! transparent_ptr<T>, then \c std::move(p) can be passed as a
+//! \c std::unique_ptr<T>, a \c T, or a <tt>const T&</tt>.
 template<typename T> struct transparent_ptr : std::unique_ptr<T> {
   using std::unique_ptr<T>::unique_ptr;
   transparent_ptr() : std::unique_ptr<T>(new T{}) {}
-  operator T &() { return this->get(); }
-  operator const T &() const { return this->get(); }
-  operator T &&() { return std::move(this->get()); }
+  operator T &() const { return *this->get(); }
+  operator T &&() { return std::move(*this->get()); }
 };
 
 namespace detail {
