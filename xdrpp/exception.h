@@ -39,11 +39,14 @@ struct rpc_call_stat {
     accept_stat accept_;
     auth_stat auth_;
   };
-  rpc_call_stat() : type_(ACCEPT_STAT), accept_(SUCCESS) {}
-  rpc_call_stat(accept_stat s) : type_(ACCEPT_STAT), accept_(s) {}
-  rpc_call_stat(auth_stat s) : type_(AUTH_STAT), auth_(s) {}
-  rpc_call_stat(stat_type type) : type_(type), accept_(SUCCESS) {}
+  constexpr rpc_call_stat() : type_(ACCEPT_STAT), accept_(SUCCESS) {}
+  constexpr rpc_call_stat(accept_stat s) : type_(ACCEPT_STAT), accept_(s) {}
+  constexpr rpc_call_stat(auth_stat s) : type_(AUTH_STAT), auth_(s) {}
+  constexpr rpc_call_stat(stat_type type) : type_(type), accept_(SUCCESS) {}
   const char *message() const;
+  explicit operator bool() const {
+    return type_ == ACCEPT_STAT && accept_ == SUCCESS;
+  }
 };
 
 //! This is the exception raised in an RPC client when it reaches the

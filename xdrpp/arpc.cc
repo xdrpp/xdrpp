@@ -3,6 +3,12 @@
 
 namespace xdr {
 
+void
+arpc_server::receive(msg_sock *ms, msg_ptr buf)
+{
+  dispatch(std::move(buf), msg_sock_put_t{ms});
+}
+
 arpc_sock::arpc_sock(pollset &ps, int fd)
   : ms_(new msg_sock(ps, fd, std::bind(&arpc_sock::receive, this,
 				       std::placeholders::_1)))

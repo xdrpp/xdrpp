@@ -66,49 +66,41 @@ public:
   void operator()(xdr_void v) { send_reply(v); }
 };
 
-struct arpc_service_base {
-  const uint32_t prog_;
-  const uint32_t vers_;
-  arpc_service_base(uint32_t prog, uint32_t vers)
-    : prog_(prog), vers_(vers) {}
-  virtual ~arpc_service_base() {}
-  virtual void receive(msg_sock *ms, rpc_msg &hdr, xdr_get &g) = 0;
-};
-
-template<typename T> class arpc_service : public arpc_service_base {
+template<typename T> class arpc_service : public service_base {
   using interface = typename T::arpc_interface_type;
   T &server_;
 
-  template<typename P> void dispatch(msg_sock *ms, rpc_msg &hdr, xdr_get &g) {
-    reply_cb<typename P::res_type> cb(ms, hdr.xid);
-    typename P::arg_wire_type arg;
-    try {
-      archive(g, arg);
-      g.done();
-    }
-    catch (const xdr_runtime_error &) {
-      cb(GARBAGE_ARGS);
-      return;
-    }
-    P::dispatch_dropvoid(server_, arg, std::move(cb));
+public:
+  void process(rpc_msg &hdr, xdr_get &g, cb_t reply) override {
+    if (!check_call(hdr))
+      reply(nullptr);
+    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, hdr, g,
+				  std::move(reply)))
+      reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
   }
 
-public:
-  arpc_service(T &server)
-    : arpc_service_base(interface::program, interface::version),
-      server_(server) {}
-  void receive(msg_sock *ms, rpc_msg &hdr, xdr_get &g) override {
-    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, ms, hdr, g)) {
-      hdr.body.mtype(REPLY).rbody().areply().reply_data.stat(PROC_UNAVAIL);
-      ms->putmsg(xdr_to_msg(hdr));
-    }
+  template<typename P, typename...A> void
+  dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
+    std::tuple<transparent_ptr<A>...> arg;
+    if (!decode_arg(g, arg))
+      return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
+    
+    reply_cb<typename P::res_type> cb(hdr.xid, std::move(reply));
+    P::unpack_dispatch(server_, std::move(arg),
+		       reply_cb<typename P::res_type>{
+			 hdr.xid, std::move(reply)});
   }
+
+  arpc_service(T &server)
+    : service_base(interface::program, interface::version),
+      server_(server) {}
 };
 
-class arpc_server {
-  std::map<std::pair<uint32_t, uint32_t>,
-	   std::unique_ptr<arpc_service_base>> services_;
+class arpc_server : public rpc_server_base {
 public:
+  template<typename T> void register_service(T &t) {
+    register_service_base(new arpc_service<T>(t));
+  }
   void receive(msg_sock *ms, msg_ptr buf);
 };
 
@@ -121,19 +113,23 @@ template<typename T> struct call_result : std::unique_ptr<T> {
   call_result(const rpc_call_stat &stat) : stat_(stat) {}
   const char *message() const { return *this ? nullptr : stat_.message(); }
 };
+template<> struct call_result<void> {
+  rpc_call_stat stat_;
+  call_result(const rpc_call_stat &stat) : stat_(stat) {}
+  const char *message() const { return stat_ ? nullptr : stat_.message(); }
+};
 
 class arpc_sock {
 public:
   template<typename P> using call_cb_t =
-    std::function<void(call_result<typename P::res_wire_type>)>;
-
+    std::function<void(call_result<typename P::res_type>)>;
   using client_cb_t = std::function<void(rpc_msg &, xdr_get &)>;
   using server_cb_t = std::function<void(rpc_msg &, xdr_get &, arpc_sock *)>;
 
   arpc_sock(pollset &ps, int fd);
 
-  template<typename P> inline void
-  invoke(const typename P::arg_wire_type &arg, call_cb_t<P> cb);
+  template<typename P, typename...A> inline void
+  invoke(const A &...a, call_cb_t<P> cb);
 
 private:
   struct call_state_base {
@@ -186,6 +182,7 @@ private:
 
 };
 
+#if 0
 template<typename P> inline void
 arpc_sock::invoke(const typename P::arg_wire_type &arg, call_cb_t<P> cb)
 {
@@ -195,6 +192,7 @@ arpc_sock::invoke(const typename P::arg_wire_type &arg, call_cb_t<P> cb)
   ms_->putmsg(xdr_to_msg(hdr, arg));
   calls_.emplace(hdr.xid, new call_state<P>(cb));
 }
+#endif
 
 }
 
