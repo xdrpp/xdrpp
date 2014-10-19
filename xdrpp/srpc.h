@@ -49,15 +49,13 @@ public:
     prepare_call<P>(hdr);
     uint32_t xid = hdr.xid;
 
-    auto args = arg_tuple(a...);
-
     if (xdr_trace_client) {
       std::string s = "CALL ";
       s += P::proc_name;
       s += " -> [xid " + std::to_string(xid) + "]";
-      std::clog << xdr_to_string(args, s.c_str());
+      std::clog << xdr_to_string(std::tie(a...), s.c_str());
     }
-    write_message(fd_, xdr_to_msg(hdr, args));
+    write_message(fd_, xdr_to_msg(hdr, a...));
     msg_ptr m = read_message(fd_);
 
     xdr_get g(m);
@@ -97,20 +95,21 @@ template<typename T> using srpc_client =
   typename T::template _xdr_client<synchronous_client_base>;
 
 
-template<typename T> class synchronous_service : public service_base {
+template<typename T, typename Session = void>
+class synchronous_service : public service_base {
   template<typename P, typename A> typename
   std::enable_if<std::is_same<void, typename P::res_type>::value,
 		 const xdr_void *>::type
-  dispatch1(A &a) {
+  dispatch1(Session *s, A &a) {
     static xdr_void v;
-    P::unpack_dispatch(server_, std::move(a));
+    dispatch_with_session<P>(server_, s, std::move(a));
     return &v;
   }
   template<typename P, typename A> typename
   std::enable_if<!std::is_same<void, typename P::res_type>::value,
 		 std::unique_ptr<typename P::res_type>>::type
-  dispatch1(A &a) {
-    return P::unpack_dispatch(server_, std::move(a));
+  dispatch1(Session *s, A &a) {
+    return dispatch_with_session<P>(server_, s, std::move(a));
   }
 
 public:
@@ -123,14 +122,15 @@ public:
   void process(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) override {
     if (!check_call(hdr))
       reply(nullptr);
-    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, hdr, g,
-				  std::move(reply)))
+    if (!interface::call_dispatch(*this, hdr.body.cbody().proc,
+				  static_cast<Session *>(session),
+				  hdr, g, std::move(reply)))
       reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
   }
 
-  template<typename P, typename...A>
-  void dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
-    std::tuple<transparent_ptr<A>...> arg;
+  template<typename P>
+  void dispatch(Session *session, rpc_msg &hdr, xdr_get &g, cb_t reply) {
+    wrap_transparent_ptr<typename P::arg_tuple_type> arg;
     if (!decode_arg(g, arg))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
     
@@ -141,7 +141,7 @@ public:
       std::clog << xdr_to_string(arg, s.c_str());
     }
 
-    auto res = this->template dispatch1<P>(arg);
+    auto res = this->template dispatch1<P>(session, arg);
 
     if (xdr_trace_server) {
       std::string s = "REPLY ";

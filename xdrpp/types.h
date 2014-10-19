@@ -115,11 +115,6 @@ struct xdr_traits_base {
   static constexpr bool is_struct = false;
   static constexpr bool is_union = false;
   static constexpr bool has_fixed_size = false;
-  template<typename F, typename T, typename...A> static auto
-  apply(F &&f, T &&t, A &&...a) ->
-    decltype(f(std::forward<T>(t), std::forward<A>(a)...)) {
-    return f(std::forward<T>(t), std::forward<A>(a)...);
-  }
 };
 
 
@@ -536,20 +531,12 @@ template<std::size_t...N> struct indices {
 
 namespace detail {
 
-//! Apply a function [object] to elements at a set of tuple indices,
-//! with arbitrary arguments appended.
-template<typename F, typename T, std::size_t...I, typename...A> inline auto
-apply_indices(F &&f, T &&t, indices<I...>, A &&...a) ->
-  decltype(f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...))
-{
-  return f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...);
-}
-
 template<typename T, typename U> struct cat_indices;
 template<std::size_t...M, std::size_t...N>
 struct cat_indices<indices<M...>, indices<N...>> {
   using type = indices<M..., N...>;
 };
+
 template<std::size_t N> struct all_indices_helper {
   using type = typename cat_indices<typename all_indices_helper<N-1>::type,
 				    indices<N-1>>::type;
@@ -558,8 +545,7 @@ template<> struct all_indices_helper<0> {
   using type = indices<>;
 };
 
-//! A type representing all tuple indices from 0 to N-1, for use with
-//! apply_indices.
+//! A type representing all tuple indices from 0 to N-1.
 template<std::size_t N> using all_indices =
   typename all_indices_helper<N>::type;
 
@@ -649,72 +635,10 @@ template<typename T> using all_indices_of =
                               typename std::remove_reference<T>::type>::value>;
 
 template<typename...T> struct xdr_traits<std::tuple<T...>>
-  : detail::tuple_base<sizeof...(T), std::tuple<T...>> {
-  template<typename F, typename TT, typename...A> static auto
-    apply(F &&f, TT &&tt, A &&...a) ->
-    decltype (detail::apply_indices(std::forward<F>(f),
-			    std::forward<TT>(tt),
-			    detail::all_indices<sizeof...(T)>{},
-			    std::forward<A>(a)...)) {
-    return detail::apply_indices(std::forward<F>(f),
-				 std::forward<TT>(tt),
-				 detail::all_indices<sizeof...(T)>{},
-				 std::forward<A>(a)...);
-  }
-};
+  : detail::tuple_base<sizeof...(T), std::tuple<T...>> {};
 
 //! Placehoder type representing void values marshaled as 0 bytes.
 using xdr_void = std::tuple<>;
-
-
-//! A pointer, but that gets marshalled as the underlying object and
-//! can convert to the underlying type.  A if \c p is a \c
-//! transparent_ptr<T>, then \c std::move(p) can be passed as a
-//! \c std::unique_ptr<T>, a \c T, or a <tt>const T&</tt>.
-template<typename T> struct transparent_ptr : std::unique_ptr<T> {
-  using std::unique_ptr<T>::unique_ptr;
-  transparent_ptr() : std::unique_ptr<T>(new T{}) {}
-  operator T &() const { return *this->get(); }
-  operator T &&() { return std::move(*this->get()); }
-};
-
-namespace detail {
-
-template<typename T, bool fs = xdr_traits<T>::has_fixed_size>
-struct transparent_ptr_base : xdr_traits_base {
-  static constexpr bool has_fixed_size = false;
-};
-template<typename T> struct transparent_ptr_base<T, true> : xdr_traits_base {
-  static constexpr bool has_fixed_size = true;
-  static constexpr std::size_t fixed_size = xdr_traits<T>::fixed_size;
-};
-
-}
-
-template<typename T> struct xdr_traits<transparent_ptr<T>>
-: detail::transparent_ptr_base<T> {
-  using t_traits = xdr_traits<T>;
-  using ptr_type = std::unique_ptr<T>;
-
-  static constexpr bool is_class = true;
-
-  template<typename Archive> static void save(Archive &a, const ptr_type &p) {
-    archive(a, *p);
-  }
-  template<typename Archive> static void load(Archive &a, ptr_type &p) {
-    archive(a, *p);
-  }
-  static size_t serial_size(const ptr_type &p) {
-    return t_traits::serial_size(*p);
-  }
-};
-
-// This is what makes the pointer transparent
-template<typename Archive, typename T> inline void
-archive(Archive &ar, const transparent_ptr<T> &t, const char *name = nullptr)
-{
-  archive(ar, *t, name);
-}
 
 
 namespace detail {

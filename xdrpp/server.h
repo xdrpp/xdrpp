@@ -47,29 +47,115 @@ msg_ptr rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high);
 msg_ptr rpc_auth_error_msg(uint32_t xid, auth_stat stat);
 msg_ptr rpc_rpc_mismatch_msg(uint32_t xid);
 
-template<typename P, typename C, typename S, typename T, typename...Rest>
-inline auto
-dispatch_with_session(C &&c, S *session, T &&args, Rest &&...rest) ->
-  decltype(P::dispatch_tuple
-	   (c, std::tuple_cat(std::make_tuple(session),
-			      std::move(args),
-			      std::forward_as_tuple<Rest...>(rest...))))
-{
-  return P::dispatch_tuple
-    (c, std::tuple_cat(std::make_tuple(session),
-		       std::move(args),
-		       std::forward_as_tuple<Rest...>(rest...)));
+
+//! A pointer, but that gets marshalled as the underlying object and
+//! can convert to the underlying type.  If \c p is a \c
+//! transparent_ptr<T>, then \c std::move(p) can be passed as a \c
+//! std::unique_ptr<T>, a \c T, or a <tt>const T&</tt>.  This is what
+//! allows some flexibility in the signatures of server object methods.
+template<typename T> struct transparent_ptr : std::unique_ptr<T> {
+  using std::unique_ptr<T>::unique_ptr;
+  transparent_ptr() : std::unique_ptr<T>(new T{}) {}
+  operator T &() const { return *this->get(); }
+  operator T &&() { return std::move(*this->get()); }
+};
+
+namespace detail {
+
+template<typename T, bool fs = xdr_traits<T>::has_fixed_size>
+struct transparent_ptr_base : xdr_traits_base {
+  static constexpr bool has_fixed_size = false;
+};
+template<typename T> struct transparent_ptr_base<T, true> : xdr_traits_base {
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::size_t fixed_size = xdr_traits<T>::fixed_size;
+};
+
 }
 
-template<typename P, typename C, typename T, typename...Rest> inline auto
-dispatch_with_session(C &&c, void *session, T &&args, Rest &&...rest) ->
-  decltype(P::dispatch_tuple
-	   (c, std::tuple_cat(std::move(args),
-			      std::forward_as_tuple<Rest...>(rest...))))
+template<typename T> struct xdr_traits<transparent_ptr<T>>
+  : detail::transparent_ptr_base<T> {
+  using t_traits = xdr_traits<T>;
+  using ptr_type = std::unique_ptr<T>;
+
+  static constexpr bool is_class = true;
+
+  template<typename Archive> static void save(Archive &a, const ptr_type &p) {
+    archive(a, *p);
+  }
+  template<typename Archive> static void load(Archive &a, ptr_type &p) {
+    archive(a, *p);
+  }
+  static size_t serial_size(const ptr_type &p) {
+    return t_traits::serial_size(*p);
+  }
+};
+
+// This is what makes the pointer transparent during marshaling.
+template<typename Archive, typename T> inline void
+archive(Archive &ar, const transparent_ptr<T> &t, const char *name = nullptr)
 {
-  return P::dispatch_tuple
-    (c, std::tuple_cat(std::move(args),
-		       std::forward_as_tuple<Rest...>(rest...)));
+  archive(ar, *t, name);
+}
+
+namespace detail {
+template<typename T> struct wrap_transparent_ptr_helper;
+
+template<typename...T>
+struct wrap_transparent_ptr_helper<std::tuple<T...>> {
+  using type = std::tuple<transparent_ptr<T>...>;
+};
+}
+
+//! Wrap xdr::transparent_ptr around each type in a tuple to generate
+//! a new tuple type.
+template<typename T> using wrap_transparent_ptr =
+  typename detail::wrap_transparent_ptr_helper<T>::type;
+
+
+namespace detail {
+template<typename P, typename C, typename T, typename I = all_indices_of<T>>
+struct dispatch_session_helper;
+
+template<typename P, typename C, typename T, std::size_t...I>
+struct dispatch_session_helper<P, C, T, indices<I...>> {
+  template<typename S, typename...Rest> static auto
+    dispatch(C &&c, S *s, T &&t, Rest &&...rest) ->
+    typename std::enable_if<!std::is_same<S, void>::value,
+      decltype(P::dispatch(std::forward<C>(c), s,
+			   std::get<I>(std::forward<T>(t))...,
+			   std::forward<Rest>(rest)...))>::type
+  {
+    return P::dispatch(std::forward<C>(c), s,
+		       std::get<I>(std::forward<T>(t))...,
+		       std::forward<Rest>(rest)...);
+  }
+
+  // If the previous one fails SFINAE, try omitting the session
+  // argument for methods that don't need it.
+  template<typename...Rest> static auto
+    dispatch(C &&c, void *, T &&t, Rest &&...rest) ->
+    decltype(P::dispatch(std::forward<C>(c), std::get<I>(std::forward<T>(t))...,
+			 std::forward<Rest>(rest)...))
+  {
+    return P::dispatch(std::forward<C>(c), std::get<I>(std::forward<T>(t))...,
+		       std::forward<Rest>(rest)...);
+  }
+};
+}
+
+//! Call \c P::dispatch with a session pointer (unless the session
+//! type \c S is void, in which case the argument is omitted) and
+//! arguments beginning with a tuple which should be unpacked.
+template<typename P, typename C, typename S, typename T,
+	 typename...Rest> inline auto
+dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest) ->
+  decltype(detail::dispatch_session_helper<P, C, T>::dispatch(
+               c, s, std::forward<T>(t), std::forward<Rest>(rest)...))
+{
+  return detail::dispatch_session_helper<P, C, T>::dispatch(
+             std::forward<C>(c), s, std::forward<T>(t),
+	     std::forward<Rest>(rest)...);
 }
 
 

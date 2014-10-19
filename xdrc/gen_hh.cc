@@ -627,9 +627,10 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "dispatch(C &&c, A &&...a) ->"
        << nl << "decltype(" << call << ") {"
        << nl << "  return " << call << ";"
-       << nl << "}"
-       << nl;
+       << nl << "}";
 
+#if 0
+    os << endl;
     os << nl << "template<typename C, typename T, std::size_t...I> static auto"
        << nl << "dispatch_tuple(C &&c, T &&t,"
        << nl << "               xdr::indices<I...> = xdr::all_indices_of<T>{})"
@@ -654,8 +655,10 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "unpack_dispatch(C &&c, T &&t, A &&...a) ->"
        << nl << "decltype(" << call << ") {"
        << nl << "  return " << call << ";"
-       << nl << "}"
-       << nl.close << "};";
+       << nl << "}";
+#endif
+
+    os << nl.close << "};";
   }
 
   os << endl
@@ -666,41 +669,18 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     os << nl << "case " << p.val << ":"
        << nl << "  t.template dispatch<" << p.id
        << "_t";
+#if 0
+    for (size_t i = 0; i < p.arg.size(); ++i)
+      os << ", " << i;
     for (size_t i = 0; i < p.arg.size(); ++i)
       os << ',' << nl << "                      " << p.arg[i];
+#endif
     os << ">(std::forward<A>(a)...);"
        << nl << "  return true;";
   }
   os << nl << "}"
      << nl << "return false;"
      << nl.close << "}";
-
-#if 0
-  // interface
-  os << endl
-     << nl << "template<template<typename> class _R,"
-     << " template<typename> class _A,"
-     << nl << "         template<typename> class..._As> struct interface {";
-  ++nl;
-  bool first = true;
-  for (const rpc_proc &p : v.procs) {
-    if (first)
-      first = false;
-    else
-      os << endl;
-    string id = v.id + "::" + p.id + "_t";
-    os << nl << "virtual typename _R<" << id << ">::type"
-       << nl << p.id << "(";
-    if (p.arg != "void")
-      os << "typename _A<" << id << ">::type,"
-	 << nl << std::string (p.id.size()+1, ' ');
-    os << "typename _As<" << id << ">::type...) {"
-       << nl << "  throw xdr::xdr_unimplemented(\"" << v.id << " procedure "
-       << p.id << " unimplemented\");"
-       << nl << "}";
-  }
-  os << nl.close << "};";
-#endif
 
   // client
   os << endl
