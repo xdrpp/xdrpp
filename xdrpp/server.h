@@ -47,6 +47,32 @@ msg_ptr rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high);
 msg_ptr rpc_auth_error_msg(uint32_t xid, auth_stat stat);
 msg_ptr rpc_rpc_mismatch_msg(uint32_t xid);
 
+template<typename P, typename C, typename S, typename T, typename...Rest>
+inline auto
+dispatch_with_session(C &&c, S *session, T &&args, Rest &&...rest) ->
+  decltype(P::dispatch_tuple
+	   (c, std::tuple_cat(std::make_tuple(session),
+			      std::move(args),
+			      std::forward_as_tuple<Rest...>(rest...))))
+{
+  return P::dispatch_tuple
+    (c, std::tuple_cat(std::make_tuple(session),
+		       std::move(args),
+		       std::forward_as_tuple<Rest...>(rest...)));
+}
+
+template<typename P, typename C, typename T, typename...Rest> inline auto
+dispatch_with_session(C &&c, void *session, T &&args, Rest &&...rest) ->
+  decltype(P::dispatch_tuple
+	   (c, std::tuple_cat(std::move(args),
+			      std::forward_as_tuple<Rest...>(rest...))))
+{
+  return P::dispatch_tuple
+    (c, std::tuple_cat(std::move(args),
+		       std::forward_as_tuple<Rest...>(rest...)));
+}
+
+
 struct service_base {
   using cb_t = std::function<void(msg_ptr)>;
 
