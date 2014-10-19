@@ -645,7 +645,8 @@ template<std::size_t N, typename...T> struct tuple_base<N, std::tuple<T...>>
 
 //! A type representing all the indices of a particuar tuple.
 template<typename T> using all_indices_of =
-  typename detail::all_indices<std::tuple_size<T>::value>;
+  typename detail::all_indices<std::tuple_size<
+                              typename std::remove_reference<T>::type>::value>;
 
 template<typename...T> struct xdr_traits<std::tuple<T...>>
   : detail::tuple_base<sizeof...(T), std::tuple<T...>> {
