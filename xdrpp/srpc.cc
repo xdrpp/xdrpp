@@ -65,6 +65,58 @@ prepare_call(uint32_t prog, uint32_t vers, uint32_t proc, rpc_msg &hdr)
   hdr.body.cbody().proc = proc;
 }
 
+rpc_tcp_listener::rpc_tcp_listener(unique_fd &&fd, bool reg)
+  : listen_fd_(fd ? std::move(fd) : tcp_listen()),
+    use_rpcbind_(reg)
+{
+  set_close_on_exec(listen_fd_.get());
+  ps_.fd_cb(listen_fd_.get(), pollset::Read,
+	    std::bind(&rpc_tcp_listener::accept_cb, this));
+}
+
+rpc_tcp_listener::~rpc_tcp_listener()
+{
+  ps_.fd_cb(listen_fd_.get(), pollset::Read);
+}
+
+void
+rpc_tcp_listener::accept_cb()
+{
+  int fd = accept(listen_fd_.get(), nullptr, 0);
+  if (fd == -1) {
+    std::cerr << "rpc_tcp_listener: accept: " << std::strerror(errno)
+	      << std::endl;
+    return;
+  }
+  set_close_on_exec(fd);
+  msg_sock *ms = new msg_sock(ps_, fd);
+  ms->setrcb(std::bind(&rpc_tcp_listener::receive_cb, this, ms,
+		       std::placeholders::_1));
+}
+
+void
+rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
+{
+  if (!mp) {
+    delete ms;
+    return;
+  }
+  try {
+    dispatch(std::move(mp), msg_sock_put_t(ms));
+  }
+  catch (const xdr_runtime_error &e) {
+    std::cerr << e.what() << std::endl;
+    delete ms;
+  }
+}
+
+void
+rpc_tcp_listener::run()
+{
+  while (ps_.pending())
+    ps_.poll();
+}
+
 void
 srpc_server::run()
 {

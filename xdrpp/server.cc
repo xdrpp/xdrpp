@@ -69,45 +69,6 @@ rpc_rpc_mismatch_msg(uint32_t xid)
 }
 
 
-#if 0
-namespace {
-
-rpc_msg &
-rpc_mkerr(rpc_msg &m, accept_stat stat)
-{
-  m.body.mtype(REPLY).rbody().stat(MSG_ACCEPTED).areply()
-    .reply_data.stat(stat);
-  return m;
-}
-
-rpc_msg &
-rpc_mkerr(rpc_msg &m, reject_stat stat)
-{
-  m.body.mtype(REPLY).rbody().stat(MSG_DENIED).rreply().stat(stat);
-  switch(stat) {
-  case RPC_MISMATCH:
-    m.body.rbody().rreply().mismatch_info().low = 2;
-    m.body.rbody().rreply().mismatch_info().high = 2;
-    break;
-  case AUTH_ERROR:
-    m.body.rbody().rreply().rj_why() = AUTH_FAILED;
-    break;
-  }
-  return m;
-}
-
-rpc_msg &
-rpc_mkerr(rpc_msg &m, auth_stat stat)
-{
-  m.body.mtype(REPLY).rbody().stat(MSG_DENIED).rreply()
-    .stat(AUTH_ERROR).rj_why() = stat;
-  return m;
-}
-
-}
-#endif
-
-
 void
 rpc_server_base::register_service_base(service_base *s)
 {
@@ -153,58 +114,6 @@ rpc_server_base::dispatch(msg_ptr m, service_base::cb_t reply)
     std::cerr << "rpc_server_base::dispatch: " << e.what() << std::endl;
   }
   reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
-}
-
-rpc_tcp_listener::rpc_tcp_listener(unique_fd &&fd, bool reg)
-  : listen_fd_(fd ? std::move(fd) : tcp_listen()),
-    use_rpcbind_(reg)
-{
-  set_close_on_exec(listen_fd_.get());
-  ps_.fd_cb(listen_fd_.get(), pollset::Read,
-	    std::bind(&rpc_tcp_listener::accept_cb, this));
-}
-
-rpc_tcp_listener::~rpc_tcp_listener()
-{
-  ps_.fd_cb(listen_fd_.get(), pollset::Read);
-}
-
-void
-rpc_tcp_listener::accept_cb()
-{
-  int fd = accept(listen_fd_.get(), nullptr, 0);
-  if (fd == -1) {
-    std::cerr << "rpc_tcp_listener: accept: " << std::strerror(errno)
-	      << std::endl;
-    return;
-  }
-  set_close_on_exec(fd);
-  msg_sock *ms = new msg_sock(ps_, fd);
-  ms->setrcb(std::bind(&rpc_tcp_listener::receive_cb, this, ms,
-		       std::placeholders::_1));
-}
-
-void
-rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
-{
-  if (!mp) {
-    delete ms;
-    return;
-  }
-  try {
-    dispatch(std::move(mp), msg_sock_put_t(ms));
-  }
-  catch (const xdr_runtime_error &e) {
-    std::cerr << e.what() << std::endl;
-    delete ms;
-  }
-}
-
-void
-rpc_tcp_listener::run()
-{
-  while (ps_.pending())
-    ps_.poll();
 }
 
 }
