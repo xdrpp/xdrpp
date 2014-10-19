@@ -76,15 +76,15 @@ udsb(uint32_t, double, xdr::xstring<> &, bool, std::nullptr_t)
 }
 
 void
-dump_indices(xdr::detail::indices<>)
+dump_indices(xdr::indices<>)
 {
   cout << endl;
 }
 template<std::size_t N, std::size_t...Ns> void
-dump_indices(xdr::detail::indices<N, Ns...>)
+dump_indices(xdr::indices<N, Ns...>)
 {
   cout << " " << N;
-  dump_indices(xdr::detail::indices<Ns...>{});
+  dump_indices(xdr::indices<Ns...>{});
 }
 
 void

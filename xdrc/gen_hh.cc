@@ -629,6 +629,17 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "  return " << call << ";"
        << nl << "}"
        << nl;
+
+    os << nl << "template<typename C, typename T, std::size_t...I> static auto"
+       << nl << "dispatch_tuple(C &&c, T &&t,"
+       << nl << "               xdr::indices<I...> = xdr::all_indices_of<T>{})"
+       << " ->";
+    call = "c." + p.id + "(std::get<I>(std::forward<T>(t))...)";
+    os << nl << "decltype(" << call << ") {"
+       << nl << "  return " << call << ";"
+       << nl << "}"
+       << nl;
+
     call = "c." + p.id + "(";
     for (size_t i = 0; i < p.arg.size(); ++i) {
       if (i)

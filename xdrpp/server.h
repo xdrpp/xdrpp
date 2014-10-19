@@ -55,7 +55,7 @@ struct service_base {
 
   service_base(uint32_t prog, uint32_t vers) : prog_(prog), vers_(vers) {}
   virtual ~service_base() {}
-  virtual void process(rpc_msg &hdr, xdr_get &g, cb_t reply) = 0;
+  virtual void process(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) = 0;
 
   bool check_call(const rpc_msg &hdr) {
     return hdr.body.mtype() == CALL
@@ -82,7 +82,7 @@ class rpc_server_base {
 protected:
   void register_service_base(service_base *s);
 public:
-  void dispatch(msg_ptr m, service_base::cb_t reply);
+  void dispatch(void *session, msg_ptr m, service_base::cb_t reply);
 };
 
 }

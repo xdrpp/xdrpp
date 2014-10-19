@@ -120,7 +120,7 @@ public:
   synchronous_service(T &server)
     : service_base(interface::program, interface::version), server_(server) {}
 
-  void process(rpc_msg &hdr, xdr_get &g, cb_t reply) override {
+  void process(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) override {
     if (!check_call(hdr))
       reply(nullptr);
     if (!interface::call_dispatch(*this, hdr.body.cbody().proc, hdr, g,

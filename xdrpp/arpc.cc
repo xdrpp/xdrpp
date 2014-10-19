@@ -6,7 +6,7 @@ namespace xdr {
 void
 arpc_server::receive(msg_sock *ms, msg_ptr buf)
 {
-  dispatch(std::move(buf), msg_sock_put_t{ms});
+  dispatch(nullptr, std::move(buf), msg_sock_put_t{ms});
 }
 
 arpc_sock::arpc_sock(pollset &ps, int fd)

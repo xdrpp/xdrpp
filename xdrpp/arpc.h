@@ -66,21 +66,22 @@ public:
   void operator()(xdr_void v) { send_reply(v); }
 };
 
-template<typename T> class arpc_service : public service_base {
+template<typename T, typename Session = void>
+class arpc_service : public service_base {
   using interface = typename T::arpc_interface_type;
   T &server_;
 
 public:
-  void process(rpc_msg &hdr, xdr_get &g, cb_t reply) override {
+  void process(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) override {
     if (!check_call(hdr))
       reply(nullptr);
-    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, hdr, g,
+    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, session, hdr, g,
 				  std::move(reply)))
       reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
   }
 
   template<typename P, typename...A> void
-  dispatch(rpc_msg &hdr, xdr_get &g, cb_t reply) {
+  dispatch(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) {
     std::tuple<transparent_ptr<A>...> arg;
     if (!decode_arg(g, arg))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));

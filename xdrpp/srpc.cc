@@ -102,7 +102,7 @@ rpc_tcp_listener::receive_cb(msg_sock *ms, msg_ptr mp)
     return;
   }
   try {
-    dispatch(std::move(mp), msg_sock_put_t(ms));
+    dispatch(nullptr, std::move(mp), msg_sock_put_t(ms));
   }
   catch (const xdr_runtime_error &e) {
     std::cerr << e.what() << std::endl;
@@ -121,7 +121,7 @@ void
 srpc_server::run()
 {
   for (;;)
-    dispatch(read_message(fd_),
+    dispatch(nullptr, read_message(fd_),
 	     std::bind(write_message, fd_, std::placeholders::_1));
 }
 

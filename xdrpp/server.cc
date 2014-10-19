@@ -76,7 +76,7 @@ rpc_server_base::register_service_base(service_base *s)
 }
 
 void
-rpc_server_base::dispatch(msg_ptr m, service_base::cb_t reply)
+rpc_server_base::dispatch(void *session, msg_ptr m, service_base::cb_t reply)
 {
   xdr_get g(m);
   rpc_msg hdr;
@@ -107,7 +107,7 @@ rpc_server_base::dispatch(msg_ptr m, service_base::cb_t reply)
   }
 
   try {
-    vers->second->process(hdr, g, reply);
+    vers->second->process(session, hdr, g, reply);
     return;
   }
   catch (const xdr_runtime_error &e) {
