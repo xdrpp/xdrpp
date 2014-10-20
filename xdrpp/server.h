@@ -159,6 +159,18 @@ dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest) ->
 }
 
 
+template<typename S> struct session_allocator {
+  constexpr session_allocator() {}
+  S *allocate(int fd) { return new S{fd}; }
+  void deallocate(S *session) { delete session; }
+};
+template<> struct session_allocator<void> {
+  constexpr session_allocator() {}
+  void *allocate(int) { return nullptr; }
+  void deallocate(void *) {}
+};
+
+
 struct service_base {
   using cb_t = std::function<void(msg_ptr)>;
 

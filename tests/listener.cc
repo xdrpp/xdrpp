@@ -63,7 +63,7 @@ main(int argc, char **argv)
 {
   if (argc > 1 && !strcmp(argv[1], "-s")) {
     xdrtest2_server s;
-    rpc_tcp_listener rl;
+    rpc_tcp_listener<> rl;
     rl.register_service(s);
     rl.run();
   }
