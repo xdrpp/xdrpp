@@ -238,18 +238,8 @@ void gen_servercc(std::ostream &os);
 extern string input_file;
 extern string output_file;
 extern string file_prefix;
-
-template<typename C> void
-comma_sep(std::ostream &os, C &c,
-	  std::function<string(const typename C::value_type &)> f)
-{
-  auto i = c.begin();
-  if (i == c.end())
-    return;
-  os << f(*i);
-  while (++i != c.end())
-    os << ", " << f(*i);
-}
+extern string server_session;
+extern bool server_ptr;
 
 struct omanip : std::function<void(std::ostream&)> {
   using ostream = std::ostream;

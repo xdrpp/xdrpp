@@ -617,7 +617,11 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     else if (p.arg.size() == 1)
       os << nl << "using arg_type = " << p.arg[0] << ';';
     os << nl << "using arg_tuple_type = std::tuple<";
-    comma_sep(os, p.arg, [](const string &s){ return s; } );
+    for (size_t i = 0; i < p.arg.size(); ++i) {
+      if (i)
+	os << ", ";
+      os << p.arg[i];
+    }
     os << ">;";
     os << nl << "using res_type = " << p.res << ";"
        << nl << "using res_wire_type = "

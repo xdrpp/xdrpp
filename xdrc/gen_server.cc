@@ -8,6 +8,22 @@ namespace {
 indenter nl;
 
 void
+gen_args(std::ostream &os, const rpc_proc &p)
+{
+  if (!server_session.empty())
+    os << server_session << " *session";
+  for (std::size_t i = 0; i < p.arg.size(); ++i) {
+    if (i || !server_session.empty())
+      os << ", ";
+    string arg = p.arg.size() == 1 ? "arg" : "arg" + std::to_string(i+1);
+    if (server_ptr)
+      os << "std::unique_ptr<" << p.arg[i] << "> " << arg;
+    else
+      os << "const " << p.arg[i] << " &" << arg;
+  }
+}
+
+void
 gen_decl(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
   string name = v.id + "_server";
@@ -23,7 +39,7 @@ gen_decl(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     string res = p.res == "void" ? "void"
       : (string("std::unique_ptr<") + p.res + ">");
     os << nl << res << " " << p.id << "(";
-    comma_sep(os, p.arg, [](const string &s) { return "const " + s + " &"; });
+    gen_args(os, p);
     os << ");";
   }
   os << nl.close << "};";
@@ -43,14 +59,7 @@ gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << res
        << nl << name << "::" << p.id
        << "(";
-    if (p.arg.size() == 1)
-      os << "const " << p.arg[0] << " &arg";
-    else {
-      int i = 0;
-      comma_sep(os, p.arg, [&i](const string &s){
-	  return "const " + s + " &arg" + std::to_string(++i);
-	});
-    }
+    gen_args(os, p);
     os << ")"
        << nl << "{";
     if (res != "void")

@@ -30,8 +30,10 @@ static string getnewid(string, bool repeats_bad);
 %token T_QUADRUPLE
 %token T_VOID
 
+/* Older bisons don't seem to accept %precedence
 %precedence T_UNSIGNED
 %precedence T_INT T_HYPER
+*/
 
 %token T_VERSION
 %token T_SWITCH

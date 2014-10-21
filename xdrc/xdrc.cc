@@ -18,6 +18,8 @@ std::set<string> ids;
 string input_file;
 string output_file;
 string file_prefix;
+string server_session;
+bool server_ptr;
 
 string
 guard_token(const string &extra)
@@ -81,9 +83,11 @@ strip_suffix(string in, string suffix)
 enum opttag {
   OPT_VERSION = 0x100,
   OPT_HELP,
+  OPT_HH,
   OPT_SERVERHH,
   OPT_SERVERCC,
-  OPT_HH
+  OPT_SESSION,
+  OPT_PTR,
 };
 
 [[noreturn]] static void
@@ -91,11 +95,14 @@ usage(int err = 1)
 {
   std::ostream &os = err ? cerr : cout;
   os << R"(
-usage: xdrc MODE [-DVAR=VALUE...] [-o OUTFILE] INPUT.x
+usage: xdrc MODE [OPTIONAL] [-DVAR=VALUE...] [-o OUTFILE] INPUT.x
 where MODE is one of:
       -hh        To generate header with XDR and RPC program definitions
       -serverhh  To generate scaffolding for server header file
       -servercc  To generate scaffolding for server cc
+and OPTIONAL arguments for -server{hh,cc} can contain:
+      -session=T Use type T to track client sessions
+      -ptr       To accept arguments by std::unique_ptr
 )";
   exit(err);
 }
@@ -106,6 +113,8 @@ static const struct option xdrc_options[] = {
   {"hh", no_argument, nullptr, OPT_HH},
   {"serverhh", no_argument, nullptr, OPT_SERVERHH},
   {"servercc", no_argument, nullptr, OPT_SERVERCC},
+  {"ptr", no_argument, nullptr, OPT_PTR},
+  {"session", required_argument, nullptr, OPT_SESSION},
   {nullptr, 0, nullptr, 0}
 };
 
@@ -165,6 +174,12 @@ main(int argc, char **argv)
       gen = gen_hh;
       cpp_command += " -DXDRC_HH=1";
       suffix = ".hh";
+      break;
+    case OPT_PTR:
+      server_ptr = true;
+      break;
+    case OPT_SESSION:
+      server_session = optarg;
       break;
     default:
       usage();
