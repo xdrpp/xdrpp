@@ -50,6 +50,7 @@ public:
   //! Returns pointer to a \c bool that becomes \c true once the
   //! msg_sock has been deleted.
   std::shared_ptr<const bool> destroyed_ptr() const { return destroyed_; }
+  pollset &get_pollset() { return ps_; }
 
 private:
   pollset &ps_;
@@ -82,7 +83,7 @@ private:
 
 //! Functor wrapper around \c msg_sock::putmsg.  Mostly useful because
 //! std::function implementations avoid memory allocation with \c
-//! operator() but when other methods are passed to \c std::bind.
+//! operator() but not when other methods are passed to \c std::bind.
 struct msg_sock_put_t {
   msg_sock *ms_;
   constexpr msg_sock_put_t(msg_sock *ms) : ms_(ms) {}

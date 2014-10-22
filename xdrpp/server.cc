@@ -116,4 +116,60 @@ rpc_server_base::dispatch(void *session, msg_ptr m, service_base::cb_t reply)
   reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
 }
 
+
+rpc_tcp_listener_common::rpc_tcp_listener_common(unique_fd &&fd, bool reg)
+  : listen_fd_(fd ? std::move(fd) : tcp_listen()),
+    use_rpcbind_(reg)
+{
+  set_close_on_exec(listen_fd_.get());
+  ps_.fd_cb(listen_fd_.get(), pollset::Read,
+	    std::bind(&rpc_tcp_listener_common::accept_cb, this));
+}
+
+rpc_tcp_listener_common::~rpc_tcp_listener_common()
+{
+  ps_.fd_cb(listen_fd_.get(), pollset::Read);
+}
+
+void
+rpc_tcp_listener_common::accept_cb()
+{
+  int fd = accept(listen_fd_.get(), nullptr, 0);
+  if (fd == -1) {
+    std::cerr << "rpc_tcp_listener_common: accept: " << std::strerror(errno)
+	      << std::endl;
+    return;
+  }
+  set_close_on_exec(fd);
+  msg_sock *ms = new msg_sock(ps_, fd);
+  ms->setrcb(std::bind(&rpc_tcp_listener_common::receive_cb, this, ms,
+		       session_alloc(fd, ms), std::placeholders::_1));
+}
+
+void
+rpc_tcp_listener_common::receive_cb(msg_sock *ms, void *session, msg_ptr mp)
+{
+  if (!mp) {
+    session_free(session);
+    delete ms;
+    return;
+  }
+  try {
+    dispatch(nullptr, std::move(mp), msg_sock_put_t(ms));
+  }
+  catch (const xdr_runtime_error &e) {
+    std::cerr << e.what() << std::endl;
+    session_free(session);
+    delete ms;
+  }
+}
+
+void
+rpc_tcp_listener_common::run()
+{
+  while (ps_.pending())
+    ps_.poll();
+}
+
+
 }
