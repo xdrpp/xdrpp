@@ -2,8 +2,6 @@
 
 //! \file arpc.h Asynchronous RPC interface.
 
-#include <map>
-#include <mutex>
 #include <xdrpp/exception.h>
 #include <xdrpp/server.h>
 
@@ -35,7 +33,13 @@ protected:
     cb_ = nullptr;
   }
 
-  template<typename T> void send_reply(const T &t) {
+  template<typename P> void send_reply(const typename P::res_wire_type &t) {
+    if (xdr_trace_server) {
+      std::string s = "REPLY ";
+      s += P::proc_name;
+      s += " -> [xid " + std::to_string(xid_) + "]";
+      std::clog << xdr_to_string(t, s.c_str());
+    }
     send_reply_msg(xdr_to_msg(rpc_success_hdr(xid_), t));
   }
 
@@ -48,25 +52,25 @@ public:
   }
 };
 
-template<typename T> class reply_cb : public reply_cb_base {
+template<typename P, typename T = typename P::res_type>
+class reply_cb : public reply_cb_base {
 public:
   using type = T;
   using reply_cb_base::reply_cb_base;
   reply_cb(reply_cb &&) = default;
   reply_cb &operator=(reply_cb &&) = default;
-  void operator()(const T &t) { send_reply(t); }
+  void operator()(const type &t) { this->template send_reply<P>(t); }
 };
-template<> class reply_cb<void> : public reply_cb_base {
+template<typename P> class reply_cb<P, void> : public reply_cb<P, xdr_void> {
 public:
   using type = void;
-  using reply_cb_base::reply_cb_base;
+  using reply_cb<P, xdr_void>::reply_cb;
   reply_cb(reply_cb &&) = default;
   reply_cb &operator=(reply_cb &&) = default;
-  void operator()() { send_reply(xdr_void{}); }
-  void operator()(xdr_void v) { send_reply(v); }
+  void operator()() { this->operator()(xdr_void{}); }
 };
 
-template<typename T, typename Session = void>
+template<typename T, typename Session>
 class arpc_service : public service_base {
   using interface = typename T::arpc_interface_type;
   T &server_;
@@ -75,21 +79,28 @@ public:
   void process(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) override {
     if (!check_call(hdr))
       reply(nullptr);
-    if (!interface::call_dispatch(*this, hdr.body.cbody().proc, session, hdr, g,
-				  std::move(reply)))
+    if (!interface::call_dispatch(*this, hdr.body.cbody().proc,
+				  static_cast<Session *>(session),
+				  hdr, g, std::move(reply)))
       reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
   }
 
-  template<typename P, typename...A> void
-  dispatch(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) {
-    std::tuple<transparent_ptr<A>...> arg;
+  template<typename P>
+  void dispatch(Session *session, rpc_msg &hdr, xdr_get &g, cb_t reply) {
+    wrap_transparent_ptr<typename P::arg_tuple_type> arg;
     if (!decode_arg(g, arg))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
     
-    reply_cb<typename P::res_type> cb(hdr.xid, std::move(reply));
-    P::unpack_dispatch(server_, std::move(arg),
-		       reply_cb<typename P::res_type>{
-			 hdr.xid, std::move(reply)});
+    if (xdr_trace_server) {
+      std::string s = "CALL ";
+      s += P::proc_name;
+      s += " <- [xid " + std::to_string(hdr.xid) + "]";
+      std::clog << xdr_to_string(arg, s.c_str());
+    }
+
+    dispatch_with_session<P>(server_, session, std::move(arg),
+			     reply_cb<typename P::res_type>{
+			       hdr.xid, std::move(reply)});
   }
 
   arpc_service(T &server)
@@ -100,7 +111,7 @@ public:
 class arpc_server : public rpc_server_base {
 public:
   template<typename T> void register_service(T &t) {
-    register_service_base(new arpc_service<T>(t));
+    register_service_base(new arpc_service<T, void>(t));
   }
   void receive(msg_sock *ms, msg_ptr buf);
 };
