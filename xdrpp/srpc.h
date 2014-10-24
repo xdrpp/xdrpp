@@ -51,7 +51,7 @@ public:
 
     if (xdr_trace_client) {
       std::string s = "CALL ";
-      s += P::proc_name;
+      s += P::proc_name();
       s += " -> [xid " + std::to_string(xid) + "]";
       std::clog << xdr_to_string(std::tie(a...), s.c_str());
     }
@@ -69,7 +69,7 @@ public:
     g.done();
     if (xdr_trace_client) {
       std::string s = "REPLY ";
-      s += P::proc_name;
+      s += P::proc_name();
       s += " <- [xid " + std::to_string(xid) + "]";
       std::clog << xdr_to_string(*r, s.c_str());
     }
@@ -136,7 +136,7 @@ public:
     
     if (xdr_trace_server) {
       std::string s = "CALL ";
-      s += P::proc_name;
+      s += P::proc_name();
       s += " <- [xid " + std::to_string(hdr.xid) + "]";
       std::clog << xdr_to_string(arg, s.c_str());
     }
@@ -145,7 +145,7 @@ public:
 
     if (xdr_trace_server) {
       std::string s = "REPLY ";
-      s += P::proc_name;
+      s += P::proc_name();
       s += " -> [xid " + std::to_string(hdr.xid) + "]";
       std::clog << xdr_to_string(*res, s.c_str());
     }

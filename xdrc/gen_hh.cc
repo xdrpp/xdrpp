@@ -512,7 +512,7 @@ gen(std::ostream &os, const rpc_union &u)
     << u.tagid << "());" << endl << endl;
 
   top_material
-    << "  static constexpr const char *union_field_name(std::uint32_t which) {";
+    << "  static Constexpr const char *union_field_name(std::uint32_t which) {";
 
   {
     int olevel = nl.level_;
@@ -601,9 +601,11 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
   os << "struct " << v.id << " {"
      << nl.open << "static constexpr std::uint32_t program = " << u.val << ";"
-     << nl << "static constexpr const char *program_name = \"" << u.id << "\";"
+     << nl << "static Constexpr const char *program_name() { return \""
+     << u.id << "\"; }"
      << nl << "static constexpr std::uint32_t version = " << v.val << ";"
-     << nl << "static constexpr const char *version_name = \"" << v.id << "\";";
+     << nl << "static Constexpr const char *version_name() { return \""
+     << v.id << "\"; }";
 
   for (const rpc_proc &p : v.procs) {
     string call = "c." + p.id + "(std::forward<A>(a)...)";
@@ -611,7 +613,8 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
        << nl << "struct " << p.id << "_t {"
        << nl.open << "using interface_type = " << v.id << ";"
        << nl << "static constexpr std::uint32_t proc = " << p.val << ";"
-       << nl << "static constexpr const char *proc_name = \"" << p.id << "\";";
+       << nl << "static Constexpr const char *proc_name() { return \""
+       << p.id << "\"; }";
     if (p.arg.size() == 0)
       os << nl << "using arg_type = void;";
     else if (p.arg.size() == 1)
