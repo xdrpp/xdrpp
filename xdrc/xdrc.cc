@@ -20,6 +20,7 @@ string output_file;
 string file_prefix;
 string server_session;
 bool server_ptr;
+bool server_async;
 
 string
 guard_token(const string &extra)
@@ -86,8 +87,6 @@ enum opttag {
   OPT_HH,
   OPT_SERVERHH,
   OPT_SERVERCC,
-  OPT_SESSION,
-  OPT_PTR,
 };
 
 [[noreturn]] static void
@@ -97,12 +96,13 @@ usage(int err = 1)
   os << R"(
 usage: xdrc MODE [OPTIONAL] [-DVAR=VALUE...] [-o OUTFILE] INPUT.x
 where MODE is one of:
-      -hh        To generate header with XDR and RPC program definitions
-      -serverhh  To generate scaffolding for server header file
-      -servercc  To generate scaffolding for server cc
+      -hh           To generate header with XDR and RPC program definitions
+      -serverhh     To generate scaffolding for server header file
+      -servercc     To generate scaffolding for server cc
 and OPTIONAL arguments for -server{hh,cc} can contain:
-      -session=T Use type T to track client sessions
-      -ptr       To accept arguments by std::unique_ptr
+      -s[ession] T  Use type T to track client sessions
+      -p[tr]        To accept arguments by std::unique_ptr
+      -a[sync]      To generate arpc server scaffolding (with callbacks)
 )";
   exit(err);
 }
@@ -113,15 +113,11 @@ static const struct option xdrc_options[] = {
   {"hh", no_argument, nullptr, OPT_HH},
   {"serverhh", no_argument, nullptr, OPT_SERVERHH},
   {"servercc", no_argument, nullptr, OPT_SERVERCC},
-  {"ptr", no_argument, nullptr, OPT_PTR},
-  {"session", required_argument, nullptr, OPT_SESSION},
+  {"ptr", no_argument, nullptr, 'p'},
+  {"session", required_argument, nullptr, 's'},
+  {"async", no_argument, nullptr, 'a'},
   {nullptr, 0, nullptr, 0}
 };
-
-void
-gen_cc(std::ostream &)
-{
-}
 
 int
 main(int argc, char **argv)
@@ -175,10 +171,13 @@ main(int argc, char **argv)
       cpp_command += " -DXDRC_HH=1";
       suffix = ".hh";
       break;
-    case OPT_PTR:
+    case 'p':
       server_ptr = true;
       break;
-    case OPT_SESSION:
+    case 'a':
+      server_async = true;
+      break;
+    case 's':
       server_session = optarg;
       break;
     default:

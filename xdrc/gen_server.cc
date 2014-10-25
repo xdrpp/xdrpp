@@ -21,6 +21,11 @@ gen_args(std::ostream &os, const rpc_proc &p)
     else
       os << "const " << p.arg[i] << " &" << arg;
   }
+  if (server_async) {
+    if (p.arg.size())
+      os << ", ";
+    os << "xdr::reply_cb<" << p.res << "> cb";
+  }
 }
 
 void
@@ -36,7 +41,7 @@ gen_decl(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   for (const rpc_proc &p : v.procs) {
     //    string arg = p.arg == "void" ? ""
     //  : (string("std::unique_ptr<") + p.arg + "> arg");
-    string res = p.res == "void" ? "void"
+    string res = server_async || p.res == "void" ? "void"
       : (string("std::unique_ptr<") + p.res + ">");
     os << nl << res << " " << p.id << "(";
     gen_args(os, p);
@@ -62,7 +67,7 @@ gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     gen_args(os, p);
     os << ")"
        << nl << "{";
-    if (res != "void")
+    if (res != "void" && !server_async)
        os << nl.open << "std::unique_ptr<" << p.res << "> res(new "
 	  << p.res << ");"
 	  << nl
@@ -95,11 +100,14 @@ gen_server_internal(std::ostream &os, bool cc)
     else
       os << nl << "#include \"" << file_prefix << ".server.hh\"";
   }
-  else
+  else {
     os << nl << "#ifndef " << guard
        << nl << "#define " << guard << " 1"
-       << nl
-       << nl << "#include \"" << file_prefix << ".hh\"";
+       << nl;
+    if (server_async)
+      os << nl << "#include <xdrc/arpc.h>";
+    os << nl << "#include \"" << file_prefix << ".hh\"";
+  }
 
   int last_type = -1;
 

@@ -7,21 +7,24 @@
 
 namespace xdr {
 
-template<typename P, typename T = typename P::res_type> class reply_cb;
+template<typename T> class reply_cb;
 
 namespace detail {
 
 class reply_cb_impl {
-  template<typename P, typename T> friend class xdr::reply_cb;
+  template<typename T> friend class xdr::reply_cb;
   using cb_t = service_base::cb_t;
   uint32_t xid_;
   unsigned refcount_{0};
   cb_t cb_;
+  const char *const proc_name_;
 
-  template<typename CB> reply_cb_impl(uint32_t xid, CB &&cb)
-    : xid_(xid), cb_(std::forward<CB>(cb)) {}
+  template<typename CB> reply_cb_impl(uint32_t xid, CB &&cb, const char *name)
+    : xid_(xid), cb_(std::forward<CB>(cb)), proc_name_(name) {}
+#if !MSVC
   reply_cb_impl(const reply_cb_impl &rcb) = delete;
   reply_cb_impl &operator=(const reply_cb_impl &rcb) = delete;
+#endif // !MSVC
   ~reply_cb_impl() { if (cb_) reject(PROC_UNAVAIL); }
 
   void ref() { refcount_++; }
@@ -33,10 +36,10 @@ class reply_cb_impl {
     cb_ = nullptr;
   }
 
-  template<typename P> void send_reply(const typename P::res_wire_type &t) {
+  template<typename T> void send_reply(const T &t) {
     if (xdr_trace_server) {
       std::string s = "REPLY ";
-      s += P::proc_name;
+      s += proc_name_;
       s += " -> [xid " + std::to_string(xid_) + "]";
       std::clog << xdr_to_string(t, s.c_str());
     }
@@ -61,15 +64,15 @@ class reply_cb_impl {
 // least without doing some fairly convoluted synchronization to make
 // sure the copy in the parent is not destroyed simultaneously with
 // the one in the child thread).
-template<typename P, typename T> class reply_cb {
+template<typename T> class reply_cb {
   using impl_t = detail::reply_cb_impl;
 public:
   using type = T;
   impl_t *impl_;
 
   reply_cb() : impl_(nullptr) {}
-  template<typename CB> reply_cb(uint32_t xid, CB &&cb)
-    : impl_(new impl_t(xid, std::forward<CB>(cb))) { impl_->ref(); }
+  template<typename CB> reply_cb(uint32_t xid, CB &&cb, const char *name)
+    : impl_(new impl_t(xid, std::forward<CB>(cb), name)) { impl_->ref(); }
   reply_cb(const reply_cb &&rcb) : impl_(rcb.impl_) {
     impl_->ref();
     return *this;
@@ -83,13 +86,15 @@ public:
     impl_ = rcb.impl_;
   }
 
-  void operator()(const type &t) { impl_->template send_reply<P>(t); }
+  void operator()(const type &t) { impl_->send_reply(t); }
   void reject(accept_stat stat) { impl_->reject(stat); }
   void reject(auth_stat stat) { impl_->reject(stat); }
 };
-template<typename P> class reply_cb<P, void> : public reply_cb<P, xdr_void> {
+template<> class reply_cb<void> : public reply_cb<xdr_void> {
 public:
   using type = void;
+  using reply_cb<xdr_void>::reply_cb;
+  using reply_cb<xdr_void>::operator();
   void operator()() { this->operator()(xdr_void{}); }
 };
 
@@ -122,7 +127,7 @@ public:
 
     dispatch_with_session<P>(server_, session, std::move(arg),
 			     reply_cb<typename P::res_type>{
-			       hdr.xid, std::move(reply)});
+			       hdr.xid, std::move(reply), P::proc_name});
   }
 
   arpc_service(T &server)
@@ -139,6 +144,11 @@ public:
   void receive(msg_sock *ms, msg_ptr buf);
 };
 
+template<typename Session = void,
+	 typename SessionAllocator = session_allocator<Session>>
+using arpc_tcp_listener =
+  generic_rpc_tcp_listener<arpc_service, Session, SessionAllocator>;
+
 
 //! A \c unique_ptr to a call result, or NULL if the call failed (in
 //! which case \c message returns an error message).
@@ -152,6 +162,7 @@ template<> struct call_result<void> {
   rpc_call_stat stat_;
   call_result(const rpc_call_stat &stat) : stat_(stat) {}
   const char *message() const { return stat_ ? nullptr : stat_.message(); }
+  explicit operator bool() const { return bool{stat_}; }
 };
 
 class arpc_sock {

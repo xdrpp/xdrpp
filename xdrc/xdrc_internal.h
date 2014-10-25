@@ -240,6 +240,7 @@ extern string output_file;
 extern string file_prefix;
 extern string server_session;
 extern bool server_ptr;
+extern bool server_async;
 
 struct omanip : std::function<void(std::ostream&)> {
   using ostream = std::ostream;
