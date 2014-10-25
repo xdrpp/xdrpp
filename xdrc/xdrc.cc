@@ -129,7 +129,7 @@ main(int argc, char **argv)
   bool noclobber = false;
 
   int opt;
-  while ((opt = getopt_long_only(argc, argv, "D:o:",
+  while ((opt = getopt_long_only(argc, argv, "D:ao:ps:",
 				 xdrc_options, nullptr)) != -1)
     switch (opt) {
     case 'D':
