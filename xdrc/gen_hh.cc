@@ -512,7 +512,27 @@ gen(std::ostream &os, const rpc_union &u)
     << u.tagid << "());" << endl << endl;
 
   top_material
+    << "  static const char *union_field_name(std::uint32_t which) {" << endl
+    << "    switch (union_type::_xdr_field_number(which)) {" << endl;
+  for (const rpc_ufield &uf : u.fields) {
+    if (uf.fieldno <= 0)
+      continue;
+    if (uf.hasdefault)
+      top_material << "    default:" << endl;
+    else
+      top_material << "    case " << uf.fieldno << ":" << endl;
+    top_material << "      return \"" << uf.decl.type << "\";" << endl;
+  }
+  top_material << "    }" << endl
+	       << "    return nullptr;" << endl
+	       << "  }" << endl;
+
+#if 0
+  top_material
     << "  static Constexpr const char *union_field_name(std::uint32_t which) {";
+  if (!namespaces.empty())
+    top_material
+      << endl << "    using namespace " << cur_ns() << ";";
 
   {
     int olevel = nl.level_;
@@ -527,7 +547,9 @@ gen(std::ostream &os, const rpc_union &u)
     nl.level_ = olevel;
   }
   top_material
-    << endl << "  }" << endl
+    << endl << "  }" << endl;
+#endif
+  top_material
     << "  static const char *union_field_name(const union_type &u) {" << endl
     << "    return union_field_name(u._xdr_discriminant());" << endl
     << "  }" << endl << endl;
