@@ -233,7 +233,7 @@ public:
   void run();
 };
 
-template<template<typename, typename> class ServiceType,
+template<template<typename, typename, typename> class ServiceType,
 	 typename Session, typename SessionAllocator>
 class generic_rpc_tcp_listener : public rpc_tcp_listener_common {
   SessionAllocator sa_;
@@ -251,8 +251,9 @@ public:
   ~generic_rpc_tcp_listener() {}
 
   //! Add objects implementing RPC program interfaces to the server.
-  template<typename T> void register_service(T &t) {
-    register_service_base(new ServiceType<T,Session>(t));
+  template<typename T, typename Interface = typename T::rpc_interface_type>
+  void register_service(T &t) {
+    register_service_base(new ServiceType<T,Session,Interface>(t));
     if(use_rpcbind_)
       rpcbind_register(listen_fd_.get(), T::rpc_interface_type::program,
 		       T::rpc_interface_type::version);

@@ -7,28 +7,28 @@
 
 namespace xdr {
 
-class reply_cb_base {
+template<typename P, typename T = typename P::res_type> class reply_cb;
+
+namespace detail {
+
+class reply_cb_impl {
+  template<typename P, typename T> friend class xdr::reply_cb;
   using cb_t = service_base::cb_t;
   uint32_t xid_;
+  unsigned refcount_{0};
   cb_t cb_;
 
-protected:
-  template<typename CB>
-  reply_cb_base(uint32_t xid, CB &&cb)
+  template<typename CB> reply_cb_impl(uint32_t xid, CB &&cb)
     : xid_(xid), cb_(std::forward<CB>(cb)) {}
-  reply_cb_base(reply_cb_base &&rcb)
-    : xid_(rcb.xid_), cb_(std::move(rcb.cb_)) { rcb.cb_ = nullptr; }
+  reply_cb_impl(const reply_cb_impl &rcb) = delete;
+  reply_cb_impl &operator=(const reply_cb_impl &rcb) = delete;
+  ~reply_cb_impl() { if (cb_) reject(PROC_UNAVAIL); }
 
-  ~reply_cb_base() { if (cb_) reject(PROC_UNAVAIL); }
-
-  reply_cb_base &operator=(reply_cb_base &&rcb) {
-    xid_ = rcb.xid_;
-    cb_ = std::move(rcb.cb_);
-    rcb.cb_ = nullptr;
-    return *this;
-  }
+  void ref() { refcount_++; }
+  void unref() { if (!--refcount_) delete this; }
 
   void send_reply_msg(msg_ptr &&b) {
+    assert(cb_);		// If this fails you replied twice
     cb_(std::move(b));
     cb_ = nullptr;
   }
@@ -43,7 +43,6 @@ protected:
     send_reply_msg(xdr_to_msg(rpc_success_hdr(xid_), t));
   }
 
-public:
   void reject(accept_stat stat) {
     send_reply_msg(rpc_accepted_error_msg(xid_, stat));
   }
@@ -52,34 +51,57 @@ public:
   }
 };
 
-template<typename P, typename T = typename P::res_type>
-class reply_cb : public reply_cb_base {
+} // namespace detail
+
+// Because before C++14 it is a pain to move values into closures, we
+// implement \c reply_cb as a reference-counted type that can be
+// copied.  Note, however, that it is not thread-safe, as the
+// reference count is not protected with a lock.  This means you
+// shouldn't attempt to use a \c reply_cb in a different thread (at
+// least without doing some fairly convoluted synchronization to make
+// sure the copy in the parent is not destroyed simultaneously with
+// the one in the child thread).
+template<typename P, typename T> class reply_cb {
+  using impl_t = detail::reply_cb_impl;
 public:
   using type = T;
-  using reply_cb_base::reply_cb_base;
-  reply_cb(reply_cb &&) = default;
-  reply_cb &operator=(reply_cb &&) = default;
-  void operator()(const type &t) { this->template send_reply<P>(t); }
+  impl_t *impl_;
+
+  reply_cb() : impl_(nullptr) {}
+  template<typename CB> reply_cb(uint32_t xid, CB &&cb)
+    : impl_(new impl_t(xid, std::forward<CB>(cb))) { impl_->ref(); }
+  reply_cb(const reply_cb &&rcb) : impl_(rcb.impl_) {
+    impl_->ref();
+    return *this;
+  }
+  ~reply_cb() { if(impl_) impl_->unref(); }
+  reply_cb &operator=(const reply_cb &rcb) {
+    if (rcb.impl_)
+      rcb.impl_->ref();
+    if (impl_)
+      impl_->unref();
+    impl_ = rcb.impl_;
+  }
+
+  void operator()(const type &t) { impl_->template send_reply<P>(t); }
+  void reject(accept_stat stat) { impl_->reject(stat); }
+  void reject(auth_stat stat) { impl_->reject(stat); }
 };
 template<typename P> class reply_cb<P, void> : public reply_cb<P, xdr_void> {
 public:
   using type = void;
-  using reply_cb<P, xdr_void>::reply_cb;
-  reply_cb(reply_cb &&) = default;
-  reply_cb &operator=(reply_cb &&) = default;
   void operator()() { this->operator()(xdr_void{}); }
 };
 
-template<typename T, typename Session>
+template<typename T, typename Session, typename Interface>
 class arpc_service : public service_base {
-  using interface = typename T::arpc_interface_type;
   T &server_;
 
 public:
   void process(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) override {
     if (!check_call(hdr))
       reply(nullptr);
-    if (!interface::call_dispatch(*this, hdr.body.cbody().proc,
+    if (!Interface::call_dispatch(*this, hdr.body.cbody().proc,
 				  static_cast<Session *>(session),
 				  hdr, g, std::move(reply)))
       reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
@@ -104,14 +126,15 @@ public:
   }
 
   arpc_service(T &server)
-    : service_base(interface::program, interface::version),
+    : service_base(Interface::program, Interface::version),
       server_(server) {}
 };
 
 class arpc_server : public rpc_server_base {
 public:
-  template<typename T> void register_service(T &t) {
-    register_service_base(new arpc_service<T, void>(t));
+  template<typename T, typename Interface = typename T::rpc_interface_type>
+  void register_service(T &t) {
+    register_service_base(new arpc_service<T, void, Interface>(t));
   }
   void receive(msg_sock *ms, msg_ptr buf);
 };

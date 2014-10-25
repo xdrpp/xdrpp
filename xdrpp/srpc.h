@@ -95,8 +95,8 @@ template<typename T> using srpc_client =
   typename T::template _xdr_client<synchronous_client_base>;
 
 
-template<typename T, typename Session>
-class synchronous_service : public service_base {
+template<typename T, typename Session, typename Interface>
+class srpc_service : public service_base {
   template<typename P, typename A> typename
   std::enable_if<std::is_same<void, typename P::res_type>::value,
 		 const xdr_void *>::type
@@ -113,16 +113,15 @@ class synchronous_service : public service_base {
   }
 
 public:
-  using interface = typename T::rpc_interface_type;
   T &server_;
 
-  synchronous_service(T &server)
-    : service_base(interface::program, interface::version), server_(server) {}
+  srpc_service(T &server)
+    : service_base(Interface::program, Interface::version), server_(server) {}
 
   void process(void *session, rpc_msg &hdr, xdr_get &g, cb_t reply) override {
     if (!check_call(hdr))
       reply(nullptr);
-    if (!interface::call_dispatch(*this, hdr.body.cbody().proc,
+    if (!Interface::call_dispatch(*this, hdr.body.cbody().proc,
 				  static_cast<Session *>(session),
 				  hdr, g, std::move(reply)))
       reply(rpc_accepted_error_msg(hdr.xid, PROC_UNAVAIL));
@@ -167,8 +166,9 @@ public:
   ~srpc_server() { if (close_on_destruction_) close(fd_); }
 
   //! Add objects implementing RPC program interfaces to the server.
-  template<typename T> void register_service(T &t) {
-    register_service_base(new synchronous_service<T, void>(t));
+  template<typename T, typename Interface = typename T::rpc_interface_type>
+  void register_service(T &t) {
+    register_service_base(new srpc_service<T, void, Interface>(t));
   }
 
   //! Start serving requests.  (Loops until an exception.)
@@ -178,7 +178,7 @@ public:
 template<typename Session = void,
 	 typename SessionAllocator = session_allocator<Session>>
 using srpc_tcp_listener =
-  generic_rpc_tcp_listener<synchronous_service, Session, SessionAllocator>;
+  generic_rpc_tcp_listener<srpc_service, Session, SessionAllocator>;
 
 }
 
