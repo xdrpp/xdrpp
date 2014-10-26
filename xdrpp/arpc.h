@@ -73,10 +73,7 @@ public:
   reply_cb() : impl_(nullptr) {}
   template<typename CB> reply_cb(uint32_t xid, CB &&cb, const char *name)
     : impl_(new impl_t(xid, std::forward<CB>(cb), name)) { impl_->ref(); }
-  reply_cb(const reply_cb &&rcb) : impl_(rcb.impl_) {
-    impl_->ref();
-    return *this;
-  }
+  reply_cb(const reply_cb &&rcb) : impl_(rcb.impl_) { impl_->ref(); }
   ~reply_cb() { if(impl_) impl_->unref(); }
   reply_cb &operator=(const reply_cb &rcb) {
     if (rcb.impl_)
@@ -162,7 +159,7 @@ template<> struct call_result<void> {
   rpc_call_stat stat_;
   call_result(const rpc_call_stat &stat) : stat_(stat) {}
   const char *message() const { return stat_ ? nullptr : stat_.message(); }
-  explicit operator bool() const { return bool{stat_}; }
+  explicit operator bool() const { return bool(stat_); }
 };
 
 class arpc_sock {

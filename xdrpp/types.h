@@ -256,7 +256,7 @@ template<typename T> struct xdr_container_base<T, false, true>
   : xdr_container_base<T, false, false> {
   static constexpr bool has_fixed_size = true;
   static constexpr std::size_t fixed_size =
-    T::size() * xdr_traits<typename T::value_type>::fixed_size;
+    T::container_fixed_nelem * xdr_traits<typename T::value_type>::fixed_size;
   static std::size_t serial_size(const T &) { return fixed_size; }
 };
 
@@ -265,7 +265,7 @@ struct no_clear_t {
   constexpr no_clear_t() {}
 };
 constexpr no_clear_t no_clear;
-}
+} // namespace detail
 
 //! XDR arrays are implemented using std::array as a supertype.
 template<typename T, uint32_t N> struct xarray
@@ -276,6 +276,7 @@ template<typename T, uint32_t N> struct xarray
   xarray(const xarray &) = default;
   xarray &operator=(const xarray &) = default;
 
+  static constexpr std::size_t container_fixed_nelem = N;
   static constexpr std::size_t size() { return N; }
   static void validate() {}
   static void check_size(uint32_t i) {
