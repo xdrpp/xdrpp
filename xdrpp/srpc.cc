@@ -11,10 +11,10 @@ namespace xdr {
 bool xdr_trace_client = std::getenv("XDR_TRACE_CLIENT");
 
 msg_ptr
-read_message(int fd)
+read_message(sock_t s)
 {
   std::uint32_t len;
-  ssize_t n = read(fd, &len, 4);
+  ssize_t n = s.read(&len, 4);
   if (n == -1)
     throw xdr_system_error("xdr::read_message");
   if (n < 4)
@@ -31,7 +31,7 @@ read_message(int fd)
     throw xdr_bad_message_size("read_message: message fragments unimplemented");
 
   msg_ptr m = message_t::alloc(len);
-  n = read(fd, m->data(), len);
+  n = s.read(m->data(), len);
   if (n == -1)
     throw xdr_system_error("xdr::read_message");
   if (n != len)
@@ -41,9 +41,9 @@ read_message(int fd)
 }
 
 void
-write_message(int fd, const msg_ptr &m)
+write_message(sock_t s, const msg_ptr &m)
 {
-  ssize_t n = write(fd, m->raw_data(), m->raw_size());
+  ssize_t n = s.write(m->raw_data(), m->raw_size());
   if (n == -1)
     throw xdr_system_error("xdr::write_message");
   // If this assertion fails, the file descriptor may have had
@@ -69,8 +69,8 @@ void
 srpc_server::run()
 {
   for (;;)
-    dispatch(nullptr, read_message(fd_),
-	     std::bind(write_message, fd_, std::placeholders::_1));
+    dispatch(nullptr, read_message(s_),
+	     std::bind(write_message, s_, std::placeholders::_1));
 }
 
 }

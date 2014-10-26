@@ -13,11 +13,11 @@ using namespace std;
 using namespace xdr;
 
 void
-echoserver(int fd)
+echoserver(sock_t s)
 {
   pollset_plus ps;
   bool done {false};
-  msg_sock ss(ps, fd, nullptr);
+  msg_sock ss(ps, s, nullptr);
   int i = 0;
 
   ss.setrcb([&done,&ss,&i](msg_ptr b) {
@@ -33,10 +33,10 @@ echoserver(int fd)
 }
 
 void
-echoclient(int fd)
+echoclient(sock_t s)
 {
   pollset_plus ps;
-  msg_sock ss { ps, fd };
+  msg_sock ss { ps, s };
   unsigned int i = 0;
 
   {
@@ -69,8 +69,8 @@ main(int argc, char **argv)
     exit(1);
   }
 
-  thread t1 (echoclient, fds[0]);
-  echoserver(fds[1]);
+  thread t1 (echoclient, sock_t(fds[0]));
+  echoserver(sock_t(fds[1]));
   t1.join();
 
   return 0;

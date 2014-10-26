@@ -40,6 +40,28 @@ set_cleanup()
 
 }
 
+const char *
+sock_errmsg()
+{
+  return std::strerror(errno);
+}
+
+void
+throw_sockerr(const char *msg)
+{
+  throw std::system_error(errno, std::system_category(), msg);
+}
+
+void
+sock_t::close() const
+{
+  while (::close(fd_) == -1)
+    if (errno != EINTR) {
+      std::cerr << "sock_t::close: " << sock_errmsg() << std::endl;
+      return;
+    }
+}
+
 string
 addrinfo_to_string(const addrinfo *ai)
 {
@@ -62,31 +84,21 @@ addrinfo_to_string(const addrinfo *ai)
 }
 
 void
-set_nonblock(int fd)
+set_nonblock(sock_t s)
 {
   int n;
-  if ((n = fcntl (fd, F_GETFL)) == -1
-      || fcntl (fd, F_SETFL, n | O_NONBLOCK) == -1)
-    throw std::system_error(errno, std::system_category(), "O_NONBLOCK");
+  if ((n = fcntl (s.fd_, F_GETFL)) == -1
+      || fcntl (s.fd_, F_SETFL, n | O_NONBLOCK) == -1)
+    throw_sockerr("O_NONBLOCK");
 }
 
 void
-set_close_on_exec(int fd)
+set_close_on_exec(sock_t s)
 {
   int n;
-  if ((n = fcntl (fd, F_GETFD)) == -1
-      || fcntl (fd, F_SETFD, n | FD_CLOEXEC) == -1)
-    throw std::system_error(errno, std::system_category(), "F_SETFD");
-}
-
-void
-really_close(int fd)
-{
-  while (close(fd) == -1)
-    if (errno != EINTR) {
-      std::cerr << "really_close: " << std::strerror(errno) << std::endl;
-      return;
-    }
+  if ((n = fcntl(s.fd_, F_GETFD)) == -1
+      || fcntl(s.fd_, F_SETFD, n | FD_CLOEXEC) == -1)
+    throw_sockerr("F_SETFD");
 }
 
 struct gai_category_impl : public std::error_category {
@@ -179,7 +191,7 @@ make_uaddr(const sockaddr *sa, socklen_t salen)
 }
 
 string
-make_uaddr(int fd)
+make_uaddr(sock_t s)
 {
   union {
     struct sockaddr sa;
@@ -187,8 +199,8 @@ make_uaddr(int fd)
   };
   socklen_t salen{sizeof ss};
   std::memset(&ss, 0, salen);
-  if (getsockname(fd, &sa, &salen) == -1)
-    throw std::system_error(errno, std::system_category(), "getsockname");
+  if (getsockname(s.fd_, &sa, &salen) == -1)
+    throw_sockerr("getsockname");
   return make_uaddr(&sa, salen);
 }
 
@@ -216,7 +228,7 @@ rpcbind_register(const sockaddr *sa, socklen_t salen,
 }
 
 void
-rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers)
+rpcbind_register(sock_t s, std::uint32_t prog, std::uint32_t vers)
 {
   union {
     struct sockaddr sa;
@@ -224,8 +236,8 @@ rpcbind_register(int fd, std::uint32_t prog, std::uint32_t vers)
   };
   socklen_t salen{sizeof ss};
   std::memset(&ss, 0, salen);
-  if (getsockname(fd, &sa, &salen) == -1)
-    throw std::system_error(errno, std::system_category(), "getsockname");
+  if (getsockname(s.fd_, &sa, &salen) == -1)
+    throw_sockerr("getsockname");
   rpcbind_register(&sa, salen, prog, vers);
 }
 
@@ -245,41 +257,39 @@ void get_numinfo(const sockaddr *sa, socklen_t salen,
     *serv = servbuf;
 }
 
-unique_fd
+unique_sock
 tcp_connect1(const addrinfo *ai, bool ndelay)
 {
-  // XXX
-  //std::cerr << "connecting to " << addrinfo_to_string(ai) << std::endl;
-
-  unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
-  if (!fd)
-    throw std::system_error(errno, std::system_category(), "socket");
+  unique_sock s(sock_t(socket(ai->ai_family, ai->ai_socktype,
+			      ai->ai_protocol)));
+  if (!s)
+    throw_sockerr("socket");
   if (ndelay)
-    set_nonblock(fd.get());
-  if (connect(fd.get(), ai->ai_addr, ai->ai_addrlen) == -1
+    set_nonblock(s.get());
+  if (connect(s.get().fd_, ai->ai_addr, ai->ai_addrlen) == -1
       && errno != EINPROGRESS)
-    fd.clear();
-  return fd;
+    s.clear();
+  return s;
 }
 
-unique_fd
+unique_sock
 tcp_connect(const addrinfo *ai)
 {
-  unique_fd fd;
+  unique_sock s;
   errno = EADDRNOTAVAIL;
-  for (; ai && !fd; ai = ai->ai_next)
-    if ((fd = tcp_connect1(ai)))
-      return fd;
-  throw std::system_error(errno, std::system_category(), "connect");
+  for (; ai && !s; ai = ai->ai_next)
+    if ((s = tcp_connect1(ai)))
+      return s;
+  throw_sockerr("connect");
 }
 
-unique_fd
+unique_sock
 tcp_connect(const char *host, const char *service, int family)
 {
   return tcp_connect(get_addrinfo(host, SOCK_STREAM, service, family));
 }
 
-unique_fd
+unique_sock
 tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
 		int family)
 {
@@ -287,14 +297,14 @@ tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
 
   for (const addrinfo *ai = ail.get(); ai; ai = ai->ai_next) {
     try {
-      auto fd = tcp_connect1(ai);
-      srpc_client<xdr::RPCBVERS4> c{fd.get()};
+      auto s = tcp_connect1(ai);
+      srpc_client<xdr::RPCBVERS4> c{s.get()};
 
       rpcb arg;
       arg.r_prog = prog;
       arg.r_vers = vers;
       arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
-      arg.r_addr = make_uaddr(fd.get());
+      arg.r_addr = make_uaddr(s.get());
       auto res = c.RPCBPROC_GETADDR(arg);
 
       int port = parse_uaddr_port(*res);
@@ -309,9 +319,9 @@ tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
 	((sockaddr_in6 *) ai->ai_addr)->sin6_port = htons(port);
 	break;
       }
-      fd.clear();
-      if ((fd = tcp_connect1(ai)))
-	return fd;
+      s.clear();
+      if ((s = tcp_connect1(ai)))
+	return s;
     }
     catch(const std::system_error &) {}
   }
@@ -319,7 +329,7 @@ tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
 			  "Could not obtain port from rpcbind");
 }
 
-unique_fd
+unique_sock
 tcp_listen(const char *service, int family)
 {
   addrinfo hints, *res;
@@ -335,14 +345,25 @@ tcp_listen(const char *service, int family)
   // XXX
   //std::cerr << "listening at " << addrinfo_to_string(ai.get()) << std::endl;
 
-  unique_fd fd {socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol)};
-  if (!fd)
-    throw std::system_error(errno, std::system_category(), "socket");
-  if (bind(fd.get(), ai->ai_addr, ai->ai_addrlen) == -1)
-    throw std::system_error(errno, std::system_category(), "bind");
-  if (listen (fd.get(), 5) == -1)
-    throw std::system_error(errno, std::system_category(), "listen");
-  return fd;
+  unique_sock s(sock_t(socket(ai->ai_family, ai->ai_socktype,
+			      ai->ai_protocol)));
+  if (!s)
+    throw_sockerr("socket");
+  if (bind(s.get().fd_, ai->ai_addr, ai->ai_addrlen) == -1)
+    throw_sockerr("bind");
+  if (listen (s.get().fd_, 5) == -1)
+    throw_sockerr("listen");
+  return s;
+}
+
+void
+create_selfpipe(sock_t ss[2])
+{
+  int fds[2];
+  if (pipe(fds) == -1)
+    throw std::system_error(errno, std::system_category(), "pipe");
+  ss[0] = sock_t(fds[0]);
+  ss[1] = sock_t(fds[1]);
 }
 
 }

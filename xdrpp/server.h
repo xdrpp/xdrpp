@@ -163,12 +163,12 @@ template<typename S> struct session_allocator {
   constexpr session_allocator() {}
   //! Trivial session allocator.  The file descriptor is only for
   //! calls like getsockname, not for IO.
-  S *allocate(int fd, msg_sock *ms) { return new S{fd}; }
+  S *allocate(sock_t s, msg_sock *ms) { return new S{s, ms}; }
   void deallocate(S *session) { delete session; }
 };
 template<> struct session_allocator<void> {
   constexpr session_allocator() {}
-  void *allocate(int fd, msg_sock *ms) { return nullptr; }
+  void *allocate(sock_t s, msg_sock *ms) { return nullptr; }
   void deallocate(void *) {}
 };
 
@@ -221,12 +221,13 @@ class rpc_tcp_listener_common : public rpc_server_base {
 
 protected:
   pollset ps_;
-  unique_fd listen_fd_;
+  unique_sock listen_sock_;
   const bool use_rpcbind_;
-  rpc_tcp_listener_common(unique_fd &&fd, bool use_rpcbind = false);
-  rpc_tcp_listener_common() : rpc_tcp_listener_common(unique_fd(-1), true) {}
+  rpc_tcp_listener_common(unique_sock &&s, bool use_rpcbind = false);
+  rpc_tcp_listener_common()
+    : rpc_tcp_listener_common(unique_sock(invalid_sock), true) {}
   virtual ~rpc_tcp_listener_common();
-  virtual void *session_alloc(int fd, msg_sock *) = 0;
+  virtual void *session_alloc(sock_t s, msg_sock *) = 0;
   virtual void session_free(void *session) = 0;
 
 public:
@@ -238,16 +239,16 @@ template<template<typename, typename, typename> class ServiceType,
 class generic_rpc_tcp_listener : public rpc_tcp_listener_common {
   SessionAllocator sa_;
 protected:
-  void *session_alloc(int fd, msg_sock *ms) override {
-    return sa_.allocate(fd, ms);
+  void *session_alloc(sock_t s, msg_sock *ms) override {
+    return sa_.allocate(s, ms);
   }
   void session_free(void *session) override { sa_.deallocate(session); }
 public:
   using rpc_tcp_listener_common::rpc_tcp_listener_common;
   generic_rpc_tcp_listener() {}
-  generic_rpc_tcp_listener(unique_fd &&fd, bool use_rpcbind,
+  generic_rpc_tcp_listener(unique_sock &&s, bool use_rpcbind,
 			   SessionAllocator sa)
-    : rpc_tcp_listener_common(std::move(fd), use_rpcbind), sa_(sa) {}
+    : rpc_tcp_listener_common(std::move(s), use_rpcbind), sa_(sa) {}
   ~generic_rpc_tcp_listener() {}
 
   //! Add objects implementing RPC program interfaces to the server.
@@ -255,7 +256,7 @@ public:
   void register_service(T &t) {
     register_service_base(new ServiceType<T,Session,Interface>(t));
     if(use_rpcbind_)
-      rpcbind_register(listen_fd_.get(), T::rpc_interface_type::program,
+      rpcbind_register(listen_sock_.get(), T::rpc_interface_type::program,
 		       T::rpc_interface_type::version);
   }
 };

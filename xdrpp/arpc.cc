@@ -9,9 +9,9 @@ arpc_server::receive(msg_sock *ms, msg_ptr buf)
   dispatch(nullptr, std::move(buf), msg_sock_put_t{ms});
 }
 
-arpc_sock::arpc_sock(pollset &ps, int fd)
-  : ms_(new msg_sock(ps, fd, std::bind(&arpc_sock::receive, this,
-				       std::placeholders::_1)))
+arpc_sock::arpc_sock(pollset &ps, sock_t s)
+  : ms_(new msg_sock(ps, s, std::bind(&arpc_sock::receive, this,
+				      std::placeholders::_1)))
 {
 }
 

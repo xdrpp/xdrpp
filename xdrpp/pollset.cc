@@ -37,8 +37,7 @@ pollset_plus::signal_handler(int sig)
 
 pollset_plus::pollset_plus()
 {
-  if (pipe(selfpipe_) == -1)
-    throw std::system_error(errno, std::system_category(), "pipe");
+  create_selfpipe(selfpipe_);
   set_close_on_exec(selfpipe_[0]);
   set_close_on_exec(selfpipe_[1]);
   set_nonblock(selfpipe_[0]);
@@ -55,8 +54,8 @@ pollset_plus::~pollset_plus()
   }
 
   fd_cb(selfpipe_[0], Read);
-  really_close(selfpipe_[0]);
-  really_close(selfpipe_[1]);
+  selfpipe_[0].close();
+  selfpipe_[1].close();
 }
 
 pollset::fd_state::~fd_state()
@@ -69,7 +68,7 @@ void
 pollset_plus::wake(wake_type wt)
 {
   static_assert(sizeof wt == 1, "uint8_t enum has wrong size");
-  write(selfpipe_[1], &wt, 1);
+  selfpipe_[1].write(&wt, 1);
 }
 
 void
@@ -91,7 +90,7 @@ pollset_plus::run_pending_asyncs()
   {
     wake_type buf[128];
     int n;
-    while ((n = read (selfpipe_[0], buf, sizeof buf)) > 0)
+    while ((n = selfpipe_[0].read(buf, sizeof buf)) > 0)
       for (int i = 0; i < n && !signal_pending_; i++)
 	if (buf[i] == wake_type::Signal)
 	  signal_pending_ = true;
@@ -122,19 +121,19 @@ pollset_plus::inject_cb_vec(std::vector<cb_t>::iterator b,
 }
 
 pollset::cb_t &
-pollset::fd_cb_helper(int fd, op_t op)
+pollset::fd_cb_helper(sock_t s, op_t op)
 {
-  fd_state &fs = state_[fd];
+  fd_state &fs = state_[s];
   pollfd *pfdp;
   if (fs.idx < 0) {
     fs.idx = pollfds_.size();
     pollfds_.resize(fs.idx + 1);
     pfdp = &pollfds_.back();
-    pfdp->fd = fd;
+    pfdp->fd = s.fd_;		// XXX
   }
   else {
     pfdp = &pollfds_.at(fs.idx);
-    assert (pfdp->fd == fd);
+    assert (pfdp->fd == s.fd_);	// XXX
   }
   if (op & kReadFlag) {
     if (op & kWriteFlag) {
@@ -160,9 +159,9 @@ pollset::fd_cb_helper(int fd, op_t op)
 }
 
 void
-pollset::fd_cb(int fd, op_t op, std::nullptr_t)
+pollset::fd_cb(sock_t s, op_t op, std::nullptr_t)
 {
-  auto fi = state_.find(fd);
+  auto fi = state_.find(s);
   if (fi == state_.end())
     return;
   pollfd &pfd = pollfds_.at(fi->second.idx);
@@ -213,13 +212,13 @@ pollset::poll(int timeout)
   if (r < 0) {
     if (errno == EINTR)
       return;
-    std::cerr << "poll: " << std::strerror(errno) << std::endl;
+    std::cerr << "poll: " << sock_errmsg() << std::endl;
     std::terminate();
   }
   size_t maxpoll = pollfds_.size();
   for (size_t i = 0; r > 0 && i < maxpoll; i++) {
     pollfd *pfp = &pollfds_.at(i);
-    fd_state &fi = state_.at(pfp->fd);
+    fd_state &fi = state_.at(sock_t(pfp->fd)); // XXX
     assert (!(pfp->revents & POLLNVAL));
     if (pfp->revents)
       --r;
@@ -302,7 +301,7 @@ void
 pollset::consolidate()
 {
   while (!pollfds_.empty() && !pollfds_.back().events) {
-    auto fi = state_.find(pollfds_.back().fd);
+    auto fi = state_.find(sock_t(pollfds_.back().fd)); // XXX
     if (fi != state_.end())
       state_.erase(fi);
     pollfds_.pop_back();
@@ -316,12 +315,12 @@ pollset::consolidate()
       pollfd &pfd1 = pollfds_.at(i);
       if (pfd1.events)
 	continue;
-      auto fi = state_.find(pfd1.fd);
+      auto fi = state_.find(sock_t(pfd1.fd)); // XXX
       if (fi != state_.end())
 	state_.erase(fi);
     }
     const pollfd &pfd = pollfds_[i] = pollfds_.back();
-    state_.at(pfd.fd).idx = i;
+    state_.at(sock_t(pfd.fd)).idx = i; // XXX
     pollfds_.pop_back();
   }
 }

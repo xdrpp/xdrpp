@@ -30,12 +30,12 @@ class msg_sock {
 public:
   using rcb_t = std::function<void(msg_ptr)>;
 
-  template<typename T> msg_sock(pollset &ps, int fd, T &&rcb,
-			       size_t maxmsglen = 0x100000)
-    : ps_(ps), fd_(fd), maxmsglen_(maxmsglen), rcb_(std::forward<T>(rcb)) {
+  template<typename T> msg_sock(pollset &ps, sock_t s, T &&rcb,
+				size_t maxmsglen = 0x100000)
+    : ps_(ps), s_(s), maxmsglen_(maxmsglen), rcb_(std::forward<T>(rcb)) {
     init();
   }
-  msg_sock(pollset &ps, int fd) : msg_sock(ps, fd, nullptr) {}
+  msg_sock(pollset &ps, sock_t s) : msg_sock(ps, s, nullptr) {}
   ~msg_sock();
   msg_sock &operator=(msg_sock &&) = delete;
 
@@ -54,7 +54,7 @@ public:
 
 private:
   pollset &ps_;
-  const int fd_;
+  const sock_t s_;
   const size_t maxmsglen_;
   std::shared_ptr<bool> destroyed_{std::make_shared<bool>(false)};
 

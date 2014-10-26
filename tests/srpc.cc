@@ -65,7 +65,7 @@ xdrtest2_server::ut(std::unique_ptr<uniontest> arg)
 }
 
 void
-getmsg(int fd)
+getmsg(sock_t fd)
 {
 #if 0
   msg_ptr p;
@@ -93,11 +93,11 @@ getmsg(int fd)
   sfd.register_service(s);
   sfd.run();
   
-  close(fd);
+  fd.close();
 }
 
 void
-sendreq(int fd)
+sendreq(sock_t fd)
 {
   srpc_client<testns::xdrtest2> sc (fd);
 
@@ -149,9 +149,9 @@ main(int argc, char **argv)
     exit(1);
   }
 
-  thread t1(sendreq, fds[0]);
+  thread t1(sendreq, sock_t(fds[0]));
 
-  getmsg(fds[1]);
+  getmsg(sock_t(fds[1]));
   
   t1.join();
 

@@ -169,7 +169,7 @@ public:
   using client_cb_t = std::function<void(rpc_msg &, xdr_get &)>;
   using server_cb_t = std::function<void(rpc_msg &, xdr_get &, arpc_sock *)>;
 
-  arpc_sock(pollset &ps, int fd);
+  arpc_sock(pollset &ps, sock_t s);
 
   template<typename P, typename...A> inline void
   invoke(const A &...a, call_cb_t<P> cb);

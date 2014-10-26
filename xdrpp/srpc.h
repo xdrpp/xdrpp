@@ -12,8 +12,8 @@ namespace xdr {
 
 extern bool xdr_trace_client;
 
-msg_ptr read_message(int fd);
-void write_message(int fd, const msg_ptr &m);
+msg_ptr read_message(sock_t s);
+void write_message(sock_t s, const msg_ptr &m);
 
 void prepare_call(uint32_t prog, uint32_t vers, uint32_t proc, rpc_msg &hdr);
 template<typename P> inline void
@@ -26,7 +26,7 @@ prepare_call(rpc_msg &hdr)
 
 //! Synchronous file descriptor demultiplexer.
 class synchronous_client_base {
-  const int fd_;
+  const sock_t s_;
 
   static void moveret(pointer<xdr_void> &) {}
   template<typename T> static T &&moveret(T &t) { return std::move(t); }
@@ -38,8 +38,8 @@ class synchronous_client_base {
   }
 
 public:
-  synchronous_client_base(int fd) : fd_(fd) {}
-  synchronous_client_base(const synchronous_client_base &c) : fd_(c.fd_) {}
+  synchronous_client_base(sock_t s) : s_(s) {}
+  synchronous_client_base(const synchronous_client_base &c) : s_(c.s_) {}
 
   template<typename P, typename...A> typename std::conditional<
     std::is_void<typename P::res_type>::value, void,
@@ -55,8 +55,8 @@ public:
       s += " -> [xid " + std::to_string(xid) + "]";
       std::clog << xdr_to_string(std::tie(a...), s.c_str());
     }
-    write_message(fd_, xdr_to_msg(hdr, a...));
-    msg_ptr m = read_message(fd_);
+    write_message(s_, xdr_to_msg(hdr, a...));
+    msg_ptr m = read_message(s_);
 
     xdr_get g(m);
     archive(g, hdr);
@@ -157,13 +157,13 @@ public:
 //! procedures will be implemented by the RPC server until interface
 //! objects are reigstered with \c register_server.
 class srpc_server : public rpc_server_base {
-  const int fd_;
+  const sock_t s_;
   bool close_on_destruction_;
 
 public:
-  srpc_server(int fd, bool close_on_destruction = true)
-    : fd_(fd), close_on_destruction_(close_on_destruction) {}
-  ~srpc_server() { if (close_on_destruction_) close(fd_); }
+  srpc_server(sock_t s, bool close_on_destruction = true)
+    : s_(s), close_on_destruction_(close_on_destruction) {}
+  ~srpc_server() { if (close_on_destruction_) s_.close(); }
 
   //! Add objects implementing RPC program interfaces to the server.
   template<typename T, typename Interface = typename T::rpc_interface_type>

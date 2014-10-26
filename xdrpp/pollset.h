@@ -57,12 +57,12 @@ private:
 
   // File descriptor callback state
   std::vector<pollfd> pollfds_;
-  std::unordered_map<int, fd_state> state_;
+  std::unordered_map<sock_t, fd_state> state_;
 
   // Timeout callback state
   std::multimap<std::int64_t, cb_t> time_cbs_;
 
-  cb_t &fd_cb_helper(int fd, op_t op);
+  cb_t &fd_cb_helper(sock_t s, op_t op);
   void consolidate();
   int next_timeout(int ms);
   void run_timeouts();
@@ -98,15 +98,15 @@ public:
   //! illegal when adding a callback (you must set \c Read and \c
   //! Write callbacks separately).  \arg \c cb is the callback, which
   //! must be convertible to PollSet::cb_t.
-  template<typename CB> void fd_cb(int fd, op_t op, CB &&cb) {
-    if (!(fd_cb_helper(fd, op) = std::forward<CB>(cb)))
-      fd_cb(fd, op);
+  template<typename CB> void fd_cb(sock_t s, op_t op, CB &&cb) {
+    if (!(fd_cb_helper(s, op) = std::forward<CB>(cb)))
+      fd_cb(s, op);
   }
 
   //! Remove a callback on a file descriptor.  If \c op is \c
   //! ReadWrite, removes both read and write callbacks on the
   //! descriptor.
-  void fd_cb(int fd, op_t op, std::nullptr_t = nullptr);
+  void fd_cb(sock_t s, op_t op, std::nullptr_t = nullptr);
 
   //! Number of milliseconds since an arbitrary but fixed time, used
   //! as the basis of all timeouts.  Time zero is
@@ -194,7 +194,7 @@ class pollset_plus : public pollset {
   };
 
   // Self-pipe used to wake up poll from signal handlers and other threads
-  int selfpipe_[2];
+  sock_t selfpipe_[2];
 
   // Asynchronous events enqueued from other threads
   std::mutex async_cbs_lock_;

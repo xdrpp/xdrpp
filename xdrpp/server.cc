@@ -117,33 +117,33 @@ rpc_server_base::dispatch(void *session, msg_ptr m, service_base::cb_t reply)
 }
 
 
-rpc_tcp_listener_common::rpc_tcp_listener_common(unique_fd &&fd, bool reg)
-  : listen_fd_(fd ? std::move(fd) : tcp_listen()),
+rpc_tcp_listener_common::rpc_tcp_listener_common(unique_sock &&s, bool reg)
+  : listen_sock_(s ? std::move(s) : tcp_listen()),
     use_rpcbind_(reg)
 {
-  set_close_on_exec(listen_fd_.get());
-  ps_.fd_cb(listen_fd_.get(), pollset::Read,
+  set_close_on_exec(listen_sock_.get());
+  ps_.fd_cb(listen_sock_.get(), pollset::Read,
 	    std::bind(&rpc_tcp_listener_common::accept_cb, this));
 }
 
 rpc_tcp_listener_common::~rpc_tcp_listener_common()
 {
-  ps_.fd_cb(listen_fd_.get(), pollset::Read);
+  ps_.fd_cb(listen_sock_.get(), pollset::Read);
 }
 
 void
 rpc_tcp_listener_common::accept_cb()
 {
-  int fd = accept(listen_fd_.get(), nullptr, 0);
-  if (fd == -1) {
-    std::cerr << "rpc_tcp_listener_common: accept: " << std::strerror(errno)
+  sock_t s = accept(listen_sock_.get(), nullptr, 0);
+  if (s == invalid_sock) {
+    std::cerr << "rpc_tcp_listener_common: accept: " << sock_errmsg()
 	      << std::endl;
     return;
   }
-  set_close_on_exec(fd);
-  msg_sock *ms = new msg_sock(ps_, fd);
+  set_close_on_exec(s);
+  msg_sock *ms = new msg_sock(ps_, s);
   ms->setrcb(std::bind(&rpc_tcp_listener_common::receive_cb, this, ms,
-		       session_alloc(fd, ms), std::placeholders::_1));
+		       session_alloc(s, ms), std::placeholders::_1));
 }
 
 void
@@ -171,5 +171,10 @@ rpc_tcp_listener_common::run()
     ps_.poll();
 }
 
+sock_t
+accept(sock_t s, sockaddr *addr, socklen_t *addrlen)
+{
+  return sock_t(::accept(s.fd_, addr, addrlen));
+}
 
 }

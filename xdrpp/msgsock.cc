@@ -12,15 +12,15 @@ namespace xdr {
 
 msg_sock::~msg_sock()
 {
-  ps_.fd_cb(fd_, pollset::ReadWrite);
-  really_close(fd_);
+  ps_.fd_cb(s_, pollset::ReadWrite);
+  s_.close();
   *destroyed_ = true;
 }
 
 void
 msg_sock::init()
 {
-  set_nonblock(fd_);
+  set_nonblock(s_);
   initcb();
 }
 
@@ -28,9 +28,9 @@ void
 msg_sock::initcb()
 {
   if (rcb_)
-    ps_.fd_cb(fd_, pollset::Read, [this](){ input(); });
+    ps_.fd_cb(s_, pollset::Read, [this](){ input(); });
   else
-    ps_.fd_cb(fd_, pollset::Read);
+    ps_.fd_cb(s_, pollset::Read);
 }
 
 void
@@ -44,14 +44,14 @@ msg_sock::input()
       iov[0].iov_len = rdmsg_->size() - rdpos_;
       iov[1].iov_base = nextlenp();
       iov[1].iov_len = sizeof nextlen_;
-      ssize_t n = readv(fd_, iov, 2);
+      ssize_t n = s_.readv(iov, 2);
       if (n <= 0) {
 	if (n < 0 && eagain(errno))
 	  return;
 	if (n == 0)
 	  errno = ECONNRESET;
 	else
-	  std::cerr << "msg_sock::input: " << std::strerror(errno) << std::endl;
+	  std::cerr << "msg_sock::input: " << sock_errmsg() << std::endl;
 	rcb_(nullptr);
 	return;
       }
@@ -64,14 +64,14 @@ msg_sock::input()
       }
     }
     else if (rdpos_ < sizeof nextlen_) {
-      ssize_t n = read(fd_, nextlenp() + rdpos_, sizeof nextlen_ - rdpos_);
+      ssize_t n = s_.read(nextlenp() + rdpos_, sizeof nextlen_ - rdpos_);
       if (n <= 0) {
 	if (n < 0 && eagain(errno))
 	  return;
 	if (n == 0)
 	  errno = rdpos_ ? ECONNRESET : 0;
 	else
-	  std::cerr << "msg_sock::input: " << std::strerror(errno) << std::endl;
+	  std::cerr << "msg_sock::input: " << sock_errmsg() << std::endl;
 	rcb_(nullptr);
 	return;
       }
@@ -105,7 +105,7 @@ msg_sock::input()
     else {
       std::cerr << "msg_sock: rejecting " << len << "-byte message (too long)"
 		<< std::endl;
-      ps_.fd_cb(fd_, pollset::Read);
+      ps_.fd_cb(s_, pollset::Read);
     }
     if (rdmsg_)
       rdpos_ = 0;
@@ -168,7 +168,7 @@ msg_sock::output(bool cbset)
       v[i].iov_base = const_cast<char *> ((*b)->raw_data()) + wstart_;
     }
   }
-  ssize_t n = writev(fd_, v, i);
+  ssize_t n = s_.writev(v, i);
   if (n <= 0) {
     if (n != -1 || !eagain(errno)) {
       wfail_ = true;
@@ -180,9 +180,9 @@ msg_sock::output(bool cbset)
   pop_wbytes(n);
 
   if (wsize_ && !cbset)
-    ps_.fd_cb(fd_, pollset::Write, [this](){ output(true); });
+    ps_.fd_cb(s_, pollset::Write, [this](){ output(true); });
   else if (!wsize_ && cbset)
-    ps_.fd_cb(fd_, pollset::Write);
+    ps_.fd_cb(s_, pollset::Write);
 }
 
 }
