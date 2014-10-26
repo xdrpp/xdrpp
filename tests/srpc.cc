@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <thread>
 #include <xdrpp/srpc.h>
-#include <xdrpp/rpcbind.hh>
+#include <xdrpp/rpcb_prot.hh>
 #include <xdrpp/socket.h>
 #include <xdrpp/clear.h>
 #include "tests/xdrtest.hh"
@@ -93,7 +93,7 @@ getmsg(sock_t fd)
   sfd.register_service(s);
   sfd.run();
   
-  fd.close();
+  close(fd);
 }
 
 void

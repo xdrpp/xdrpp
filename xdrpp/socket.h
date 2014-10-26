@@ -7,59 +7,68 @@
 
 #include <memory>
 #include <system_error>
+#if MSVC
+#include <WinSock2.h>
+struct iovec {
+  void *iov_base;
+  size_t iov_len;
+};
+#else // !MSVC
 #include <netdb.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#endif // !MSVC
 
 namespace xdr {
 
 //! Abstract away the type of a socket (for windows).
 struct sock_t {
-  int fd_;
+#if MSVC
+  using type = SOCKET;
+  static constexpr type invalid = INVALID_SOCKET;
+#else // !MSVC
+  using type = int;
+  static constexpr type invalid = -1;
+#endif // !MSVC
 
-  constexpr sock_t() : fd_{-1} {}
-  constexpr explicit sock_t(int fd) : fd_(fd) {}
+  type fd_;
+  constexpr sock_t() : fd_(invalid) {}
+  constexpr sock_t(type fd) : fd_(fd) {}
 
   bool operator==(sock_t s) const { return fd_ == s.fd_; }
+  bool operator!=(sock_t s) const { return fd_ != s.fd_; }
   bool operator<(sock_t s) const { return fd_ < s.fd_; }
-
-  ssize_t read(void *buf, std::size_t count) const {
-    return ::read(fd_, buf, count);
-  }
-  ssize_t readv(const struct iovec *iov, int iovcnt) const {
-    return ::readv(fd_, iov, iovcnt);
-  }
-  ssize_t write(const void *buf, std::size_t count) const {
-    return ::write(fd_, buf, count);
-  }
-  ssize_t writev(const struct iovec *iov, int iovcnt) const {
-    return ::writev(fd_, iov, iovcnt);
-  }
-  void close() const;
+  explicit operator bool() const { return fd_ != invalid; }
+  type fd() const { return fd_; }
 };
-constexpr sock_t invalid_sock;
-
 } namespace std {
 template<> struct hash<xdr::sock_t> {
   using argument_type = xdr::sock_t;
   using result_type = size_t;
   constexpr hash() {}
-  size_t operator()(const xdr::sock_t s) const { return s.fd_; }
+  size_t operator()(const xdr::sock_t s) const { return s.fd(); }
 };
 } namespace xdr {
 
-inline bool
-operator!=(sock_t s1, sock_t s2) {
-  return !(s1 == s2);
-}
+constexpr sock_t invalid_sock{};
+
+//! Returns true if the most recent (socket) error is a temporary
+//! error, such as EAGAIN, EWOULDBLOCK, or EINTR.
+bool sock_eagain();
 
 //! Last socket error message (\c strerror(errno) on POSIX).
 const char *sock_errmsg();
 
 //! Throw a \c system_error exception for the last socket error.
 [[noreturn]] void throw_sockerr(const char *);
+
+ssize_t read(sock_t s, void *buf, std::size_t count);
+ssize_t write(sock_t s, const void *buf, std::size_t count);
+ssize_t readv(sock_t s, const struct iovec *iov, int iovcnt);
+ssize_t writev(sock_t s, const struct iovec *iov, int iovcnt);
+void close(sock_t s);
 
 //! Set the \c O_NONBLOCK flag on a socket.  \throws std::system_error
 //! on failure.
@@ -68,6 +77,19 @@ void set_nonblock(sock_t s);
 //! Set the close-on-exec flag of a file descriptor.  \throws
 //! std::system_error on failure.
 void set_close_on_exec(sock_t s);
+
+//! Wrapper around accept for sock_t.
+inline sock_t
+accept(sock_t s, sockaddr *addr, socklen_t *addrlen)
+{
+  return ::accept(s.fd(), addr, addrlen);
+}
+
+//! Create a socket (or pipe on unix, where both are file descriptors)
+//! that is connected to itself.
+void create_selfpipe(sock_t ss[2]);
+
+// The remaining functions should be the same on Unix/Windows
 
 //! Category for system errors dealing with DNS (getaddrinfo, etc.).
 const std::error_category &gai_category();
@@ -124,8 +146,8 @@ public:
     return ret;
   }
   void clear() {
-    if (s_ != invalid_sock) {
-      s_.close();
+    if (s_) {
+      close(s_);
       s_ = invalid_sock;
     }
   }
@@ -145,35 +167,10 @@ tcp_connect(const unique_addrinfo &ai)
 unique_sock tcp_connect(const char *host, const char *service,
 			int family = AF_UNSPEC);
 
-//! Create a TCP connection to an RPC server on \c host, first
-//! querying \c rpcbind on \c host to determine the port.
-unique_sock tcp_connect_rpc(const char *host,
-			    std::uint32_t prog, std::uint32_t vers,
-			    int family = AF_UNSPEC);
-
-//! Create and bind a TCP socket on which it is suitable to called \c
-//! listen.  (Note that this function doesn't call \c listen itself,
-//! but binds the socket so you can.)
-unique_sock tcp_listen(const char *service = "0", int family = AF_UNSPEC);
-
-//! Extract the port number from an RFC1833 / RFC5665 universal
-//! network address (uaddr).
-int parse_uaddr_port(const std::string &uaddr);
-
-//! Create a uaddr for a local address or file descriptor.
-std::string make_uaddr(const sockaddr *sa, socklen_t salen);
-std::string make_uaddr(sock_t s);
-//! Register a service listening on \c sa with \c rpcbind.
-void rpcbind_register(const sockaddr *sa, socklen_t salen,
-		      std::uint32_t prog, std::uint32_t vers);
-void rpcbind_register(sock_t s, std::uint32_t prog, std::uint32_t vers);
-
-//! Wrapper around accept for sock_t.
-sock_t accept(sock_t s, sockaddr *addr, socklen_t *addrlen);
-
-//! Create a socket (or pipe on unix, where both are file descriptors)
-//! that is connected to itself.
-void create_selfpipe(sock_t ss[2]);
+//! Create bind a listening TCP socket.
+unique_sock tcp_listen(const char *service = "0",
+		       int family = AF_UNSPEC,
+		       int backlog = 5);
 
 }
 

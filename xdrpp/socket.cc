@@ -1,67 +1,12 @@
-
 #include <cstring>
-#include <iostream>
-#include <sstream>
-#include <vector>
-#include <fcntl.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <xdrpp/rpcbind.hh>
+#include <string>
 #include <xdrpp/socket.h>
-#include <xdrpp/srpc.h>
 
 namespace xdr {
 
 using std::string;
 
-namespace {
-
-std::vector<rpcb> registered_services;
-
-void
-run_cleanup()
-{
-  try {
-    auto fd = tcp_connect(nullptr, "sunrpc");
-    srpc_client<xdr::RPCBVERS4> c{fd.get()};
-    for (const auto &arg : registered_services)
-      c.RPCBPROC_UNSET(arg);
-  }
-  catch (...) {}
-}
-
-void
-set_cleanup()
-{
-  static struct once {
-    once() { atexit(run_cleanup); }
-  } o;
-}
-
-}
-
-const char *
-sock_errmsg()
-{
-  return std::strerror(errno);
-}
-
-void
-throw_sockerr(const char *msg)
-{
-  throw std::system_error(errno, std::system_category(), msg);
-}
-
-void
-sock_t::close() const
-{
-  while (::close(fd_) == -1)
-    if (errno != EINTR) {
-      std::cerr << "sock_t::close: " << sock_errmsg() << std::endl;
-      return;
-    }
-}
-
+#if 0
 string
 addrinfo_to_string(const addrinfo *ai)
 {
@@ -82,29 +27,14 @@ addrinfo_to_string(const addrinfo *ai)
   }
   return os.str();
 }
+#endif
 
-void
-set_nonblock(sock_t s)
-{
-  int n;
-  if ((n = fcntl (s.fd_, F_GETFL)) == -1
-      || fcntl (s.fd_, F_SETFL, n | O_NONBLOCK) == -1)
-    throw_sockerr("O_NONBLOCK");
-}
-
-void
-set_close_on_exec(sock_t s)
-{
-  int n;
-  if ((n = fcntl(s.fd_, F_GETFD)) == -1
-      || fcntl(s.fd_, F_SETFD, n | FD_CLOEXEC) == -1)
-    throw_sockerr("F_SETFD");
-}
-
+namespace{
 struct gai_category_impl : public std::error_category {
   const char *name() const noexcept override { return "DNS"; }
   string message(int err) const override { return gai_strerror(err); }
 };
+}
 
 const std::error_category &
 gai_category()
@@ -114,7 +44,6 @@ gai_category()
 }
 
 namespace {
-
 string
 cat_host_service(const char *host, const char *service)
 {
@@ -134,8 +63,7 @@ cat_host_service(const char *host, const char *service)
   }
   return target;
 }
-
-}
+} // namespace
 
 unique_addrinfo get_addrinfo(const char *host, int socktype,
 			     const char *service, int family)
@@ -150,95 +78,6 @@ unique_addrinfo get_addrinfo(const char *host, int socktype,
     throw std::system_error(err, gai_category(),
 			    cat_host_service(host, service));
   return unique_addrinfo(res);
-}
-
-int
-parse_uaddr_port(const string &uaddr)
-{
-  std::size_t low = uaddr.rfind('.');
-  if (low == string::npos || low == 0)
-    return -1;
-  std::size_t high = uaddr.rfind('.', low - 1);
-  if (high == string::npos)
-    return -1;
-
-  try {
-    int hb = std::stoi(uaddr.substr(high+1));
-    int lb = std::stoi(uaddr.substr(low+1));
-    if (hb < 0 || hb > 255 || lb < 0 || lb > 255)
-      return -1;
-    return hb << 8 | lb;
-  }
-  catch (std::invalid_argument &) {
-    return -1;
-  }
-  catch (std::out_of_range &) {
-    return -1;
-  }
-}
-
-string
-make_uaddr(const sockaddr *sa, socklen_t salen)
-{
-  string host, portstr;
-  get_numinfo(sa, salen, &host, &portstr);
-  unsigned port = std::stoul(portstr);
-  if (port == 0 || port >= 65536)
-    throw std::system_error(std::make_error_code(std::errc::invalid_argument),
-			    "bad port number");
-  host += "." + std::to_string(port >> 8) + "." + std::to_string(port & 0xff);
-  return host;
-}
-
-string
-make_uaddr(sock_t s)
-{
-  union {
-    struct sockaddr sa;
-    struct sockaddr_storage ss;
-  };
-  socklen_t salen{sizeof ss};
-  std::memset(&ss, 0, salen);
-  if (getsockname(s.fd_, &sa, &salen) == -1)
-    throw_sockerr("getsockname");
-  return make_uaddr(&sa, salen);
-}
-
-void
-rpcbind_register(const sockaddr *sa, socklen_t salen,
-		 std::uint32_t prog, std::uint32_t vers)
-{
-  set_cleanup();
-
-  auto fd = tcp_connect(nullptr, "sunrpc", sa->sa_family);
-  srpc_client<xdr::RPCBVERS4> c{fd.get()};
-
-  rpcb arg;
-  arg.r_prog = prog;
-  arg.r_vers = vers;
-  arg.r_netid = sa->sa_family == AF_INET6 ? "tcp6" : "tcp";
-  arg.r_addr = make_uaddr(sa, salen);
-  arg.r_owner = std::to_string(geteuid());
-  c.RPCBPROC_UNSET(arg);
-  auto res = c.RPCBPROC_SET(arg);
-  if (!*res)
-    throw std::system_error(std::make_error_code(std::errc::address_in_use),
-			    "RPCBPROC_SET");
-  registered_services.push_back(arg);
-}
-
-void
-rpcbind_register(sock_t s, std::uint32_t prog, std::uint32_t vers)
-{
-  union {
-    struct sockaddr sa;
-    struct sockaddr_storage ss;
-  };
-  socklen_t salen{sizeof ss};
-  std::memset(&ss, 0, salen);
-  if (getsockname(s.fd_, &sa, &salen) == -1)
-    throw_sockerr("getsockname");
-  rpcbind_register(&sa, salen, prog, vers);
 }
 
 void get_numinfo(const sockaddr *sa, socklen_t salen,
@@ -260,8 +99,7 @@ void get_numinfo(const sockaddr *sa, socklen_t salen,
 unique_sock
 tcp_connect1(const addrinfo *ai, bool ndelay)
 {
-  unique_sock s(sock_t(socket(ai->ai_family, ai->ai_socktype,
-			      ai->ai_protocol)));
+  unique_sock s(socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol));
   if (!s)
     throw_sockerr("socket");
   if (ndelay)
@@ -290,47 +128,7 @@ tcp_connect(const char *host, const char *service, int family)
 }
 
 unique_sock
-tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
-		int family)
-{
-  unique_addrinfo ail = get_addrinfo(host, SOCK_STREAM, "sunrpc", family);
-
-  for (const addrinfo *ai = ail.get(); ai; ai = ai->ai_next) {
-    try {
-      auto s = tcp_connect1(ai);
-      srpc_client<xdr::RPCBVERS4> c{s.get()};
-
-      rpcb arg;
-      arg.r_prog = prog;
-      arg.r_vers = vers;
-      arg.r_netid = ai->ai_family == AF_INET6 ? "tcp6" : "tcp";
-      arg.r_addr = make_uaddr(s.get());
-      auto res = c.RPCBPROC_GETADDR(arg);
-
-      int port = parse_uaddr_port(*res);
-      if (port == -1)
-	continue;
-
-      switch (ai->ai_family) {
-      case AF_INET:
-	((sockaddr_in *) ai->ai_addr)->sin_port = htons(port);
-	break;
-      case AF_INET6:
-	((sockaddr_in6 *) ai->ai_addr)->sin6_port = htons(port);
-	break;
-      }
-      s.clear();
-      if ((s = tcp_connect1(ai)))
-	return s;
-    }
-    catch(const std::system_error &) {}
-  }
-  throw std::system_error(std::make_error_code(std::errc::connection_refused),
-			  "Could not obtain port from rpcbind");
-}
-
-unique_sock
-tcp_listen(const char *service, int family)
+tcp_listen(const char *service, int family, int backlog)
 {
   addrinfo hints, *res;
   std::memset(&hints, 0, sizeof(hints));
@@ -351,19 +149,12 @@ tcp_listen(const char *service, int family)
     throw_sockerr("socket");
   if (bind(s.get().fd_, ai->ai_addr, ai->ai_addrlen) == -1)
     throw_sockerr("bind");
-  if (listen (s.get().fd_, 5) == -1)
+  if (listen (s.get().fd_, backlog) == -1)
     throw_sockerr("listen");
   return s;
 }
 
-void
-create_selfpipe(sock_t ss[2])
-{
-  int fds[2];
-  if (pipe(fds) == -1)
-    throw std::system_error(errno, std::system_category(), "pipe");
-  ss[0] = sock_t(fds[0]);
-  ss[1] = sock_t(fds[1]);
-}
+
+
 
 }

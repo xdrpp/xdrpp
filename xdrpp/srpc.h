@@ -163,7 +163,7 @@ class srpc_server : public rpc_server_base {
 public:
   srpc_server(sock_t s, bool close_on_destruction = true)
     : s_(s), close_on_destruction_(close_on_destruction) {}
-  ~srpc_server() { if (close_on_destruction_) s_.close(); }
+  ~srpc_server() { if (close_on_destruction_) close(s_); }
 
   //! Add objects implementing RPC program interfaces to the server.
   template<typename T, typename Interface = typename T::rpc_interface_type>

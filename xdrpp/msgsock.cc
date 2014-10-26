@@ -13,7 +13,7 @@ namespace xdr {
 msg_sock::~msg_sock()
 {
   ps_.fd_cb(s_, pollset::ReadWrite);
-  s_.close();
+  close(s_);
   *destroyed_ = true;
 }
 
@@ -44,7 +44,7 @@ msg_sock::input()
       iov[0].iov_len = rdmsg_->size() - rdpos_;
       iov[1].iov_base = nextlenp();
       iov[1].iov_len = sizeof nextlen_;
-      ssize_t n = s_.readv(iov, 2);
+      ssize_t n = readv(s_, iov, 2);
       if (n <= 0) {
 	if (n < 0 && eagain(errno))
 	  return;
@@ -64,7 +64,7 @@ msg_sock::input()
       }
     }
     else if (rdpos_ < sizeof nextlen_) {
-      ssize_t n = s_.read(nextlenp() + rdpos_, sizeof nextlen_ - rdpos_);
+      ssize_t n = read(s_, nextlenp() + rdpos_, sizeof nextlen_ - rdpos_);
       if (n <= 0) {
 	if (n < 0 && eagain(errno))
 	  return;
@@ -168,7 +168,7 @@ msg_sock::output(bool cbset)
       v[i].iov_base = const_cast<char *> ((*b)->raw_data()) + wstart_;
     }
   }
-  ssize_t n = s_.writev(v, i);
+  ssize_t n = writev(s_, v, i);
   if (n <= 0) {
     if (n != -1 || !eagain(errno)) {
       wfail_ = true;

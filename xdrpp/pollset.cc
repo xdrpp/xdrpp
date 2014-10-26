@@ -54,8 +54,8 @@ pollset_plus::~pollset_plus()
   }
 
   fd_cb(selfpipe_[0], Read);
-  selfpipe_[0].close();
-  selfpipe_[1].close();
+  close(selfpipe_[0]);
+  close(selfpipe_[1]);
 }
 
 pollset::fd_state::~fd_state()
@@ -68,7 +68,7 @@ void
 pollset_plus::wake(wake_type wt)
 {
   static_assert(sizeof wt == 1, "uint8_t enum has wrong size");
-  selfpipe_[1].write(&wt, 1);
+  write(selfpipe_[1], &wt, 1);
 }
 
 void
@@ -90,7 +90,7 @@ pollset_plus::run_pending_asyncs()
   {
     wake_type buf[128];
     int n;
-    while ((n = selfpipe_[0].read(buf, sizeof buf)) > 0)
+    while ((n = read(selfpipe_[0], buf, sizeof buf)) > 0)
       for (int i = 0; i < n && !signal_pending_; i++)
 	if (buf[i] == wake_type::Signal)
 	  signal_pending_ = true;

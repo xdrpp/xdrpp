@@ -10,20 +10,20 @@ xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
 BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
-	xdrpp/rpc_msg.hh xdrpp/rpcbind.hh
+	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh
 
 lib_LIBRARIES = xdrpp/libxdrpp.a
 xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
 	xdrpp/msgsock.cc xdrpp/printer.cc xdrpp/pollset.cc	\
-	xdrpp/rpc_msg.cc xdrpp/server.cc xdrpp/socket.cc	\
-	xdrpp/srpc.cc xdrpp/arpc.cc
+	xdrpp/rpcbind.cc xdrpp/rpc_msg.cc xdrpp/server.cc	\
+	xdrpp/socket.cc xdrpp/socket_unix.cc xdrpp/srpc.cc xdrpp/arpc.cc
 
 nodist_pkginclude_HEADERS = xdrpp/endian.h
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
 	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
 	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
 	xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h xdrpp/server.h	\
-	xdrpp/socket.h xdrpp/srpc.h
+	xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xdrpp.pc
@@ -56,10 +56,10 @@ SUFFIXES = .x .hh
 	$(XDRC) -hh -o $@ $<
 $(top_builddir)/tests/xdrtest.hh: $(XDRC)
 $(top_builddir)/xdrpp/rpc_msg.hh: $(XDRC)
-$(top_builddir)/xdrpp/rpcbind.hh: $(XDRC)
+$(top_builddir)/xdrpp/rpcb_prot.hh: $(XDRC)
 
 CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh	\
-	xdrpp/rpc_msg.hh xdrpp/rpcbind.hh
+	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh
 
 $(srcdir)/doc/xdrc.1: $(srcdir)/doc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/doc/xdrc.1.md -o $(srcdir)/doc/xdrc.1
@@ -73,8 +73,9 @@ maintainer-clean-local:
 
 man_MANS = doc/xdrc.1
 EXTRA_DIST = .gitignore doc/xdrc.1 doc/xdrc.1.md xdrpp/endian.h.in	\
-	xdrpp/rpc_msg.x xdrpp/rpcbind.x tests/xdrtest.x			\
-	doc/rfc1833.txt doc/rfc4506.txt doc/rfc5531.txt doc/rfc5665.txt
+	xdrpp/rpc_msg.x xdrpp/rpcb_prot.x tests/xdrtest.x		\
+	doc/rfc1833.txt doc/rfc4506.txt doc/rfc5531.txt			\
+	doc/rfc5665.txt
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 	$(srcdir)/doc/xdrc.1
 

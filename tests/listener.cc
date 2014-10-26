@@ -4,8 +4,8 @@
 #include <sys/socket.h>
 #include <thread>
 #include <xdrpp/srpc.h>
-#include <xdrpp/rpcbind.hh>
-#include <xdrpp/socket.h>
+#include <xdrpp/rpcb_prot.hh>
+#include <xdrpp/rpcbind.h>
 #include "tests/xdrtest.hh"
 
 using namespace std;

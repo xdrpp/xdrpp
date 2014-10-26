@@ -14,7 +14,7 @@ msg_ptr
 read_message(sock_t s)
 {
   std::uint32_t len;
-  ssize_t n = s.read(&len, 4);
+  ssize_t n = read(s, &len, 4);
   if (n == -1)
     throw xdr_system_error("xdr::read_message");
   if (n < 4)
@@ -31,7 +31,7 @@ read_message(sock_t s)
     throw xdr_bad_message_size("read_message: message fragments unimplemented");
 
   msg_ptr m = message_t::alloc(len);
-  n = s.read(m->data(), len);
+  n = read(s, m->data(), len);
   if (n == -1)
     throw xdr_system_error("xdr::read_message");
   if (n != len)
@@ -43,7 +43,7 @@ read_message(sock_t s)
 void
 write_message(sock_t s, const msg_ptr &m)
 {
-  ssize_t n = s.write(m->raw_data(), m->raw_size());
+  ssize_t n = write(s, m->raw_data(), m->raw_size());
   if (n == -1)
     throw xdr_system_error("xdr::write_message");
   // If this assertion fails, the file descriptor may have had

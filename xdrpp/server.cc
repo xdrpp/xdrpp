@@ -118,8 +118,7 @@ rpc_server_base::dispatch(void *session, msg_ptr m, service_base::cb_t reply)
 
 
 rpc_tcp_listener_common::rpc_tcp_listener_common(unique_sock &&s, bool reg)
-  : listen_sock_(s ? std::move(s) : tcp_listen()),
-    use_rpcbind_(reg)
+  : listen_sock_(s ? std::move(s) : tcp_listen()), use_rpcbind_(reg)
 {
   set_close_on_exec(listen_sock_.get());
   ps_.fd_cb(listen_sock_.get(), pollset::Read,
@@ -169,12 +168,6 @@ rpc_tcp_listener_common::run()
 {
   while (ps_.pending())
     ps_.poll();
-}
-
-sock_t
-accept(sock_t s, sockaddr *addr, socklen_t *addrlen)
-{
-  return sock_t(::accept(s.fd_, addr, addrlen));
 }
 
 }
