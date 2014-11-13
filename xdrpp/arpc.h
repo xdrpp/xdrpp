@@ -15,20 +15,14 @@ class reply_cb_impl {
   template<typename T> friend class xdr::reply_cb;
   using cb_t = service_base::cb_t;
   uint32_t xid_;
-  unsigned refcount_{0};
   cb_t cb_;
   const char *const proc_name_;
 
   template<typename CB> reply_cb_impl(uint32_t xid, CB &&cb, const char *name)
     : xid_(xid), cb_(std::forward<CB>(cb)), proc_name_(name) {}
-#if !MSVC
   reply_cb_impl(const reply_cb_impl &rcb) = delete;
   reply_cb_impl &operator=(const reply_cb_impl &rcb) = delete;
-#endif // !MSVC
   ~reply_cb_impl() { if (cb_) reject(PROC_UNAVAIL); }
-
-  void ref() { refcount_++; }
-  void unref() { if (!--refcount_) delete this; }
 
   void send_reply_msg(msg_ptr &&b) {
     assert(cb_);		// If this fails you replied twice
@@ -56,32 +50,18 @@ class reply_cb_impl {
 
 } // namespace detail
 
-// Because before C++14 it is a pain to move values into closures, we
-// implement \c reply_cb as a reference-counted type that can be
-// copied.  Note, however, that it is not thread-safe, as the
-// reference count is not protected with a lock.  This means you
-// shouldn't attempt to use a \c reply_cb in a different thread (at
-// least without doing some fairly convoluted synchronization to make
-// sure the copy in the parent is not destroyed simultaneously with
-// the one in the child thread).
+// Prior to C++14, it's a pain to move objects into another thread.
+// Hence we used shared_ptr to make reply_cb copyable as well as
+// moveable.
 template<typename T> class reply_cb {
   using impl_t = detail::reply_cb_impl;
 public:
   using type = T;
-  impl_t *impl_;
+  std::shared_ptr<impl_t> impl_;
 
-  reply_cb() : impl_(nullptr) {}
+  reply_cb() {}
   template<typename CB> reply_cb(uint32_t xid, CB &&cb, const char *name)
-    : impl_(new impl_t(xid, std::forward<CB>(cb), name)) { impl_->ref(); }
-  reply_cb(const reply_cb &&rcb) : impl_(rcb.impl_) { impl_->ref(); }
-  ~reply_cb() { if(impl_) impl_->unref(); }
-  reply_cb &operator=(const reply_cb &rcb) {
-    if (rcb.impl_)
-      rcb.impl_->ref();
-    if (impl_)
-      impl_->unref();
-    impl_ = rcb.impl_;
-  }
+    : impl_(std::make_shared<impl_t>(xid, std::forward<CB>(cb), name)) {}
 
   void operator()(const type &t) { impl_->send_reply(t); }
   void reject(accept_stat stat) { impl_->reject(stat); }
