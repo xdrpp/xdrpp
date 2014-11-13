@@ -90,6 +90,38 @@ struct msg_sock_put_t {
   void operator()(msg_ptr b) const { ms_->putmsg(b); }
 };
 
-}
+
+class rpc_sock {
+  uint32_t xid_{0};
+  std::unordered_map<uint32_t, msg_sock::rcb_t> calls_;
+
+  void abort_all_calls();
+  void recv_msg(msg_ptr b);
+public:
+  std::unique_ptr<msg_sock> ms_;
+
+  rpc_sock(pollset &ps, sock_t s, size_t maxmsglen = 0x100000)
+    : ms_(new msg_sock(ps, s,
+		       std::bind(&rpc_sock::recv_msg, this,
+				 std::placeholders::_1),
+		       maxmsglen)) {}
+  ~rpc_sock() { abort_all_calls(); }
+
+  uint32_t get_xid() {
+    while (calls_.find(++xid_) == calls_.end())
+      ;
+    return xid_;
+  }
+
+  void send_call(msg_ptr &b, msg_sock::rcb_t cb);
+  void send_call(msg_ptr &&b, msg_sock::rcb_t cb) { send_call(b, cb); }
+  void send_reply(msg_ptr &b) { ms_->putmsg(b); }
+  void send_reply(msg_ptr &&b) { ms_->putmsg(std::move(b)); }
+
+  virtual void recv_call(msg_ptr);
+};
+
+
+} // namespace xdr 
 
 #endif // !_XDRPP_MSGSOCK_H_INCLUDED_

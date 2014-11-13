@@ -2,6 +2,9 @@
 
 //! \file arpc.h Asynchronous RPC interface.
 
+#ifndef _XDRPP_ARPC_H_HEADER_INCLUDED_
+#define _XDRPP_ARPC_H_HEADER_INCLUDED_ 1
+
 #include <xdrpp/exception.h>
 #include <xdrpp/server.h>
 
@@ -219,3 +222,4 @@ arpc_sock::invoke(const typename P::arg_wire_type &arg, call_cb_t<P> cb)
 
 }
 
+#endif // !_XDRPP_ARPC_H_HEADER_INCLUDED_

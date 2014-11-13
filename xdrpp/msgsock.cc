@@ -7,6 +7,8 @@
 #include <sys/uio.h>
 
 #include <xdrpp/msgsock.h>
+#include <xdrpp/rpc_msg.hh>
+#include <xdrpp/server.h>
 
 namespace xdr {
 
@@ -184,5 +186,54 @@ msg_sock::output(bool cbset)
   else if (!wsize_ && cbset)
     ps_.fd_cb(s_, pollset::Write);
 }
+
+void
+rpc_sock::abort_all_calls()
+{
+  decltype(calls_) calls(std::move(calls_));
+  calls_.clear();
+  for (auto &call : calls)
+    try { call.second(nullptr); }
+    catch (const std::exception &e) {
+      std::cerr << e.what() << std::endl;
+    }
+}
+
+void
+rpc_sock::recv_msg(msg_ptr b)
+{
+  if (!b || b->size() < 8 || b->word(1) > REPLY) {
+    abort_all_calls();
+    recv_call(nullptr);
+  }
+  else if (b->word(1) == CALL)
+    recv_call(std::move(b));
+  else {
+    auto calli = calls_.find(b->word(0));
+    if (calli == calls_.end()) {
+      std::cerr << "ignoring reply to unknown call" << std::endl;
+      return;
+    }
+    auto cb (std::move(calli->second));
+    calls_.erase(calli);
+    cb(std::move(b));
+  }
+}
+
+void
+rpc_sock::send_call(msg_ptr &b, msg_sock::rcb_t cb)
+{
+  calls_.emplace(b->word(0), std::move(cb));
+  ms_->putmsg(b);
+}
+
+void
+rpc_sock::recv_call(msg_ptr b)
+{
+  if (b && b->size() >= 4)
+    send_reply(rpc_accepted_error_msg(b->word(0), PROG_UNAVAIL));
+}
+
+
 
 }

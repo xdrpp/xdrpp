@@ -25,7 +25,10 @@ public:
   std::size_t size() const { return size_; }
   char *data() { return buf_ + 4; }
   const char *data() const { return buf_ + 4; }
-  const void *offset(std::ptrdiff_t i) const { return buf_ + i; }
+  const uint32_t word(std::ptrdiff_t i) const { 
+    return reinterpret_cast<const uint32_t *>(data())[i];
+  }
+  //const void *offset(std::ptrdiff_t i) const { return buf_ + i; }
   //! End of the buffer (one past last byte).
   char *end() { return buf_ + 4 + size_; }
   const char *end() const { return buf_ + 4 + size_; }
