@@ -153,7 +153,7 @@ public:
   }
 };
 
-//! Attach a RPC services to a single, connected stream socket.  No
+//! Attach RPC services to a single, connected stream socket.  No
 //! procedures will be implemented by the RPC server until interface
 //! objects are reigstered with \c register_server.
 class srpc_server : public rpc_server_base {

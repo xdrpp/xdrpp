@@ -163,12 +163,12 @@ template<typename S> struct session_allocator {
   constexpr session_allocator() {}
   //! Trivial session allocator.  The file descriptor is only for
   //! calls like getsockname, not for IO.
-  S *allocate(sock_t s, msg_sock *ms) { return new S{s, ms}; }
+  S *allocate(rpc_sock *s) { return new S{s}; }
   void deallocate(S *session) { delete session; }
 };
 template<> struct session_allocator<void> {
   constexpr session_allocator() {}
-  void *allocate(sock_t s, msg_sock *ms) { return nullptr; }
+  void *allocate(rpc_sock *s) { return nullptr; }
   void deallocate(void *) {}
 };
 
@@ -217,7 +217,7 @@ public:
 //! program/version interfaces to accepted connections.
 class rpc_tcp_listener_common : public rpc_server_base {
   void accept_cb();
-  void receive_cb(msg_sock *ms, void *session, msg_ptr mp);
+  void receive_cb(rpc_sock *ms, void *session, msg_ptr mp);
 
 protected:
   pollset ps_;
@@ -227,7 +227,7 @@ protected:
   rpc_tcp_listener_common()
     : rpc_tcp_listener_common(unique_sock(invalid_sock), true) {}
   virtual ~rpc_tcp_listener_common();
-  virtual void *session_alloc(sock_t s, msg_sock *) = 0;
+  virtual void *session_alloc(rpc_sock *) = 0;
   virtual void session_free(void *session) = 0;
 
 public:
@@ -239,8 +239,8 @@ template<template<typename, typename, typename> class ServiceType,
 class generic_rpc_tcp_listener : public rpc_tcp_listener_common {
   SessionAllocator sa_;
 protected:
-  void *session_alloc(sock_t s, msg_sock *ms) override {
-    return sa_.allocate(s, ms);
+  void *session_alloc(rpc_sock *s) override {
+    return sa_.allocate(s);
   }
   void session_free(void *session) override { sa_.deallocate(session); }
 public:

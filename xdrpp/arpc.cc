@@ -4,13 +4,14 @@
 namespace xdr {
 
 void
-arpc_server::receive(msg_sock *ms, msg_ptr buf)
+arpc_server::receive(rpc_sock *ms, msg_ptr buf)
 {
-  dispatch(nullptr, std::move(buf), msg_sock_put_t{ms});
+  dispatch(nullptr, std::move(buf), rpc_sock_reply_t{ms});
 }
 
+#if 0
 arpc_sock::arpc_sock(pollset &ps, sock_t s)
-  : ms_(new msg_sock(ps, s, std::bind(&arpc_sock::receive, this,
+  : ms_(new rpc_sock(ps, s, std::bind(&arpc_sock::receive, this,
 				      std::placeholders::_1)))
 {
 }
@@ -33,6 +34,7 @@ void
 arpc_sock::receive(msg_ptr buf)
 {
 }
+#endif
 
 
 }

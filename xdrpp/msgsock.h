@@ -28,10 +28,11 @@ namespace xdr {
  */
 class msg_sock {
 public:
+  static constexpr std::size_t default_maxmsglen = 0x100000;
   using rcb_t = std::function<void(msg_ptr)>;
 
   template<typename T> msg_sock(pollset &ps, sock_t s, T &&rcb,
-				size_t maxmsglen = 0x100000)
+				size_t maxmsglen = default_maxmsglen)
     : ps_(ps), s_(s), maxmsglen_(maxmsglen), rcb_(std::forward<T>(rcb)) {
     init();
   }
@@ -51,6 +52,9 @@ public:
   //! msg_sock has been deleted.
   std::shared_ptr<const bool> destroyed_ptr() const { return destroyed_; }
   pollset &get_pollset() { return ps_; }
+  //! Returns the socket, but do not do IO on it.  This is just for
+  //! calling things like \c getpeername.
+  sock_t get_sock() const { return s_; }
 
 private:
   pollset &ps_;
@@ -81,15 +85,6 @@ private:
   void output(bool cbset);
 };
 
-//! Functor wrapper around \c msg_sock::putmsg.  Mostly useful because
-//! std::function implementations avoid memory allocation with \c
-//! operator() but not when other methods are passed to \c std::bind.
-struct msg_sock_put_t {
-  msg_sock *ms_;
-  constexpr msg_sock_put_t(msg_sock *ms) : ms_(ms) {}
-  void operator()(msg_ptr b) const { ms_->putmsg(b); }
-};
-
 
 class rpc_sock {
   uint32_t xid_{0};
@@ -97,15 +92,25 @@ class rpc_sock {
 
   void abort_all_calls();
   void recv_msg(msg_ptr b);
+  void recv_call(msg_ptr);
 public:
   std::unique_ptr<msg_sock> ms_;
+  using rcb_t = msg_sock::rcb_t;
+  rcb_t servcb_;
 
-  rpc_sock(pollset &ps, sock_t s, size_t maxmsglen = 0x100000)
+  template<typename T>
+  rpc_sock(pollset &ps, sock_t s, T &&t,
+	   size_t maxmsglen = msg_sock::default_maxmsglen)
     : ms_(new msg_sock(ps, s,
 		       std::bind(&rpc_sock::recv_msg, this,
 				 std::placeholders::_1),
-		       maxmsglen)) {}
+		       maxmsglen)),
+      servcb_(std::forward<T>(t)) {}
+  rpc_sock(pollset &ps, sock_t s) : rpc_sock(ps, s, rcb_t(nullptr)) {}
   ~rpc_sock() { abort_all_calls(); }
+  template<typename T> void set_servcb(T &&scb) {
+    servcb_ = std::forward<T>(scb);
+  }
 
   uint32_t get_xid() {
     while (calls_.find(++xid_) == calls_.end())
@@ -113,12 +118,18 @@ public:
     return xid_;
   }
 
-  void send_call(msg_ptr &b, msg_sock::rcb_t cb);
-  void send_call(msg_ptr &&b, msg_sock::rcb_t cb) { send_call(b, cb); }
-  void send_reply(msg_ptr &b) { ms_->putmsg(b); }
+  void send_call(msg_ptr &b, rcb_t cb);
+  void send_call(msg_ptr &&b, rcb_t cb) { send_call(b, cb); }
   void send_reply(msg_ptr &&b) { ms_->putmsg(std::move(b)); }
+};
 
-  virtual void recv_call(msg_ptr);
+//! Functor wrapper around \c rpc_sock::send_reply.  Mostly useful because
+//! std::function implementations avoid memory allocation with \c
+//! operator() but not when other methods are passed to \c std::bind.
+struct rpc_sock_reply_t {
+  rpc_sock *ms_;
+  constexpr rpc_sock_reply_t(rpc_sock *ms) : ms_(ms) {}
+  void operator()(msg_ptr b) const { ms_->send_reply(std::move(b)); }
 };
 
 

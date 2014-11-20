@@ -140,13 +140,13 @@ rpc_tcp_listener_common::accept_cb()
     return;
   }
   set_close_on_exec(s);
-  msg_sock *ms = new msg_sock(ps_, s);
-  ms->setrcb(std::bind(&rpc_tcp_listener_common::receive_cb, this, ms,
-		       session_alloc(s, ms), std::placeholders::_1));
+  rpc_sock *ms = new rpc_sock(ps_, s);
+  ms->set_servcb(std::bind(&rpc_tcp_listener_common::receive_cb, this, ms,
+			   session_alloc(ms), std::placeholders::_1));
 }
 
 void
-rpc_tcp_listener_common::receive_cb(msg_sock *ms, void *session, msg_ptr mp)
+rpc_tcp_listener_common::receive_cb(rpc_sock *ms, void *session, msg_ptr mp)
 {
   if (!mp) {
     session_free(session);
@@ -154,7 +154,7 @@ rpc_tcp_listener_common::receive_cb(msg_sock *ms, void *session, msg_ptr mp)
     return;
   }
   try {
-    dispatch(nullptr, std::move(mp), msg_sock_put_t(ms));
+    dispatch(nullptr, std::move(mp), rpc_sock_reply_t(ms));
   }
   catch (const xdr_runtime_error &e) {
     std::cerr << e.what() << std::endl;

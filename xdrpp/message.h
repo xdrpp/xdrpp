@@ -16,7 +16,11 @@ namespace xdr {
 class message_t;
 using msg_ptr = std::unique_ptr<message_t>;
 
-//! Fixed-size message buffer, with room at beginning for 4-byte length.
+//! Message buffer, with room at beginning for 4-byte length.  Note
+//! the constructor is private, so you must create one with \c
+//! message_t::alloc, which allocates more space than the size of the
+//! \c message_t structure.  Hence \c message_t is just a data
+//! structure at the beginning of the buffer.
 class message_t {
   const std::size_t size_;
   alignas(std::uint32_t) char buf_[4];

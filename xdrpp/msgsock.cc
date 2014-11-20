@@ -230,10 +230,13 @@ rpc_sock::send_call(msg_ptr &b, msg_sock::rcb_t cb)
 void
 rpc_sock::recv_call(msg_ptr b)
 {
-  if (b && b->size() >= 4)
+  if (servcb_)
+    servcb_(std::move(b));
+  else {
+    std::cerr << "rpc_sock::recv_call: incoming call but no server"
+	      << std::endl;
     send_reply(rpc_accepted_error_msg(b->word(0), PROG_UNAVAIL));
+  }
 }
-
-
 
 }

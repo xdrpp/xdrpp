@@ -121,7 +121,7 @@ public:
   void register_service(T &t) {
     register_service_base(new arpc_service<T, void, Interface>(t));
   }
-  void receive(msg_sock *ms, msg_ptr buf);
+  void receive(rpc_sock *ms, msg_ptr buf);
 };
 
 template<typename Session = void,
@@ -145,6 +145,8 @@ template<> struct call_result<void> {
   explicit operator bool() const { return bool(stat_); }
 };
 
+
+#if 0
 class arpc_sock {
 public:
   template<typename P> using call_cb_t =
@@ -197,7 +199,7 @@ private:
     }
   };
 
-  std::unique_ptr<msg_sock> ms_;
+  std::unique_ptr<rpc_sock> ms_;
   uint32_t xid_counter_{0};
   std::map<uint32_t, std::unique_ptr<call_state_base>> calls_;
   std::map<uint32_t, std::map<uint32_t, server_cb_t>> services_;
@@ -208,7 +210,6 @@ private:
 
 };
 
-#if 0
 template<typename P> inline void
 arpc_sock::invoke(const typename P::arg_wire_type &arg, call_cb_t<P> cb)
 {
