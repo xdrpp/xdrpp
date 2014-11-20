@@ -128,6 +128,7 @@ rpc_tcp_listener_common::rpc_tcp_listener_common(unique_sock &&s, bool reg)
 rpc_tcp_listener_common::~rpc_tcp_listener_common()
 {
   ps_.fd_cb(listen_sock_.get(), pollset::Read);
+  // XXX should clean up if use_rpcbind_.
 }
 
 void
@@ -154,7 +155,7 @@ rpc_tcp_listener_common::receive_cb(rpc_sock *ms, void *session, msg_ptr mp)
     return;
   }
   try {
-    dispatch(nullptr, std::move(mp), rpc_sock_reply_t(ms));
+    dispatch(session, std::move(mp), rpc_sock_reply_t(ms));
   }
   catch (const xdr_runtime_error &e) {
     std::cerr << e.what() << std::endl;

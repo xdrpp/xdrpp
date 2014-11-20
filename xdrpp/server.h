@@ -42,6 +42,7 @@ template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
   }
 };
 
+// The following produce various pre-formatted error responses.
 msg_ptr rpc_accepted_error_msg(uint32_t xid, accept_stat stat);
 msg_ptr rpc_prog_mismatch_msg(uint32_t xid, uint32_t low, uint32_t high);
 msg_ptr rpc_auth_error_msg(uint32_t xid, auth_stat stat);
@@ -61,7 +62,6 @@ template<typename T> struct transparent_ptr : std::unique_ptr<T> {
 };
 
 namespace detail {
-
 template<typename T, bool fs = xdr_traits<T>::has_fixed_size>
 struct transparent_ptr_base : xdr_traits_base {
   static constexpr bool has_fixed_size = false;
@@ -70,7 +70,6 @@ template<typename T> struct transparent_ptr_base<T, true> : xdr_traits_base {
   static constexpr bool has_fixed_size = true;
   static constexpr std::size_t fixed_size = xdr_traits<T>::fixed_size;
 };
-
 }
 
 template<typename T> struct xdr_traits<transparent_ptr<T>>
@@ -146,7 +145,15 @@ struct dispatch_session_helper<P, C, T, indices<I...>> {
 
 //! Call \c P::dispatch with a session pointer (unless the session
 //! type \c S is void, in which case the argument is omitted) and
-//! arguments beginning with a tuple which should be unpacked.
+//! arguments beginning with a tuple which should be unpacked.  For
+//! example,
+//! \code
+//!   dispatch_with_session<P>(c, (void *) 0, make_tuple(1, //! 2), 3, 4);
+//! \endcode
+//! is equivalent to
+//! \code
+//!   P::dispatch(c, 1, 2, 3, 4);
+//! \endcode
 template<typename P, typename C, typename S, typename T,
 	 typename...Rest> inline auto
 dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest) ->
@@ -256,8 +263,8 @@ public:
   void register_service(T &t) {
     register_service_base(new ServiceType<T,Session,Interface>(t));
     if(use_rpcbind_)
-      rpcbind_register(listen_sock_.get(), T::rpc_interface_type::program,
-		       T::rpc_interface_type::version);
+      rpcbind_register(listen_sock_.get(), Interface::program,
+		       Interface::version);
   }
 };
 
