@@ -71,6 +71,9 @@ private:
   virtual void run_subtype_handlers() {}
 
 public:
+  pollset() = default;
+  pollset(const pollset &) = delete;
+
   //! Go through one round of checking all file descriptors.  \arg \c
   //! timeout is a timeout in milliseconds (or -1 to wait forever).
   //! 
@@ -88,6 +91,10 @@ public:
   //! absence of a signal or a call to PollSet::inject_cb in a
   //! different thread.
   virtual bool pending() const { return num_cbs(); }
+
+  //! Continously poll and only return on exception or when there is
+  //! no more work to do.
+  void run() { while (pending()) poll(); }
 
   //! Set a read or write callback on a particular file descriptor.
   //! \arg \c fd is the file descriptor.  \arg \c op specifies the

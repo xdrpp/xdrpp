@@ -57,6 +57,8 @@ cat_host_service(const char *host, const char *service)
     else
       target = host;
   }
+  else
+    target += "NULL";		// NULL should give localhost
   if (service) {
     target += ":";
     target += service;

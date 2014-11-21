@@ -232,18 +232,18 @@ class rpc_tcp_listener_common : public rpc_server_base {
   void receive_cb(rpc_sock *ms, void *session, msg_ptr mp);
 
 protected:
-  pollset ps_;
   unique_sock listen_sock_;
   const bool use_rpcbind_;
-  rpc_tcp_listener_common(unique_sock &&s, bool use_rpcbind = false);
-  rpc_tcp_listener_common()
-    : rpc_tcp_listener_common(unique_sock(invalid_sock), true) {}
+  rpc_tcp_listener_common(pollset &ps, unique_sock &&s,
+			  bool use_rpcbind = false);
+  rpc_tcp_listener_common(pollset &ps)
+    : rpc_tcp_listener_common(ps, unique_sock(invalid_sock), true) {}
   virtual ~rpc_tcp_listener_common();
   virtual void *session_alloc(rpc_sock *) = 0;
   virtual void session_free(void *session) = 0;
 
 public:
-  void run();
+  pollset &ps_;
 };
 
 template<template<typename, typename, typename> class ServiceType,
@@ -256,11 +256,12 @@ protected:
   }
   void session_free(void *session) override { sa_.deallocate(session); }
 public:
-  using rpc_tcp_listener_common::rpc_tcp_listener_common;
-  generic_rpc_tcp_listener() {}
-  generic_rpc_tcp_listener(unique_sock &&s, bool use_rpcbind,
+  //using rpc_tcp_listener_common::rpc_tcp_listener_common;
+  generic_rpc_tcp_listener(pollset &ps)
+    : rpc_tcp_listener_common(ps) {}
+  generic_rpc_tcp_listener(pollset &ps, unique_sock &&s, bool use_rpcbind,
 			   SessionAllocator sa)
-    : rpc_tcp_listener_common(std::move(s), use_rpcbind), sa_(sa) {}
+    : rpc_tcp_listener_common(ps, std::move(s), use_rpcbind), sa_(sa) {}
   ~generic_rpc_tcp_listener() {}
 
   //! Add objects implementing RPC program interfaces to the server.

@@ -13,6 +13,10 @@ using namespace xdr;
 
 using namespace testns;
 
+namespace {
+pollset ps;
+}
+
 
 class xdrtest2_server {
 public:
@@ -63,9 +67,9 @@ main(int argc, char **argv)
 {
   if (argc > 1 && !strcmp(argv[1], "-s")) {
     xdrtest2_server s;
-    srpc_tcp_listener<> rl;
+    srpc_tcp_listener<> rl(ps);
     rl.register_service(s);
-    rl.run();
+    ps.run();
   }
   else if (argc > 1 && !strcmp(argv[1], "-c")) {
     auto fd = tcp_connect_rpc(argc > 2 ? argv[2] : nullptr,

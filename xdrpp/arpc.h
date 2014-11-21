@@ -100,7 +100,6 @@ template<typename T> using arpc_client =
 template<typename T> class reply_cb;
 
 namespace detail {
-
 class reply_cb_impl {
   template<typename T> friend class xdr::reply_cb;
   using cb_t = service_base::cb_t;
@@ -108,11 +107,14 @@ class reply_cb_impl {
   cb_t cb_;
   const char *const proc_name_;
 
+public:
   template<typename CB> reply_cb_impl(uint32_t xid, CB &&cb, const char *name)
     : xid_(xid), cb_(std::forward<CB>(cb)), proc_name_(name) {}
   reply_cb_impl(const reply_cb_impl &rcb) = delete;
   reply_cb_impl &operator=(const reply_cb_impl &rcb) = delete;
+  ~reply_cb_impl() { if (cb_) reject(PROC_UNAVAIL); }
 
+private:
   void send_reply_msg(msg_ptr &&b) {
     assert(cb_);		// If this fails you replied twice
     cb_(std::move(b));
@@ -135,33 +137,32 @@ class reply_cb_impl {
   void reject(auth_stat stat) {
     send_reply_msg(rpc_auth_error_msg(xid_, stat));
   }
-
-public:
-  ~reply_cb_impl() { if (cb_) reject(PROC_UNAVAIL); }
 };
-
 } // namespace detail
 
+// Prior to C++14, it's a pain to move objects into another thread.
+// Hence we used shared_ptr to make reply_cb copyable as well as
+// moveable.
 template<typename T> class reply_cb {
   using impl_t = detail::reply_cb_impl;
 public:
   using type = T;
-  std::unique_ptr<impl_t> impl_;
+  std::shared_ptr<impl_t> impl_;
 
   reply_cb() {}
   template<typename CB> reply_cb(uint32_t xid, CB &&cb, const char *name)
-    : impl_(new impl_t(xid, std::forward<CB>(cb), name)) {}
+    : impl_(std::make_shared<impl_t>(xid, std::forward<CB>(cb), name)) {}
 
-  void operator()(const type &t) { impl_->send_reply(t); }
-  void reject(accept_stat stat) { impl_->reject(stat); }
-  void reject(auth_stat stat) { impl_->reject(stat); }
+  void operator()(const type &t) const { impl_->send_reply(t); }
+  void reject(accept_stat stat) const { impl_->reject(stat); }
+  void reject(auth_stat stat) const { impl_->reject(stat); }
 };
 template<> class reply_cb<void> : public reply_cb<xdr_void> {
 public:
   using type = void;
   using reply_cb<xdr_void>::reply_cb;
   using reply_cb<xdr_void>::operator();
-  void operator()() { this->operator()(xdr_void{}); }
+  void operator()() const { this->operator()(xdr_void{}); }
 };
 
 template<typename T, typename Session, typename Interface>

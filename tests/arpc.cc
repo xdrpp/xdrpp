@@ -7,6 +7,10 @@ using namespace xdr;
 
 using namespace testns;
 
+namespace {
+pollset ps;
+}
+
 class xdrtest2_server {
 public:
   using rpc_interface_type = xdrtest2;
@@ -21,7 +25,9 @@ public:
   }
   void three(const bool &arg1, const int &arg2,
 	     const bigstr &arg3, xdr::reply_cb<bigstr> cb) {
-    cb("Here is your reply string");
+    ps.timeout(1000, [cb]() /*mutable not needed*/ {
+	cb("Here is your reply string");
+      });
   }
 };
 
@@ -41,10 +47,10 @@ main(int argc, char **argv)
   check_rpc_success_header();
 
   if (argc > 1 && !strcmp(argv[1], "-s")) {
+    arpc_tcp_listener<> rl(ps);
     xdrtest2_server s;
-    arpc_tcp_listener<> rl;
     rl.register_service(s);
-    rl.run();
+    ps.run();
   }
   else if (argc > 1 && !strcmp(argv[1], "-c")) {
 #if 0
