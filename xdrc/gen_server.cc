@@ -135,7 +135,7 @@ gen_server_internal(std::ostream &os, bool cc)
   os << nl;
 
   if (!cc)
-    os << nl << "#endif // !" << guard;
+    os << nl << "#endif // !" << guard << nl;
 }
 
 }

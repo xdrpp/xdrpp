@@ -112,7 +112,6 @@ class reply_cb_impl {
     : xid_(xid), cb_(std::forward<CB>(cb)), proc_name_(name) {}
   reply_cb_impl(const reply_cb_impl &rcb) = delete;
   reply_cb_impl &operator=(const reply_cb_impl &rcb) = delete;
-  ~reply_cb_impl() { if (cb_) reject(PROC_UNAVAIL); }
 
   void send_reply_msg(msg_ptr &&b) {
     assert(cb_);		// If this fails you replied twice
@@ -136,6 +135,9 @@ class reply_cb_impl {
   void reject(auth_stat stat) {
     send_reply_msg(rpc_auth_error_msg(xid_, stat));
   }
+
+public:
+  ~reply_cb_impl() { if (cb_) reject(PROC_UNAVAIL); }
 };
 
 } // namespace detail
@@ -184,14 +186,14 @@ public:
     
     if (xdr_trace_server) {
       std::string s = "CALL ";
-      s += P::proc_name;
+      s += P::proc_name();
       s += " <- [xid " + std::to_string(hdr.xid) + "]";
       std::clog << xdr_to_string(arg, s.c_str());
     }
 
     dispatch_with_session<P>(server_, session, std::move(arg),
 			     reply_cb<typename P::res_type>{
-			       hdr.xid, std::move(reply), P::proc_name});
+			       hdr.xid, std::move(reply), P::proc_name()});
   }
 
   arpc_service(T &server)

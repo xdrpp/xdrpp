@@ -15,7 +15,7 @@
 #include <xdrpp/marshal.h>
 #include <xdrpp/printer.h>
 #include <xdrpp/msgsock.h>
-#include <xdrpp/socket.h>
+#include <xdrpp/rpcbind.h>
 #include <xdrpp/rpc_msg.hh>
 #include <map>
 

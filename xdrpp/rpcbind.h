@@ -1,5 +1,8 @@
 // -*- C++ -*-
 
+#ifndef _XDRPP_RPCBIND_H_HEADER_INCLUDED_
+#define _XDRPP_RPCBIND_H_HEADER_INCLUDED_ 1
+
 #include <xdrpp/socket.h>
 
 namespace xdr {
@@ -24,3 +27,5 @@ std::string make_uaddr(const sockaddr *sa, socklen_t salen);
 std::string make_uaddr(sock_t s);
 
 }
+
+#endif // !_XDRPP_RPCBIND_H_HEADER_INCLUDED_
