@@ -68,7 +68,9 @@ struct xdr_wrong_union : std::logic_error {
 //! template class that can be specialized to various archive formats,
 //! since some formats may want the fied name and others not.  Other
 //! uses include translating types to supertypes, e.g., so an archive
-//! can handle \c std::string instead of \c xdr::xstring.
+//! can handle \c std::string instead of \c xdr::xstring.  Never
+//! invoke \c archive_adapter::apply directly.  Instead, call \c
+//! xdr::archive, as the latter may be specialized for certain types.
 template<typename Archive> struct archive_adapter {
   template<typename T> static void apply(Archive &ar, T &&t, const char *) {
     ar(std::forward<T>(t));
@@ -78,7 +80,11 @@ template<typename Archive> struct archive_adapter {
 //! By default, this function simply applies \c ar (which must be a
 //! function object) to \c t.  However, it does so via the \c
 //! xdr::archive_adapter template class, which can be specialized to
-//! capture the field name as well.
+//! capture the field name as well.  Never specialize or overload this
+//! function on \c Archive (specialize \c xdr::archive_adapter
+//! instead).  However, in special cases (such as \c
+//! xdr::transparent_ptr) it is reasonable to specialize this function
+//! template on \c T.
 template<typename Archive, typename T> inline void
 archive(Archive &ar, T &&t, const char *name = nullptr)
 {

@@ -7,6 +7,7 @@
 
 #include <xdrpp/exception.h>
 #include <xdrpp/server.h>
+#include <xdrpp/srpc.h>	     // XXX prepare_call
 
 namespace xdr {
 
@@ -53,18 +54,15 @@ class reply_cb_impl {
 
 } // namespace detail
 
-// Prior to C++14, it's a pain to move objects into another thread.
-// Hence we used shared_ptr to make reply_cb copyable as well as
-// moveable.
 template<typename T> class reply_cb {
   using impl_t = detail::reply_cb_impl;
 public:
   using type = T;
-  std::shared_ptr<impl_t> impl_;
+  std::unique_ptr<impl_t> impl_;
 
   reply_cb() {}
   template<typename CB> reply_cb(uint32_t xid, CB &&cb, const char *name)
-    : impl_(std::make_shared<impl_t>(xid, std::forward<CB>(cb), name)) {}
+    : impl_(new impl_t(xid, std::forward<CB>(cb), name)) {}
 
   void operator()(const type &t) { impl_->send_reply(t); }
   void reject(accept_stat stat) { impl_->reject(stat); }
@@ -145,6 +143,19 @@ template<> struct call_result<void> {
   explicit operator bool() const { return bool(stat_); }
 };
 
+
+class asynchronous_client_base {
+  rpc_sock &s_;
+public:
+  asynchronous_client_base(rpc_sock &s) : s_(s) {}
+  asynchronous_client_base(asynchronous_client_base &c) : s_(c.s_) {}
+
+  template<typename P, typename CB, typename...A>
+  void invoke(const A &...a, CB &&cb) {
+  }
+
+  asynchronous_client_base *operator->() { return this; }
+};
 
 #if 0
 class arpc_sock {

@@ -716,7 +716,7 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
      << nl << "template<typename _XDR_INVOKER> struct _xdr_client {";
   ++nl;
   os << nl << "_XDR_INVOKER _xdr_invoker_;"
-     << nl << "template<typename...ARGS> _xdr_client(ARGS...args)"
+     << nl << "template<typename...ARGS> _xdr_client(ARGS &&...args)"
      << nl << "  : _xdr_invoker_(std::forward<ARGS>(args)...) {}";
   for (const rpc_proc &p : v.procs) {
     string invoke = string("_xdr_invoker_->template invoke<")

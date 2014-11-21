@@ -1,6 +1,12 @@
 // -*- C++ -*-
 
-//! \file server.h Classes for implementing RPC servers.
+//! \file server.h Classes for implementing RPC servers.  We use the
+//! following terminology:  The term \e service denotes a class that
+//! responds to RPCs for a particular program/version combination.  A
+//! \e server is a collection of services.  A \e listener attaches
+//! incoming connections from clients to a particular server.  And a
+//! \e session is state (if needed) associated with a particular
+//! client connection.
 
 #ifndef _XDRPP_SERVER_H_HEADER_INCLUDED_
 #define _XDRPP_SERVER_H_HEADER_INCLUDED_ 1
@@ -144,8 +150,8 @@ struct dispatch_session_helper<P, C, T, indices<I...>> {
 }
 
 //! Call \c P::dispatch with a session pointer (unless the session
-//! type \c S is void, in which case the argument is omitted) and
-//! arguments beginning with a tuple which should be unpacked.  For
+//! type \c S is void, in which case the argument is omitted) and with
+//! a tuple that should be unpacked into multiple arguments.  For
 //! example,
 //! \code
 //!   dispatch_with_session<P>(c, (void *) 0, make_tuple(1, //! 2), 3, 4);
@@ -166,10 +172,9 @@ dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest) ->
 }
 
 
+//! Trivial session allocator that just calls new and delete.
 template<typename S> struct session_allocator {
   constexpr session_allocator() {}
-  //! Trivial session allocator.  The file descriptor is only for
-  //! calls like getsockname, not for IO.
   S *allocate(rpc_sock *s) { return new S{s}; }
   void deallocate(S *session) { delete session; }
 };
@@ -269,6 +274,6 @@ public:
 };
 
 
-}
+} // namespace xdr
 
 #endif // !_XDRPP_SERVER_H_HEADER_INCLUDED_
