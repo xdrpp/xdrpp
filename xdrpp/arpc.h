@@ -48,19 +48,38 @@ public:
     if (xdr_trace_client) {
       std::string s = "CALL ";
       s += P::proc_name();
-      s += " -> [xid " + std::to_string(hdr.xid) + "]";
+      s += " -> [xid ";
+      s += std::to_string(hdr.xid);
+      s += "]";
       std::clog << xdr_to_string(std::tie(a...), s.c_str());
     }
 
     s_.send_call(xdr_to_msg(hdr, a...), [cb](msg_ptr m) {
-	xdr_get g(m);
-	rpc_msg hdr;
+	if (!m)
+	  return cb(rpc_call_stat(rpc_call_stat::NETWORK_ERROR));
 	try {
+	  xdr_get g(m);
+	  rpc_msg hdr;
 	  archive(g, hdr);
 	  call_result<typename P::res_type> res(hdr);
 	  if (res)
 	    archive(g, *res);
 	  g.done();
+
+	  if (xdr_trace_client) {
+	    std::string s = "REPLY ";
+	    s += P::proc_name();
+	    s += " <- [xid " + std::to_string(hdr.xid) + "]";
+	    if (res)
+	      std::clog << xdr_to_string(*res, s.c_str());
+	    else {
+	      s += ": ";
+	      s += res.message();
+	      s += "\n";
+	      std::clog << s;
+	    }
+	  }
+
 	  cb(std::move(res));
 	}
 	catch (const xdr_runtime_error &e) {
