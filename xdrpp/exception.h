@@ -43,6 +43,7 @@ struct rpc_call_stat {
   constexpr rpc_call_stat(accept_stat s) : type_(ACCEPT_STAT), accept_(s) {}
   constexpr rpc_call_stat(auth_stat s) : type_(AUTH_STAT), auth_(s) {}
   constexpr rpc_call_stat(stat_type type) : type_(type), accept_(SUCCESS) {}
+  rpc_call_stat(const rpc_msg &hdr);
   const char *message() const;
   explicit operator bool() const {
     return type_ == ACCEPT_STAT && accept_ == SUCCESS;

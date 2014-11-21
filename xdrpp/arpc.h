@@ -7,9 +7,76 @@
 
 #include <xdrpp/exception.h>
 #include <xdrpp/server.h>
-#include <xdrpp/srpc.h>	     // XXX prepare_call
+#include <xdrpp/srpc.h>	     // XXX xdr_trace_client
 
 namespace xdr {
+
+//! A \c unique_ptr to a call result, or NULL if the call failed (in
+//! which case \c message returns an error message).
+template<typename T> struct call_result : std::unique_ptr<T> {
+  rpc_call_stat stat_;
+  call_result(const rpc_msg &hdr) : stat_(hdr) {
+    if (stat_)
+      this->reset(new T{});
+  }
+  const char *message() const { return *this ? nullptr : stat_.message(); }
+};
+template<> struct call_result<void> {
+  rpc_call_stat stat_;
+  call_result(const rpc_msg &hdr) : stat_(hdr) {}
+  const char *message() const { return stat_ ? nullptr : stat_.message(); }
+  explicit operator bool() const { return bool(stat_); }
+  xdr_void &operator*() { static xdr_void v; return v; }
+};
+
+class asynchronous_client_base {
+  rpc_sock &s_;
+
+public:
+  asynchronous_client_base(rpc_sock &s) : s_(s) {}
+  asynchronous_client_base(asynchronous_client_base &c) : s_(c.s_) {}
+
+  template<typename P, typename...A>
+  void invoke(const A &...a,
+	      std::function<void(call_result<typename P::res_type>)> cb) {
+    rpc_msg hdr { s_.get_xid(), CALL };
+    hdr.body.cbody().rpcvers = 2;
+    hdr.body.cbody().prog = P::interface_type::prog;
+    hdr.body.cbody().vers = P::interface_type::proc;
+    hdr.body.cbody().proc = P::proc;
+    
+    if (xdr_trace_client) {
+      std::string s = "CALL ";
+      s += P::proc_name();
+      s += " -> [xid " + std::to_string(hdr.xid) + "]";
+      std::clog << xdr_to_string(std::tie(a...), s.c_str());
+    }
+
+    s_.send_call(xdr_to_msg(hdr, a...), [cb](msg_ptr m) {
+	xdr_get g(m);
+	rpc_msg hdr;
+	try {
+	  archive(g, hdr);
+	  call_result<typename P::res_type> res(hdr);
+	  if (res)
+	    archive(g, *res);
+	  g.done();
+	  cb(std::move(res));
+	}
+	catch (const xdr_runtime_error &e) {
+	  cb(rpc_call_stat(rpc_call_stat::GARBAGE_RES));
+	}
+      });
+  }
+
+  asynchronous_client_base *operator->() { return this; }
+};
+
+template<typename T> using arpc_client =
+  typename T::template _xdr_client<asynchronous_client_base>;
+
+
+// And now for the server
 
 template<typename T> class reply_cb;
 
@@ -127,111 +194,6 @@ template<typename Session = void,
 using arpc_tcp_listener =
   generic_rpc_tcp_listener<arpc_service, Session, SessionAllocator>;
 
-
-//! A \c unique_ptr to a call result, or NULL if the call failed (in
-//! which case \c message returns an error message).
-template<typename T> struct call_result : std::unique_ptr<T> {
-  rpc_call_stat stat_;
-  using std::unique_ptr<T>::unique_ptr;
-  call_result(const rpc_call_stat &stat) : stat_(stat) {}
-  const char *message() const { return *this ? nullptr : stat_.message(); }
-};
-template<> struct call_result<void> {
-  rpc_call_stat stat_;
-  call_result(const rpc_call_stat &stat) : stat_(stat) {}
-  const char *message() const { return stat_ ? nullptr : stat_.message(); }
-  explicit operator bool() const { return bool(stat_); }
-};
-
-
-class asynchronous_client_base {
-  rpc_sock &s_;
-public:
-  asynchronous_client_base(rpc_sock &s) : s_(s) {}
-  asynchronous_client_base(asynchronous_client_base &c) : s_(c.s_) {}
-
-  template<typename P, typename CB, typename...A>
-  void invoke(const A &...a, CB &&cb) {
-  }
-
-  asynchronous_client_base *operator->() { return this; }
-};
-
-#if 0
-class arpc_sock {
-public:
-  template<typename P> using call_cb_t =
-    std::function<void(call_result<typename P::res_type>)>;
-  using client_cb_t = std::function<void(rpc_msg &, xdr_get &)>;
-  using server_cb_t = std::function<void(rpc_msg &, xdr_get &, arpc_sock *)>;
-
-  arpc_sock(pollset &ps, sock_t s);
-
-  template<typename P, typename...A> inline void
-  invoke(const A &...a, call_cb_t<P> cb);
-
-private:
-  struct call_state_base {
-    virtual ~call_state_base() {}
-    virtual void get_reply(xdr_get &g) = 0;
-    virtual void get_error(const rpc_call_stat &stat) = 0;
-  };
-
-  template<typename P> class call_state : call_state_base {
-    call_cb_t<P> cb_;
-    bool used_ {false};
-  public:
-    template<typename F> call_state(F &&f) : cb_(std::forward<F>(f)) {}
-    ~call_state() { get_error(rpc_call_stat::NETWORK_ERROR); }
-
-    void get_reply(xdr_get &g) override {
-      if (used_)
-	return;
-
-      call_result<typename P::res_wire_type> r{new typename P::res_wire_type};
-      try { archive(g, *r); }
-      catch (const xdr_runtime_error &) {
-	get_error(rpc_call_stat::GARBAGE_RES);
-	return;
-      }
-      catch (const std::bad_alloc &) {
-	get_error(rpc_call_stat::BAD_ALLOC);
-	return;
-      }
-      used_ = true;
-      cb_(r);
-    }
-
-    void get_error(const rpc_call_stat &stat) override {
-      if (used_)
-	return;
-      used_ = true;
-      cb_(stat);
-    }
-  };
-
-  std::unique_ptr<rpc_sock> ms_;
-  uint32_t xid_counter_{0};
-  std::map<uint32_t, std::unique_ptr<call_state_base>> calls_;
-  std::map<uint32_t, std::map<uint32_t, server_cb_t>> services_;
-
-  void prepare_call(rpc_msg &hdr, uint32_t prog,
-		    uint32_t vers, uint32_t proc);
-  void receive(msg_ptr buf);
-
-};
-
-template<typename P> inline void
-arpc_sock::invoke(const typename P::arg_wire_type &arg, call_cb_t<P> cb)
-{
-  rpc_msg hdr;
-  prepare_call(hdr, P::interface_type::program,
-	       P::interface_type::version, P::proc);
-  ms_->putmsg(xdr_to_msg(hdr, arg));
-  calls_.emplace(hdr.xid, new call_state<P>(cb));
-}
-#endif
-
-}
+} // namespace xdr
 
 #endif // !_XDRPP_ARPC_H_HEADER_INCLUDED_

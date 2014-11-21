@@ -228,20 +228,15 @@ xdr_to_msg(const Args &...args)
   return m;
 }
 
-//! This does the reverse of xdr::xdr_to_msg, but is only useful for
-//! debugging.  In real code, you generally first want to unmarshal
-//! the header, then decide what type the body is.  Since this
-//! function expects to consume the entire buffer, you cannot use it
-//! for decoding incoming RPC messages.  \throws xdr_bad_message_size
-//! if it fails to consume the whole buffer or would need to overrun
-//! the buffer.
-template<typename T> T &
-xdr_from_msg(const msg_ptr &m, T &t)
+//! This does the reverse of xdr::xdr_to_msg, unmarshalling one or
+//! more types from a message.  Note that it throws an exception if
+//! the entire buffer is not consumed.
+template<typename...Args> void
+xdr_from_msg(const msg_ptr &m, Args &...args)
 {
   xdr_get g(m);
-  archive(g, t);
+  xdr_argpack_archive(g, args...);
   g.done();
-  return t;
 }
 
 }

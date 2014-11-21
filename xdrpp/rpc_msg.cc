@@ -66,6 +66,29 @@ rpc_errmsg(auth_stat ev)
   }
 }
 
+rpc_call_stat::rpc_call_stat(const rpc_msg &hdr)
+{
+  if (hdr.body.mtype() == REPLY)
+    switch (hdr.body.rbody().stat()) {
+    case MSG_ACCEPTED:
+      type_ = ACCEPT_STAT;
+      accept_ = hdr.body.rbody().areply().reply_data.stat();
+      return;
+    case MSG_DENIED:
+      accept_ = SUCCESS;
+      switch (hdr.body.rbody().rreply().stat()) {
+      case RPC_MISMATCH:
+	type_ = RPCVERS_MISMATCH;
+	return;
+      case AUTH_ERROR:
+	type_ = AUTH_STAT;
+	auth_ = hdr.body.rbody().rreply().rj_why();
+	return;
+      }
+    }
+  type_ = GARBAGE_RES;
+}
+
 const char *
 rpc_call_stat::message() const
 {
