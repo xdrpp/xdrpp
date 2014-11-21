@@ -22,6 +22,7 @@ public:
     cb(c);
   }
   void ut(const uniontest &arg, xdr::reply_cb<void> cb) {
+    // Because we don't use cb, will return PROC_UNAVAIL
   }
   void three(const bool &arg1, const int &arg2,
 	     const bigstr &arg3, xdr::reply_cb<bigstr> cb) {
@@ -53,13 +54,17 @@ main(int argc, char **argv)
     ps.run();
   }
   else if (argc > 1 && !strcmp(argv[1], "-c")) {
-#if 0
     auto fd = tcp_connect_rpc(argc > 2 ? argv[2] : nullptr,
 			      xdrtest2::program, xdrtest2::version);
-    srpc_client<xdrtest2> c{fd.get()};
+    auto rs = make_shared<rpc_sock>(ps, fd.release());
+    arpc_client<xdrtest2> c{*rs};
 
-    c.null2();
+    c.null2([](call_result<void> r) {
+      cout << "null2 returned\n";
+    });
+    ps.run();
 
+#if 0
     u_4_12 u(12);
     u.f12().i = 1977;
     auto r = c.nonnull2(u);

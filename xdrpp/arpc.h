@@ -19,11 +19,13 @@ template<typename T> struct call_result : std::unique_ptr<T> {
     if (stat_)
       this->reset(new T{});
   }
+  call_result(rpc_call_stat::stat_type type) : stat_(type) {}
   const char *message() const { return *this ? nullptr : stat_.message(); }
 };
 template<> struct call_result<void> {
   rpc_call_stat stat_;
   call_result(const rpc_msg &hdr) : stat_(hdr) {}
+  call_result(rpc_call_stat::stat_type type) : stat_(type) {}
   const char *message() const { return stat_ ? nullptr : stat_.message(); }
   explicit operator bool() const { return bool(stat_); }
   xdr_void &operator*() { static xdr_void v; return v; }
@@ -41,8 +43,8 @@ public:
 	      std::function<void(call_result<typename P::res_type>)> cb) {
     rpc_msg hdr { s_.get_xid(), CALL };
     hdr.body.cbody().rpcvers = 2;
-    hdr.body.cbody().prog = P::interface_type::prog;
-    hdr.body.cbody().vers = P::interface_type::proc;
+    hdr.body.cbody().prog = P::interface_type::program;
+    hdr.body.cbody().vers = P::interface_type::version;
     hdr.body.cbody().proc = P::proc;
     
     if (xdr_trace_client) {
@@ -56,7 +58,7 @@ public:
 
     s_.send_call(xdr_to_msg(hdr, a...), [cb](msg_ptr m) {
 	if (!m)
-	  return cb(rpc_call_stat(rpc_call_stat::NETWORK_ERROR));
+	  return cb(rpc_call_stat::NETWORK_ERROR);
 	try {
 	  xdr_get g(m);
 	  rpc_msg hdr;
@@ -83,7 +85,7 @@ public:
 	  cb(std::move(res));
 	}
 	catch (const xdr_runtime_error &e) {
-	  cb(rpc_call_stat(rpc_call_stat::GARBAGE_RES));
+	  cb(rpc_call_stat::GARBAGE_RES);
 	}
       });
   }

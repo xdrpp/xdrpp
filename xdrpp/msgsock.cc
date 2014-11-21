@@ -202,13 +202,13 @@ rpc_sock::abort_all_calls()
 void
 rpc_sock::recv_msg(msg_ptr b)
 {
-  if (!b || b->size() < 8 || b->word(1) > REPLY) {
+  if (!b || b->size() < 8) {
     abort_all_calls();
     recv_call(nullptr);
   }
-  else if (b->word(1) == CALL)
+  else if (b->word(1) == swap32le(CALL))
     recv_call(std::move(b));
-  else {
+  else if (b->word(1) == swap32le(REPLY)) {
     auto calli = calls_.find(b->word(0));
     if (calli == calls_.end()) {
       std::cerr << "ignoring reply to unknown call" << std::endl;
@@ -217,6 +217,10 @@ rpc_sock::recv_msg(msg_ptr b)
     auto cb (std::move(calli->second));
     calls_.erase(calli);
     cb(std::move(b));
+  }
+  else {
+    abort_all_calls();
+    recv_call(nullptr);
   }
 }
 
