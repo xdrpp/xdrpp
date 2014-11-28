@@ -70,6 +70,7 @@ $(top_builddir)/xdrpp/rpcb_prot.hh: $(XDRC)
 
 CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh	\
 	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh
+DISTCLEANFILES = xdrpp/config.h
 
 $(srcdir)/doc/xdrc.1: $(srcdir)/doc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/doc/xdrc.1.md -o $(srcdir)/doc/xdrc.1
