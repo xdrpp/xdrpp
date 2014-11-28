@@ -10,7 +10,7 @@ xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
 BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
-	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh
+	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh xdrpp/config.h
 
 lib_LIBRARIES = xdrpp/libxdrpp.a
 xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
@@ -26,7 +26,7 @@ nodist_pkginclude_HEADERS = xdrpp/endian.h xdrpp/config.h
 # version).  Creating ./config.h and then copying it into ./xdrpp/
 # solves the problem.
 xdrpp/config.h: $(srcdir)/config.h
-	cp $(srcdir)/config.h xdrpp/config.h
+	cp $(builddir)/config.h xdrpp/config.h
 
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
 	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
@@ -53,6 +53,7 @@ tests_test_cereal_SOURCES = tests/cereal.cc
 tests_test_srpc_SOURCES = tests/srpc.cc
 tests_test_listener_SOURCES = tests/listener.cc
 tests_test_arpc_SOURCES = tests/arpc.cc
+tests/arpc.o: tests/xdrtest.hh
 tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
 tests/cereal.o: tests/xdrtest.hh
