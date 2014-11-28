@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+
+#include <xdrpp/endian.h>
 #include "union.h"
 
 using std::string;
@@ -242,31 +244,32 @@ extern string server_session;
 extern bool server_ptr;
 extern bool server_async;
 
-struct omanip : std::function<void(std::ostream&)> {
+template <typename T>
+struct omanip {
   using ostream = std::ostream;
-  using fn_t = std::function<void(ostream&)>;
-  using fn_t::function;
-  template<typename T> omanip(T *t, void(T::*fn)(ostream &))
-    : fn_t([t,fn](ostream &os) { (t->*fn)(os); }) {}
-  friend ostream &operator<<(ostream &os, omanip &m) {
-    m(os);
+  T *obj;
+  void (T::*fn)(ostream &);
+  omanip(T *t, void(T::*fn)(ostream &))
+    : obj(t), fn(fn) {}
+  friend ostream &operator<<(ostream &os, omanip<T> &m) {
+    ((m.obj)->*(m.fn))(os);
     return os;
   }
 };
 
-struct indenter : omanip {
+struct indenter : omanip<indenter> {
   int level_{0};
   void do_indent(ostream &os) { os << std::endl << std::string(level_, ' '); }
-  void do_open(ostream &os) { ++(*this); do_indent(os); }
-  void do_close(ostream &os) { --(*this); do_indent(os); }
+  void do_open(ostream &os) { ++level_; do_indent(os); }
+  void do_close(ostream &os) { --level_; do_indent(os); }
   void do_outdent(ostream &os) {
     os << std::endl << std::string(level_ > 2 ? level_ - 2 : 0, ' ');
   }
 
   indenter() : omanip(this, &indenter::do_indent) {}
-  omanip open = omanip(this, &indenter::do_open);
-  omanip close = omanip(this, &indenter::do_close);
-  omanip outdent = omanip(this, &indenter::do_outdent);
+  omanip<indenter> open = omanip(this, &indenter::do_open);
+  omanip<indenter> close = omanip(this, &indenter::do_close);
+  omanip<indenter> outdent = omanip(this, &indenter::do_outdent);
   void operator++() { level_ += 2; }
   void operator--() { level_ -= 2; assert (level_ >= 0); }
 };

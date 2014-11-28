@@ -179,15 +179,15 @@ template<typename Base> struct xdr_generic_get : Base {
   }
 };
 
-#if WORDS_BIGENDIAN
+#if XDRPP_WORDS_BIGENDIAN
 using xdr_put = xdr_generic_put<marshal_noswap>;
 using xdr_get = xdr_generic_get<marshal_noswap>;
-#else // !WORDS_BIGENDIAN
+#else // !XDRPP_WORDS_BIGENDIAN
 //! Archive for marshaling in RFC4506 big-endian order.
 using xdr_put = xdr_generic_put<marshal_swap>;
 //! Archive for unmarshaling in RFC4506 big-endian order.
 using xdr_get = xdr_generic_get<marshal_swap>;
-#endif // !WORDS_BIGENDIAN
+#endif // !XDRPP_WORDS_BIGENDIAN
 
 inline std::size_t
 xdr_argpack_size()

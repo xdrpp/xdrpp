@@ -39,10 +39,10 @@ struct rpc_call_stat {
     accept_stat accept_;
     auth_stat auth_;
   };
-  constexpr rpc_call_stat() : type_(ACCEPT_STAT), accept_(SUCCESS) {}
-  constexpr rpc_call_stat(accept_stat s) : type_(ACCEPT_STAT), accept_(s) {}
-  constexpr rpc_call_stat(auth_stat s) : type_(AUTH_STAT), auth_(s) {}
-  constexpr rpc_call_stat(stat_type type) : type_(type), accept_(SUCCESS) {}
+  Constexpr rpc_call_stat() : type_(ACCEPT_STAT), accept_(SUCCESS) {}
+  Constexpr rpc_call_stat(accept_stat s) : type_(ACCEPT_STAT), accept_(s) {}
+  Constexpr rpc_call_stat(auth_stat s) : type_(AUTH_STAT), auth_(s) {}
+  Constexpr rpc_call_stat(stat_type type) : type_(type), accept_(SUCCESS) {}
   rpc_call_stat(const rpc_msg &hdr);
   const char *message() const;
   explicit operator bool() const {
@@ -67,7 +67,7 @@ void check_call_hdr(const rpc_msg &hdr);
 //! attempting to send RPC messages over a socket.
 struct xdr_system_error : xdr_runtime_error {
   xdr_system_error(const char *what, int no = errno)
-    : xdr_runtime_error(std::string(what) + ": " + std::strerror(no)) {}
+    : xdr_runtime_error(std::string(what) + ": " + xdr_strerror(no)) {}
 };
 
 }

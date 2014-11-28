@@ -14,7 +14,7 @@ namespace xdr {
 namespace detail{
 //! Helper type for xdr::xdr_clear function.
 struct xdr_clear_t {
-  constexpr xdr_clear_t() {}
+  Constexpr xdr_clear_t() {}
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::variable_nelem>::type
@@ -54,7 +54,7 @@ struct xdr_clear_t {
 template<typename T> void
 xdr_clear(T &t)
 {
-  static constexpr detail::xdr_clear_t c;
+  static Constexpr detail::xdr_clear_t c;
   archive(c, t);
 }
 

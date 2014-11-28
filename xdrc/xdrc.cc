@@ -3,11 +3,20 @@
 #include <iostream>
 #include <fstream>
 #include <fcntl.h>
-#include <getopt.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <config.h>
 #include "xdrc_internal.h"
+
+#if MSVC
+#include <io.h>
+#define CPP_COMMAND "cpp.exe"
+#define popen _popen
+#define pclose _pclose
+#define access _access
+#else
+#include <unistd.h>
+#endif
 
 using std::cout;
 using std::cerr;
@@ -81,15 +90,12 @@ strip_suffix(string in, string suffix)
   return in;
 }
 
-enum opttag {
-  OPT_VERSION = 0x100,
-  OPT_HELP,
-  OPT_HH,
-  OPT_SERVERHH,
-  OPT_SERVERCC,
-};
+typedef void (*codegen)(std::ostream &);
 
-[[noreturn]] static void
+#if !MSVC
+[[noreturn]]
+#endif // !MSVC
+static void
 usage(int err = 1)
 {
   std::ostream &os = err ? cerr : cout;
@@ -99,6 +105,7 @@ where MODE is one of:
       -hh           To generate header with XDR and RPC program definitions
       -serverhh     To generate scaffolding for server header file
       -servercc     To generate scaffolding for server cc
+      -version      To print version info
 and OPTIONAL arguments for -server{hh,cc} can contain:
       -s[ession] T  Use type T to track client sessions
       -p[tr]        To accept arguments by std::unique_ptr
@@ -107,93 +114,109 @@ and OPTIONAL arguments for -server{hh,cc} can contain:
   exit(err);
 }
 
-static const struct option xdrc_options[] = {
-  {"version", no_argument, nullptr, OPT_VERSION},
-  {"help", no_argument, nullptr, OPT_HELP},
-  {"hh", no_argument, nullptr, OPT_HH},
-  {"serverhh", no_argument, nullptr, OPT_SERVERHH},
-  {"servercc", no_argument, nullptr, OPT_SERVERCC},
-  {"ptr", no_argument, nullptr, 'p'},
-  {"session", required_argument, nullptr, 's'},
-  {"async", no_argument, nullptr, 'a'},
-  {nullptr, 0, nullptr, 0}
-};
+bool
+next_arg(int &argc, char **&argv, std::string &arg)
+{
+  if (--argc <= 0) {
+    arg = "";
+    return false;
+  } else {
+    arg = std::string(*++argv);
+    return true;
+  }
+}
+
+void
+parse_options(int &argc,
+              char **&argv,
+              string &cpp_command,
+              codegen &gen,
+              string &suffix,
+              bool &noclobber)
+{
+  std::string arg;
+  while (next_arg(argc, argv, arg)) {
+    if (arg == "-D") {
+      if (!next_arg(argc, argv, arg))
+        usage();
+      cpp_command += " -D";
+      cpp_command += arg;
+
+    } else if (arg == "-o") {
+      if (!output_file.empty())
+        usage();
+      if (!next_arg(argc, argv, arg))
+        usage();
+      output_file = arg;
+
+    } else if (arg == "-version") {
+      cout << "xdrc " << PACKAGE_VERSION << endl;
+      exit(0);
+
+    } else if (arg == "-help") {
+      usage(0);
+
+    } else if (arg == "-serverhh") {
+      if (gen)
+        usage();
+      gen = gen_server;
+      cpp_command += " -DXDRC_SERVER=1";
+      suffix = ".server.hh";
+      noclobber = true;
+
+    } else if (arg == "-servercc") {
+      if (gen)
+        usage();
+      gen = gen_servercc;
+      cpp_command += " -DXDRC_SERVER=1";
+      suffix = ".server.cc";
+      noclobber = true;
+
+    } else if (arg == "-hh") {
+      if (gen)
+        usage();
+      gen = gen_hh;
+      cpp_command += " -DXDRC_HH=1";
+      suffix = ".hh";
+
+    } else if (arg == "-p" || arg == "-ptr") {
+      server_ptr = true;
+
+    } else if (arg == "-a" || arg == "-async") {
+      server_async = true;
+
+    } else if (arg == "-s" || arg == "-session") {
+      if (!next_arg(argc, argv, arg))
+        usage();
+      server_session = arg;
+
+    } else if (arg.size() > 0 && arg[0] != '-') {
+      if (!gen) {
+        cerr << "xdrc: missing mode specifier (e.g., -hh)" << endl;
+        usage();
+      }
+      cpp_command += " ";
+      cpp_command += arg;
+      input_file = arg;
+      return;
+    } else {
+      usage();
+    }
+  }
+  usage();
+}
 
 int
 main(int argc, char **argv)
 {
   string cpp_command {CPP_COMMAND};
   cpp_command += " -DXDRC=1";
-  void (*gen)(std::ostream &) = nullptr;
+  codegen gen = nullptr;
   string suffix;
   bool noclobber = false;
 
-  int opt;
-  while ((opt = getopt_long_only(argc, argv, "D:ao:ps:",
-				 xdrc_options, nullptr)) != -1)
-    switch (opt) {
-    case 'D':
-      cpp_command += " -D";
-      cpp_command += optarg;
-      break;
-    case 'o':
-      if (!output_file.empty())
-	usage();
-      output_file = optarg;
-      break;
-    case OPT_VERSION:
-      cout << "xdrc " PACKAGE_VERSION << endl;
-      exit(0);
-      break;
-    case OPT_HELP:
-      usage(0);
-      break;
-    case OPT_SERVERHH:
-      if (gen)
-	usage();
-      gen = gen_server;
-      cpp_command += " -DXDRC_SERVER=1";
-      suffix = ".server.hh";
-      noclobber = true;
-      break;
-    case OPT_SERVERCC:
-      if (gen)
-	usage();
-      gen = gen_servercc;
-      cpp_command += " -DXDRC_SERVER=1";
-      suffix = ".server.cc";
-      noclobber = true;
-      break;
-    case OPT_HH:
-      if (gen)
-	usage();
-      gen = gen_hh;
-      cpp_command += " -DXDRC_HH=1";
-      suffix = ".hh";
-      break;
-    case 'p':
-      server_ptr = true;
-      break;
-    case 'a':
-      server_async = true;
-      break;
-    case 's':
-      server_session = optarg;
-      break;
-    default:
-      usage();
-      break;
-    }
+  parse_options(argc, argv, cpp_command, gen, suffix, noclobber);
 
-  if (optind + 1 != argc)
-    usage();
-  if (!gen) {
-    cerr << "xdrc: missing mode specifier (e.g., -hh)" << endl;
-    usage();
-  }
-  cpp_command += " ";
-  cpp_command += argv[optind];
-  input_file = argv[optind];
   if (!(yyin = popen(cpp_command.c_str(), "r"))) {
     cerr << "xdrc: command failed: " << cpp_command << endl;
     exit(1);
@@ -239,3 +262,4 @@ main(int argc, char **argv)
 
   return 0;
 }
+

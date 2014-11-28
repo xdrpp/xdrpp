@@ -18,7 +18,16 @@ xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
 	xdrpp/rpcbind.cc xdrpp/rpc_msg.cc xdrpp/server.cc	\
 	xdrpp/socket.cc xdrpp/socket_unix.cc xdrpp/srpc.cc xdrpp/arpc.cc
 
-nodist_pkginclude_HEADERS = xdrpp/endian.h
+nodist_pkginclude_HEADERS = xdrpp/endian.h xdrpp/config.h
+
+# If we use AC_CONFIG_HEADERS([xdrpp/config.h]) in configure.ac, then
+# autoconf adds -Ixdrpp, which causes errors for files like endian.h
+# (system headers find the xdrpp version instead of the system
+# version).  Creating ./config.h and then copying it into ./xdrpp/
+# solves the problem.
+xdrpp/config.h: $(srcdir)/config.h
+	cp $(srcdir)/config.h xdrpp/config.h
+
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
 	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
 	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
