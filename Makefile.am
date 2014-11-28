@@ -25,7 +25,7 @@ nodist_pkginclude_HEADERS = xdrpp/endian.h xdrpp/config.h
 # (system headers find the xdrpp version instead of the system
 # version).  Creating ./config.h and then copying it into ./xdrpp/
 # solves the problem.
-xdrpp/config.h: $(srcdir)/config.h
+xdrpp/config.h: $(builddir)/config.h
 	cp $(builddir)/config.h xdrpp/config.h
 
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\

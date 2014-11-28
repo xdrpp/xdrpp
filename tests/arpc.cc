@@ -1,6 +1,6 @@
 
 #include <xdrpp/arpc.h>
-#include "xdrtest.hh"
+#include "tests/xdrtest.hh"
 
 using namespace std;
 using namespace xdr;
