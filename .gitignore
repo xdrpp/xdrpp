@@ -33,6 +33,7 @@
 /depcomp
 /doc/html
 /doc/xdrc.1
+/getopt.h
 /install-sh
 /missing
 /msvc_xdrpp/*/Debug

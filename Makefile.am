@@ -6,6 +6,13 @@ bin_PROGRAMS = xdrc/xdrc
 
 xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/gen_server.cc	\
 	xdrc/scan.ll xdrc/parse.yy xdrc/union.h xdrc/xdrc_internal.h
+xdrc/xdrc.$(OBJEXT): xdrpp/config.h
+if NEED_GETOPT_LONG
+xdrc_xdrc_SOURCES += windows/getopt_long.c
+xdrc/xdrc.$(OBJEXT): getopt.h
+getopt.h: $(top_srcdir)/windows/getopt.h
+	cp $(top_srcdir)/windows/getopt.h getopt.h
+endif
 xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
@@ -57,14 +64,14 @@ tests_test_srpc_SOURCES = tests/srpc.cc
 tests_test_listener_SOURCES = tests/listener.cc
 tests_test_arpc_SOURCES = tests/arpc.cc
 tests_test_autocheck_SOURCES = tests/autocheck.cc
-tests/arpc.o: tests/xdrtest.hh
-tests/marshal.o: tests/xdrtest.hh
-tests/printer.o: tests/xdrtest.hh
-tests/cereal.o: tests/xdrtest.hh
-tests/srpc.o: tests/xdrtest.hh
-tests/listener.o: tests/xdrtest.hh
-tests/arpc.o: tests/xdrtest.hh
-tests/autocheck.o: tests/xdrtest.hh
+tests/arpc.$(OBJEXT): tests/xdrtest.hh
+tests/marshal.$(OBJEXT): tests/xdrtest.hh
+tests/printer.$(OBJEXT): tests/xdrtest.hh
+tests/cereal.$(OBJEXT): tests/xdrtest.hh
+tests/srpc.$(OBJEXT): tests/xdrtest.hh
+tests/listener.$(OBJEXT): tests/xdrtest.hh
+tests/arpc.$(OBJEXT): tests/xdrtest.hh
+tests/autocheck.$(OBJEXT): tests/xdrtest.hh
 
 SUFFIXES = .x .hh
 .x.hh:
@@ -75,7 +82,7 @@ $(top_builddir)/xdrpp/rpcb_prot.hh: $(XDRC)
 
 CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh	\
 	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh
-DISTCLEANFILES = xdrpp/config.h
+DISTCLEANFILES = xdrpp/config.h getopt.h
 
 $(srcdir)/doc/xdrc.1: $(srcdir)/doc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/doc/xdrc.1.md -o $(srcdir)/doc/xdrc.1

@@ -24,6 +24,7 @@ AC_DEFINE_UNQUOTED([CPP_COMMAND], "$CPP", [Shell command for C preprocessor])
 test "${WFLAGS+set}" || WFLAGS="-Wall"
 AM_PROG_LEX
 AC_CHECK_PROGS(YACC, 'bison -y', bison -y)
+AC_PROG_CC
 AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r xlC])
 AX_CXX_COMPILE_STDCXX_11(noext,mandatory)
 test -z "$WFLAGS" || CXXFLAGS="$CXXFLAGS $WFLAGS"
@@ -60,6 +61,12 @@ fi
 AM_CONDITIONAL([USE_AUTOCHECK], [test yes = "$USE_AUTOCHECK"])
 AC_MSG_RESULT(${USE_AUTOCHECK:-no})
 AC_SUBST(autocheck_CPPFLAGS)
+
+rm -f getopt.h
+if test -z "${NEED_GETOPT_LONG+set}"; then
+   AC_CHECK_FUNCS(getopt_long_only, NEED_GETOPT_LONG=no, NEED_GETOPT_LONG=yes)
+fi
+AM_CONDITIONAL([NEED_GETOPT_LONG], [test yes = "$NEED_GETOPT_LONG"])
 
 test -z "$XDRC" -a "x$cross_compiling" != xyes \
      && XDRC='$(top_builddir)/xdrc/xdrc$(EXEEXT)'
