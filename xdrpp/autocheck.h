@@ -68,6 +68,51 @@ struct generator_t {
   }
 };
 
+namespace detail {
+struct union_field_equal_t {
+  Constexpr union_field_equal_t() {}
+  template<typename T, typename F>
+  void operator()(F T::*mp, const T &a, const T &b, bool &out) const {
+    out = a.*mp == b.*mp;
+  }
+};
+Constexpr const union_field_equal_t union_field_equal {};
+} // namespace detail
+
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_union, bool>::type
+operator==(const T &a, const T &b)
+{
+  if (a._xdr_discriminant() != b._xdr_discriminant())
+    return false;
+  bool r{true};
+  a._xdr_with_mem_ptr(detail::union_field_equal,
+		      a._xdr_discriminant(), a, b, r);
+  return r;
+}
+
+namespace detail {
+template<typename T, typename F> struct struct_equal_helper {
+  static bool equal(const T &a, const T &b) {
+    Constexpr const typename F::field_info fi;
+    if (!(fi(a) == fi(b)))
+      return false;
+    return struct_equal_helper<T, typename F::next_field>::equal(a, b);
+  }
+};
+template<typename T> struct struct_equal_helper<T, xdr_struct_base<>> {
+  static bool equal(const T &, const T &) { return true; }
+};
+} // namespace detail
+
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_struct, bool>::type
+operator==(const T &a, const T &b)
+{
+  return detail::struct_equal_helper<T, xdr_traits<T>>::equal(a, b);
+}
+
+
 } // namespace xdr
 
 namespace autocheck {

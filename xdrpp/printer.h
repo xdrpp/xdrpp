@@ -135,7 +135,7 @@ template<> struct archive_adapter<detail::Printer> {
 template<typename T> std::string
 xdr_to_string(const T &t, const char *name = nullptr, int indent = 0)
 {
-  detail::Printer p;
+  detail::Printer p(indent);
   archive(p, t, name);
   p.buf_ << std::endl;
   return p.buf_.str();

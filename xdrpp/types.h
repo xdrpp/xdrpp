@@ -465,6 +465,12 @@ template<typename T> struct pointer : std::unique_ptr<T> {
       this->reset(new T);
     return *this->get();
   }
+
+  //! Compare for equality by value, rather than looking at the value
+  //! of the pointer.
+  friend bool operator==(const pointer &a, const pointer &b) {
+    return (!a && !b) || (a && b && *a == *b);
+  }
 };
 
 // Note an explicit third template argument (VFixed = false) is
