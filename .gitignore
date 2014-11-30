@@ -21,6 +21,7 @@
 /Makefile.in
 /aclocal.m4
 /ar-lib
+/autocheck
 /autom4te.cache
 /cereal
 /compile

@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-AM_CPPFLAGS = $(cereal_CPPFLAGS)
+AM_CPPFLAGS = $(cereal_CPPFLAGS) $(autocheck_CPPFLAGS)
 
 bin_PROGRAMS = xdrc/xdrc
 
@@ -32,7 +32,7 @@ pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
 	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
 	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
 	xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h xdrpp/server.h	\
-	xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h
+	xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h xdrpp/autocheck.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xdrpp.pc
@@ -45,6 +45,9 @@ check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 endif
+if USE_AUTOCHECK
+check_PROGRAMS += tests/test-autocheck
+endif
 #TESTS = $(check_PROGRAMS)
 tests_test_printer_SOURCES = tests/printer.cc
 tests_test_msgsock_SOURCES = tests/msgsock.cc
@@ -53,6 +56,7 @@ tests_test_cereal_SOURCES = tests/cereal.cc
 tests_test_srpc_SOURCES = tests/srpc.cc
 tests_test_listener_SOURCES = tests/listener.cc
 tests_test_arpc_SOURCES = tests/arpc.cc
+tests_test_autocheck_SOURCES = tests/autocheck.cc
 tests/arpc.o: tests/xdrtest.hh
 tests/marshal.o: tests/xdrtest.hh
 tests/printer.o: tests/xdrtest.hh
@@ -60,6 +64,7 @@ tests/cereal.o: tests/xdrtest.hh
 tests/srpc.o: tests/xdrtest.hh
 tests/listener.o: tests/xdrtest.hh
 tests/arpc.o: tests/xdrtest.hh
+tests/autocheck.o: tests/xdrtest.hh
 
 SUFFIXES = .x .hh
 .x.hh:

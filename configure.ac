@@ -48,6 +48,19 @@ AM_CONDITIONAL([USE_CEREAL], [test yes = "$USE_CEREAL"])
 AC_MSG_RESULT(${USE_CEREAL:-no})
 AC_SUBST(cereal_CPPFLAGS)
 
+AC_MSG_CHECKING(for autocheck)
+autocheck_CPPFLAGS=
+if test -d "$ac_top_srcdir/autocheck/include/autocheck"; then
+   autocheck_CPPFLAGS='-I$(top_srcdir)/autocheck/include'
+   USE_AUTOCHECK=yes
+elif test -d autocheck/include/autocheck; then
+   autocheck_CPPFLAGS='-I$(top_builddir)/autocheck/include'
+   USE_AUTOCHECK=yes
+fi
+AM_CONDITIONAL([USE_AUTOCHECK], [test yes = "$USE_AUTOCHECK"])
+AC_MSG_RESULT(${USE_AUTOCHECK:-no})
+AC_SUBST(autocheck_CPPFLAGS)
+
 test -z "$XDRC" -a "x$cross_compiling" != xyes \
      && XDRC='$(top_builddir)/xdrc/xdrc$(EXEEXT)'
 if test -z "$XDRC"; then

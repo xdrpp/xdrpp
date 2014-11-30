@@ -14,3 +14,18 @@
     ./configure
     make
 
+# To enable the cereal test
+
+You need cereal in the top directory, for which you should run:
+
+    git clone https://github.com/USCiLab/cereal.git
+
+(Or make cereal a symlink to an already checked out copy.)
+
+# To enable autocheck tests
+
+You need autocheck in the top directory.  Run:
+
+    git clone https://github.com/thejohnfreeman/autocheck.git
+
+(Or make autocheck a symlink to an already checked out copy.)

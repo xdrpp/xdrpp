@@ -678,7 +678,7 @@ member(T &&t, F T::*mp)
 {
   return std::move(t.*mp);
 }
-}
+} // namespace detail
 
 struct field_constructor_t {
   Constexpr field_constructor_t() {}
@@ -690,6 +690,10 @@ struct field_constructor_t {
     new (&(t.*mp)) F (detail::member(std::forward<TT>(tt), mp));
   }
 };
+//! Passed to the auto-generated _xdr_with_mem_ptr static method to
+//! construct the active union field (or at least the union field
+//! corresponding to the second argument to _xdr_with_mem_ptr, which
+//! should be the active union field).
 Constexpr const field_constructor_t field_constructor {};
 
 struct field_destructor_t {
@@ -697,6 +701,7 @@ struct field_destructor_t {
   template<typename T, typename F> void
   operator()(F T::*mp, T &t) const { detail::member(t, mp).~F(); }
 };
+//! Passed to _xdr_with_mem_ptr to destroy the active union field.
 Constexpr field_destructor_t field_destructor {};
 
 struct field_assigner_t {
@@ -706,6 +711,7 @@ struct field_assigner_t {
     detail::member(t, mp) = detail::member(std::forward<TT>(tt), mp);
   }
 };
+//! Passed to _xdr_with_mem_ptr to assign to the active union field.
 Constexpr const field_assigner_t field_assigner {};
 
 struct field_archiver_t {
@@ -720,6 +726,7 @@ struct field_archiver_t {
     archive(ar, detail::member(t, mp), name);
   }
 };
+//! Passed to _xdr_with_mem_ptr to archive the active union field.
 Constexpr const field_archiver_t field_archiver {};
 
 struct field_size_t {
@@ -729,6 +736,8 @@ struct field_size_t {
     size = xdr_traits<F>::serial_size(detail::member(t, mp));
   }
 };
+//! Passed to _xdr_with_mem_ptr to compute the size of the active
+//! union field.
 Constexpr const field_size_t field_size {};
 
 #if MSVC
