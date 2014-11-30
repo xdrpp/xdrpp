@@ -8,7 +8,7 @@ xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/gen_server.cc	\
 	xdrc/scan.ll xdrc/parse.yy xdrc/union.h xdrc/xdrc_internal.h
 xdrc/xdrc.$(OBJEXT): xdrpp/config.h
 if NEED_GETOPT_LONG
-xdrc_xdrc_SOURCES += windows/getopt_long.c
+xdrc_xdrc_SOURCES += windows/getopt_long.c windows/getopt.h
 xdrc/xdrc.$(OBJEXT): getopt.h
 getopt.h: $(top_srcdir)/windows/getopt.h
 	cp $(top_srcdir)/windows/getopt.h getopt.h
