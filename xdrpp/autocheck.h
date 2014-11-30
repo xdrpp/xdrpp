@@ -35,7 +35,7 @@ struct generator_t {
     size_t s = size_;
     uint32_t v;
     do {
-      v = autocheck::generator<uint32_t>{}();
+      v = autocheck::generator<uint32_t>{}(s);
       s >>= 1;
     } while (v > 0 && T::_xdr_field_number(v) == -1);
     t._xdr_discriminant(v, false);
@@ -59,8 +59,10 @@ struct generator_t {
 
   template<typename T> void
   operator()(pointer<T> &t) const {
-    if (t.resize(autocheck::generator<std::uint32_t>{}(size_)))
-      archive(generator_t(size_ >> 1), t.activate());
+    if (autocheck::generator<std::uint32_t>{}(size_)) {
+      generator_t g(size_ >> 1);
+      archive(g, t.activate());
+    }
     else
       t.reset();
   }
@@ -71,7 +73,8 @@ struct generator_t {
 namespace autocheck {
 
 template<typename T> class generator<
-  T, typename std::enable_if<xdr::xdr_traits<T>::valid>::type> {
+  T, typename std::enable_if<xdr::xdr_traits<T>::valid
+			     && !xdr::xdr_traits<T>::is_numeric>::type> {
 public:
   using result_type = T;
   result_type operator()(size_t size) const {

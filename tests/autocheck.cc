@@ -9,18 +9,12 @@ int
 main()
 {
 
-#if 0
-  {
-    autocheck::generator<int, void> g;
-    cout << g(5) << endl;
-  }
-
-  for (size_t i = 0; i < 20; i++) {
-    auto x = autocheck::generator<u_4_12>{}(i);
+  autocheck::generator<test_recursive> g;
+  for (size_t i = 0; i < 100; i++) {
+    auto x = g(i);
     string name = "size " + to_string(i);
     cout << xdr_to_string(x, name.c_str());
   }
-#endif
   
   return 0;
 }
