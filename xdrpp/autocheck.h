@@ -81,7 +81,7 @@ public:
     xdr::generator_t g(size);
     T t;
     xdr::archive(g, t);
-    return std::move(t);
+    return t;
   }
 };
   

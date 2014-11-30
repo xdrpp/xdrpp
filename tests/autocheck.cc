@@ -9,6 +9,9 @@ int
 main()
 {
 
+  bool b = autocheck::generator<bool>{}(100);
+  cout << boolalpha << b << endl;
+
   autocheck::generator<test_recursive> g;
   for (size_t i = 0; i < 100; i++) {
     auto x = g(i);
