@@ -278,6 +278,23 @@ gen(std::ostream &os, const rpc_enum &e)
     << "      return nullptr;" << endl
     << "    }" << endl
     << "  }" << endl
+    << "  static const std::vector<uint32_t> &enum_values() {" << endl
+    << "    static const std::vector<uint32_t> _xdr_enum_vec = {";
+  bool first = true;
+  for (const rpc_const &c : e.tags) {
+    if (first)
+      first = false;
+    else
+      top_material << ",";
+    top_material
+      << endl
+      << "      " << myscope + c.id;
+  }
+  top_material
+    << endl
+    << "    };" << endl
+    << "    return _xdr_enum_vec;" << endl
+    << "  }" << endl
     << "};" << endl;
 }
 

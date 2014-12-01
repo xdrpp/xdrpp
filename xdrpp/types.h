@@ -196,6 +196,10 @@ template<> struct xdr_traits<bool>
   static Constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
+  static const std::vector<uint32_t> &enum_values() {
+    static const std::vector<uint32_t> v = { false, true };
+    return v;
+  }
 };
 
 //! Maximum length of vectors.  (The RFC says 0xffffffff, but out of
