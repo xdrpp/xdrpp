@@ -192,7 +192,7 @@ template<> struct xdr_traits<bool>
   : xdr_integral_base<bool, std::uint32_t> {
   static Constexpr const bool is_enum = true;
   static Constexpr const bool is_numeric = false;
-  static type from_uint(uint_type u) { return u; }
+  static type from_uint(uint_type u) { return u != 0; }
   static Constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
@@ -712,7 +712,7 @@ struct field_destructor_t {
   operator()(F T::*mp, T &t) const { detail::member(t, mp).~F(); }
 };
 //! Passed to _xdr_with_mem_ptr to destroy the active union field.
-Constexpr field_destructor_t field_destructor {};
+Constexpr const field_destructor_t field_destructor {};
 
 struct field_assigner_t {
   Constexpr field_assigner_t() {}

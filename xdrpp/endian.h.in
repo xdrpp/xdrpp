@@ -48,7 +48,8 @@ swap32(std::uint32_t v)
 Constexpr inline std::uint64_t
 swap64(std::uint64_t v)
 {
-  return std::uint64_t(swap32(v))<<32 | swap32(v>>32);
+  return std::uint64_t(swap32(std::uint32_t(v)))<<32 |
+         std::uint64_t(swap32(std::uint32_t(v>>32)));
 }
 
 //! Byteswap 32-bit value only on little-endian machines, identity
