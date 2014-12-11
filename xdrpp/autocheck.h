@@ -46,15 +46,17 @@ struct generator_t {
   std::enable_if<xdr_traits<T>::variable_nelem == true>::type
   operator()(T &t) const {
     t.resize(autocheck::generator<std::uint32_t>{}(size_) % t.max_size());
+	autocheck::generator<typename T::value_type> gen;
     for (auto &e : t)
-      e = autocheck::generator<typename T::value_type>{}(size_);
+      e = gen(size_);
   }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::variable_nelem == false>::type
   operator()(T &t) const {
+	autocheck::generator<typename T::value_type> gen;
     for (auto &e : t)
-      e = autocheck::generator<typename T::value_type>{}(size_);
+      e = gen(size_);
   }
 
   template<typename T> void
