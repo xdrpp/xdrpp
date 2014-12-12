@@ -85,6 +85,6 @@ fi
 AC_SUBST(MSVC)
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile xdrpp/endian.h xdrpp.pc xdrpp-uninstalled.pc])
+AC_CONFIG_FILES([Makefile xdrpp/build_endian.h xdrpp.pc xdrpp-uninstalled.pc])
 AC_OUTPUT
 

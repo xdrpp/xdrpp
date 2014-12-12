@@ -52,6 +52,6 @@
 /xdrpp.pc
 /xdrpp/*.hh
 /xdrpp/config.h
-/xdrpp/endian.h
+/xdrpp/build_endian.h
 /ylwrap
 xdrpp-*.tar.gz

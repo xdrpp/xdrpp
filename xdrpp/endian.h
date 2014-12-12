@@ -25,9 +25,11 @@ namespace xdr {
 #endif // !MSVC
 
 #ifndef XDRPP_WORDS_BIGENDIAN
-//! Default value set on build machine, but can be overridden (by
-//! defining WORDS_BIGENDIAN to 0 or 1) in case of cross-compilation.
-#define XDRPP_WORDS_BIGENDIAN @IS_BIG_ENDIAN@
+#if MSVC
+#define XDRPP_WORDS_BIGENDIAN 0
+#else // !MSVC
+#include <xdrpp/build_endian.h>
+#endif // !MSVC
 #endif // !XDRPP_WORDS_BIGENDIAN
 
 //! True on big endian machines, false on little endian machines.

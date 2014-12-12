@@ -25,7 +25,7 @@ xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
 	xdrpp/rpcbind.cc xdrpp/rpc_msg.cc xdrpp/server.cc	\
 	xdrpp/socket.cc xdrpp/socket_unix.cc xdrpp/srpc.cc xdrpp/arpc.cc
 
-nodist_pkginclude_HEADERS = xdrpp/endian.h xdrpp/config.h
+nodist_pkginclude_HEADERS = xdrpp/build_endian.h
 
 # If we use AC_CONFIG_HEADERS([xdrpp/config.h]) in configure.ac, then
 # autoconf adds -Ixdrpp, which causes errors for files like endian.h
@@ -39,7 +39,8 @@ pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
 	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
 	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
 	xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h xdrpp/server.h	\
-	xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h xdrpp/autocheck.h
+	xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h xdrpp/autocheck.h	\
+	xdrpp/endian.h xdrpp/build_endian.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xdrpp.pc
@@ -95,10 +96,10 @@ maintainer-clean-local:
 	rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
 
 man_MANS = doc/xdrc.1
-EXTRA_DIST = .gitignore doc/xdrc.1 doc/xdrc.1.md xdrpp/endian.h.in	\
-	xdrpp/rpc_msg.x xdrpp/rpcb_prot.x tests/xdrtest.x		\
-	doc/rfc1833.txt doc/rfc4506.txt doc/rfc5531.txt			\
-	doc/rfc5665.txt
+EXTRA_DIST = .gitignore doc/xdrc.1 doc/xdrc.1.md			\
+	xdrpp/build_endian.h.in xdrpp/rpc_msg.x xdrpp/rpcb_prot.x	\
+	tests/xdrtest.x doc/rfc1833.txt doc/rfc4506.txt			\
+	doc/rfc5531.txt doc/rfc5665.txt
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 	$(srcdir)/doc/xdrc.1
 
