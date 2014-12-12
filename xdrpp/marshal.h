@@ -81,13 +81,17 @@ template<typename Base> struct xdr_generic_put : Base {
   std::uint32_t *p_;
   std::uint32_t *const e_;
 
-  xdr_generic_put() = default;
-  xdr_generic_put(msg_ptr &m)
-    : p_(reinterpret_cast<std::uint32_t *>(m->data())),
-      e_(reinterpret_cast<std::uint32_t *>(m->end())) {
-    // Assertion failure rather than exception, because we generated message.
-    assert(!(m->size() & 3));
+  // Set the buffer to marshal to.  Both \c start and \c end must be
+  // 4-byte aligned.
+  xdr_generic_put(void *start, void *end)
+    : p_(reinterpret_cast<std::uint32_t *>(start)), 
+      e_(reinterpret_cast<std::uint32_t *>(end)) {
+    assert(!(reinterpret_cast<intptr_t>(start) & 3));
+    assert(!(reinterpret_cast<intptr_t>(end) & 3));
+    assert(p_ <= e_);
   }
+  xdr_generic_put(msg_ptr &m)
+    : xdr_generic_put(m->data(), m->end()) {}
 
   void check(std::size_t n) const {
     if (n > std::size_t(reinterpret_cast<char *>(e_)
@@ -130,18 +134,25 @@ template<typename Base> struct xdr_generic_get : Base {
   const std::uint32_t *p_;
   const std::uint32_t *const e_;
 
-  xdr_generic_get() = default;
-  xdr_generic_get(const msg_ptr &m)
-    : p_(reinterpret_cast<std::uint32_t *>(m->data())),
-      e_(reinterpret_cast<std::uint32_t *>(m->end())) {
-    if (m->size() & 3)
+  // Set the buffer to marshal from.  Both \c start and \c end must be
+  // 4-byte aligned.
+  xdr_generic_get(const void *start, const void *end)
+    : p_(reinterpret_cast<const std::uint32_t *>(start)), 
+      e_(reinterpret_cast<const std::uint32_t *>(end)) {
+    assert(!(reinterpret_cast<intptr_t>(start) & 3));
+    // Message could be coming from untrusted source, so bad length is
+    // not an assertion failure.
+    if (!(reinterpret_cast<intptr_t>(end) & 3))
       throw xdr_bad_message_size("xdr_generic_get: message size not"
 				 " multiple of 4");
+    assert(p_ <= e_);
   }
+  xdr_generic_get(const msg_ptr &m)
+    : xdr_generic_get(m->data(), m->end()) {}
 
   void check(std::uint32_t n) const {
-    if (reinterpret_cast<const char *>(e_)
-	- reinterpret_cast<const char *>(p_) < static_cast<ptrdiff_t>(n))
+    if (n > std::size_t(reinterpret_cast<const char *>(e_)
+			- reinterpret_cast<const char *>(p_)))
       throw xdr_overflow("insufficient buffer space in xdr_generic_get");
   }
 
