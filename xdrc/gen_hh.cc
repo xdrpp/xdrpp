@@ -265,8 +265,8 @@ gen(std::ostream &os, const rpc_enum &e)
   top_material
     << "template<> struct xdr_traits<" << qt << ">" << endl
     << "  : xdr_integral_base<" << qt << ", std::uint32_t> {" << endl
-    << "  static const bool is_enum = true;" << endl
-    << "  static const bool is_numeric = false;" << endl
+    << "  static Constexpr const bool is_enum = true;" << endl
+    << "  static Constexpr const bool is_numeric = false;" << endl
     << "  static const char *enum_name("
     << qt << " val) {" << endl
     << "    switch (val) {" << endl;
@@ -385,7 +385,7 @@ gen(std::ostream &os, const rpc_union &u)
 
   // _xdr_field_number
   os << nl
-     << "static int _xdr_field_number(std::uint32_t which) {";
+     << "static Constexpr int _xdr_field_number(std::uint32_t which) {";
   union_function(os, u, "which", [](const rpc_ufield *uf) {
       using std::to_string;
       if (uf)
@@ -519,9 +519,9 @@ gen(std::ostream &os, const rpc_union &u)
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
     << "> : xdr_traits_base {" << endl
-    << "  static const bool is_class = true;" << endl
-    << "  static const bool is_union = true;" << endl
-    << "  static const bool has_fixed_size = false;" << endl << endl;
+    << "  static Constexpr const bool is_class = true;" << endl
+    << "  static Constexpr const bool is_union = true;" << endl
+    << "  static Constexpr const bool has_fixed_size = false;" << endl << endl;
 
   top_material
     << "  using union_type = " << cur_scope() << ";" << endl
@@ -546,7 +546,7 @@ gen(std::ostream &os, const rpc_union &u)
 
 #if 0
   top_material
-    << "  static const char *union_field_name(std::uint32_t which) {";
+    << "  static Constexpr const char *union_field_name(std::uint32_t which) {";
   if (!namespaces.empty())
     top_material
       << endl << "    using namespace " << cur_ns() << ";";
@@ -639,12 +639,12 @@ void
 gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
   os << "struct " << v.id << " {"
-     << nl.open << "static const std::uint32_t program = "
+     << nl.open << "static Constexpr const std::uint32_t program = "
      << u.val << ";"
-     << nl << "static const char *program_name() { return \""
+     << nl << "static Constexpr const char *program_name() { return \""
      << u.id << "\"; }"
-     << nl << "static const std::uint32_t version = " << v.val << ";"
-     << nl << "static const char *version_name() { return \""
+     << nl << "static Constexpr const std::uint32_t version = " << v.val << ";"
+     << nl << "static Constexpr const char *version_name() { return \""
      << v.id << "\"; }";
 
   for (const rpc_proc &p : v.procs) {
@@ -652,8 +652,8 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     os << endl
        << nl << "struct " << p.id << "_t {"
        << nl.open << "using interface_type = " << v.id << ";"
-       << nl << "static const std::uint32_t proc = " << p.val << ";"
-       << nl << "static const char *proc_name() { return \""
+       << nl << "static Constexpr const std::uint32_t proc = " << p.val << ";"
+       << nl << "static Constexpr const char *proc_name() { return \""
        << p.id << "\"; }";
     if (p.arg.size() == 0)
       os << nl << "using arg_type = void;";
@@ -799,7 +799,7 @@ gen_hh(std::ostream &os)
     }
     switch(s.type) {
     case rpc_sym::CONST:
-      os << "const std::uint32_t " << s.sconst->id << " = "
+      os << "Constexpr const std::uint32_t " << s.sconst->id << " = "
 	 << s.sconst->val << ';';
       break;
     case rpc_sym::STRUCT:
