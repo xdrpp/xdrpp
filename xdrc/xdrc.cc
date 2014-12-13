@@ -1,23 +1,11 @@
-
 #include <cassert>
 #include <iostream>
 #include <fstream>
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <xdrpp/config.h>
 #include "xdrc_internal.h"
-
-#if MSVC
-#include <io.h>
-#define CPP_COMMAND "cpp.exe"
-#define popen _popen
-#define pclose _pclose
-#define access _access
-#else
-#include <unistd.h>
-#endif
 
 using std::cout;
 using std::cerr;

@@ -12,6 +12,17 @@
 #include <xdrpp/endian.h>
 #include "union.h"
 
+#ifdef _MSC_VER
+#include <io.h>
+#define popen _popen
+#define pclose _pclose
+#define access _access
+#define isatty _isatty
+#define fileno _fileno
+#else
+#include <unistd.h>
+#endif
+
 using std::string;
 
 template<typename T> struct vec : std::vector<T> {
