@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <xdrpp/config.h>
 #include "xdrc_internal.h"
 

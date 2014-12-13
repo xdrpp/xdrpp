@@ -38,7 +38,7 @@ AC_SUBST(IS_BIG_ENDIAN)
 
 AC_MSG_CHECKING(for cereal)
 cereal_CPPFLAGS=
-if test -d "$ac_top_srcdir/cereal/include/cereal"; then
+if test -n "$srcdir" -a -d "$srcdir/cereal/include/cereal"; then
    cereal_CPPFLAGS='-I$(top_srcdir)/cereal/include'
    USE_CEREAL=yes
 elif test -d cereal/include/cereal; then
@@ -51,7 +51,7 @@ AC_SUBST(cereal_CPPFLAGS)
 
 AC_MSG_CHECKING(for autocheck)
 autocheck_CPPFLAGS=
-if test -d "$ac_top_srcdir/autocheck/include/autocheck"; then
+if test -n "$srcdir" -a -d "$srcdir/autocheck/include/autocheck"; then
    autocheck_CPPFLAGS='-I$(top_srcdir)/autocheck/include'
    USE_AUTOCHECK=yes
 elif test -d autocheck/include/autocheck; then
