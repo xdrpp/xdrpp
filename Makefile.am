@@ -6,13 +6,15 @@ bin_PROGRAMS = xdrc/xdrc
 
 xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/gen_server.cc	\
 	xdrc/scan.ll xdrc/parse.yy xdrc/union.h xdrc/xdrc_internal.h
-xdrc/xdrc.$(OBJEXT): xdrpp/config.h
 if NEED_GETOPT_LONG
 xdrc_xdrc_SOURCES += windows/getopt_long.c windows/getopt.h
-xdrc/xdrc.$(OBJEXT): getopt.h
 getopt.h: $(top_srcdir)/windows/getopt.h
 	cp $(top_srcdir)/windows/getopt.h getopt.h
-endif
+MAYBE_GETOPT = getopt.h
+else # ! NEED_GETOPT_LONG
+MAYBE_GETOPT =
+endif # ! NEED_GETOPT_LONG
+xdrc/xdrc.$(OBJEXT): xdrpp/config.h $(MAYBE_GETOPT)
 xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
@@ -36,11 +38,11 @@ xdrpp/config.h: $(builddir)/config.h
 	cp $(builddir)/config.h xdrpp/config.h
 
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
-	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
-	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
-	xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h xdrpp/server.h	\
-	xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h xdrpp/autocheck.h	\
-	xdrpp/endian.h xdrpp/build_endian.h
+	xdrpp/compare.h xdrpp/exception.h xdrpp/iniparse.h		\
+	xdrpp/marshal.h xdrpp/printer.h xdrpp/rpc_msg.hh		\
+	xdrpp/message.h xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h	\
+	xdrpp/server.h xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h	\
+	xdrpp/autocheck.h xdrpp/endian.h xdrpp/build_endian.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xdrpp.pc
@@ -49,7 +51,7 @@ LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 
 check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
 	tests/test-srpc tests/test-printer tests/test-listener	\
-	tests/test-arpc
+	tests/test-arpc tests/test-compare
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 endif
@@ -65,6 +67,7 @@ tests_test_srpc_SOURCES = tests/srpc.cc
 tests_test_listener_SOURCES = tests/listener.cc
 tests_test_arpc_SOURCES = tests/arpc.cc
 tests_test_autocheck_SOURCES = tests/autocheck.cc
+tests_test_compare_SOURCES = tests/compare.cc
 tests/arpc.$(OBJEXT): tests/xdrtest.hh
 tests/marshal.$(OBJEXT): tests/xdrtest.hh
 tests/printer.$(OBJEXT): tests/xdrtest.hh
@@ -73,6 +76,7 @@ tests/srpc.$(OBJEXT): tests/xdrtest.hh
 tests/listener.$(OBJEXT): tests/xdrtest.hh
 tests/arpc.$(OBJEXT): tests/xdrtest.hh
 tests/autocheck.$(OBJEXT): tests/xdrtest.hh
+tests/compare.$(OBJEXT): tests/xdrtest.hh
 
 SUFFIXES = .x .hh
 .x.hh:

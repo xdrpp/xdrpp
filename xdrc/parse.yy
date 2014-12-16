@@ -1,7 +1,7 @@
 
 %{
 #include <algorithm>
-#include "xdrc_internal.h"
+#include "xdrc/xdrc_internal.h"
 
 string xdr_unbounded = "";
 static int proc_compare(const void *, const void *);

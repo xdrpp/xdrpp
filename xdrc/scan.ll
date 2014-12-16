@@ -1,7 +1,7 @@
 /* -*-fundamental-*- */
 
 %{
-#include "xdrc_internal.h"
+#include "xdrc/xdrc_internal.h"
 #include "parse.hh"
 #define YY_NO_INPUT
 #define register
