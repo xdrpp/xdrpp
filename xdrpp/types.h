@@ -466,7 +466,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   }
   T &activate() {
     if (!*this)
-      this->reset(new T);
+      this->reset(new T{});
     return *this->get();
   }
 

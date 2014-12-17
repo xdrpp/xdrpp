@@ -7,20 +7,40 @@
 using namespace std;
 using namespace xdr;
 
+void
+withshow()
+{
+  using namespace xdr::show;
+
+  bool b = true;
+  
+  u_4_12 u(12);
+  u.f12().i = 99;
+  u.f12().d = 99.99;
+
+  cout << boolalpha << b << " " << u << endl;
+
+  testns::numerics n;
+
+  cout << noboolalpha << n << endl;
+
+  // Should print "REDDEST"
+  cout << REDDEST << endl;
+}
+
 int
 main()
 {
-#if 0
-  bool b = true;
-  p("b", b);
-  p("x", 5);
-  testns::numerics n;
-  n.ip.reset(new int (5));
-  n.nester.resize(2);
-  n.nester[0].juju = "hi";
-  n.nester[1].juju = "there";
-  std::cout << xdr_to_string(n);
-#endif
+  withshow();
+
+  testns::uniontest ut;
+  ut.ip.activate()++;
+  ut.key.arbitrary(REDDEST);
+  ut.key.big().resize(4);
+  cout << xdr_to_string(ut) << endl;
+
+  // Should print "2"
+  cout << REDDEST << endl;
 
   return 0;
 }

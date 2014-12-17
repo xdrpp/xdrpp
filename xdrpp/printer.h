@@ -1,6 +1,10 @@
 // -*- C++ -*-
 
 //! \file printer.h Support for pretty-printing XDR data types.
+//! Function xdr::xdr_to_string converts an arbitrary XDR data type to
+//! a string.  In addition, if you say <tt>using namespace
+//! xdr::show;</tt>, you can use the standard \c operator<< to print
+//! XDR types.
 
 #ifndef _XDRPP_PRINT_H_HEADER_INCLUDED_
 #define _XDRPP_PRINT_H_HEADER_INCLUDED_ 1
@@ -86,7 +90,7 @@ struct Printer {
   }
 };
 
-}
+} // namespace detail
 
 template<> struct archive_adapter<detail::Printer> {
   using Printer = detail::Printer;
@@ -141,6 +145,17 @@ xdr_to_string(const T &t, const char *name = nullptr, int indent = 0)
   return p.buf_.str();
 }
 
+namespace show {
+
+template<typename T>
+inline typename std::enable_if<xdr_traits<T>::valid, std::ostream &>::type
+operator<<(std::ostream &os, const T &t)
+{
+  return os << xdr_to_string(t);
 }
+
+} // namespace show
+
+} // namespace xdr
 
 #endif // !_XDRPP_PRINT_H_HEADER_INCLUDED_
