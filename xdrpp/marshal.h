@@ -11,6 +11,7 @@
 #include <xdrpp/endian.h>
 #include <xdrpp/message.h>
 #include <xdrpp/types.h>
+#include <iostream>
 
 namespace xdr {
 
@@ -137,14 +138,14 @@ template<typename Base> struct xdr_generic_get : Base {
   // Set the buffer to marshal from.  Both \c start and \c end must be
   // 4-byte aligned.
   xdr_generic_get(const void *start, const void *end)
-    : p_(reinterpret_cast<const std::uint32_t *>(start)), 
+    : p_(reinterpret_cast<const std::uint32_t *>(start)),
       e_(reinterpret_cast<const std::uint32_t *>(end)) {
     assert(!(reinterpret_cast<intptr_t>(start) & 3));
     // Message could be coming from untrusted source, so bad length is
     // not an assertion failure.
-    if (!(reinterpret_cast<intptr_t>(end) & 3))
+    if (reinterpret_cast<intptr_t>(end) & 3)
       throw xdr_bad_message_size("xdr_generic_get: message size not"
-				 " multiple of 4");
+                                 " multiple of 4");
     assert(p_ <= e_);
   }
   xdr_generic_get(const msg_ptr &m)
