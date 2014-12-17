@@ -85,7 +85,7 @@ template<typename Base> struct xdr_generic_put : Base {
   // Set the buffer to marshal to.  Both \c start and \c end must be
   // 4-byte aligned.
   xdr_generic_put(void *start, void *end)
-    : p_(reinterpret_cast<std::uint32_t *>(start)), 
+    : p_(reinterpret_cast<std::uint32_t *>(start)),
       e_(reinterpret_cast<std::uint32_t *>(end)) {
     assert(!(reinterpret_cast<intptr_t>(start) & 3));
     assert(!(reinterpret_cast<intptr_t>(end) & 3));
