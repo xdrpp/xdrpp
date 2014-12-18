@@ -44,6 +44,10 @@ struct bytes {
   opaque variable<16>;
 };
 
+struct hasbytes {
+  bytes the_bytes<>;
+};
+
 struct numerics {
   bool b;
   int i1;
