@@ -41,7 +41,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <TargetExt>.lib</TargetExt>
-    <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
+    <CustomBuildBeforeTargets>
+    </CustomBuildBeforeTargets>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -54,10 +55,16 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <CustomBuildStep>
-      <Command>sed -i -e 's/@IS_BIG_ENDIAN@/0/g' endian.h</Command>
+      <Command>
+      </Command>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Inputs>endian.h.in;%(Inputs)</Inputs>
+      <Inputs>
+      </Inputs>
+      <Outputs>
+      </Outputs>
+      <TreatOutputAsContent>
+      </TreatOutputAsContent>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -75,6 +82,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\xdrpp\build_endian.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\..\xdrpp\cereal.h" />
     <ClInclude Include="..\..\xdrpp\clear.h" />
     <ClInclude Include="..\..\xdrpp\marshal.h" />
@@ -86,6 +96,26 @@
   <ItemGroup>
     <ClCompile Include="..\..\xdrpp\marshal.cc" />
     <ClCompile Include="..\..\xdrpp\printer.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\..\xdrpp\build_endian.h.in">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy /Y %(RelativeDir)build_endian.h.in %(RelativeDir)build_endian.h
+sed -i -e 's/@IS_BIG_ENDIAN@/0/g' ../../xdrpp/build_endian.h
+exit /B 0</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(RelativeDir)build_endian.h</Outputs>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(RelativeDir)build_endian.h.in</AdditionalInputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">copy /Y %(RelativeDir)build_endian.h.in %(RelativeDir)build_endian.h
+sed -i -e 's/@IS_BIG_ENDIAN@/0/g' ../../xdrpp/build_endian.h
+exit /B 0</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">generating endian file</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">generating endian file</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(RelativeDir)build_endian.h</Outputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</LinkObjects>
+      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(RelativeDir)build_endian.h.in</AdditionalInputs>
+      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkObjects>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
