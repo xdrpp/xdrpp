@@ -145,16 +145,17 @@ xdr_to_string(const T &t, const char *name = nullptr, int indent = 0)
   return p.buf_.str();
 }
 
-namespace show {
-
+//! Print an arbitrary XDR structure to a \c std::ostream.  To use
+//! this function, you will have to say <tt>using xdr::operator<<</tt>
+//! within the namespace of your XDR file.  As per the C++ standard, a
+//! using \e directive (i.e., <tt>using namespace xdr</tt>) will not
+//! allow argument-dependent lookup.
 template<typename T>
 inline typename std::enable_if<xdr_traits<T>::valid, std::ostream &>::type
 operator<<(std::ostream &os, const T &t)
 {
   return os << xdr_to_string(t);
 }
-
-} // namespace show
 
 } // namespace xdr
 

@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <xdrpp/endian.h>
@@ -19,6 +20,11 @@
 namespace xdr {
 
 using std::uint32_t;
+
+
+////////////////////////////////////////////////////////////////
+// Exception types
+////////////////////////////////////////////////////////////////
 
 //! Generic class of XDR unmarshaling errors.
 struct xdr_runtime_error : std::runtime_error {
@@ -55,6 +61,10 @@ struct xdr_wrong_union : std::logic_error {
 };
 
 
+////////////////////////////////////////////////////////////////
+// Templates for XDR traversal and processing
+////////////////////////////////////////////////////////////////
+
 //! This is used to apply an archive to a field.  It is designed as a
 //! template class that can be specialized to various archive formats,
 //! since some formats may want the fied name and others not.  Other
@@ -86,6 +96,8 @@ archive(Archive &ar, T &&t, const char *name = nullptr)
 template<typename T> struct xdr_traits {
   //! \c T is a valid XDR type that can be serialized.
   static Constexpr const bool valid = false;
+  //! \c T is defined by xdrpp/xdrc (as opposed to native or std types).
+  static Constexpr const bool xdr_defined = false;
   //! \c T is an \c xstring, \c opaque_array, or \c opaque_vec.
   static Constexpr const bool is_bytes = false;
   //! \c T is an XDR struct.
@@ -115,6 +127,7 @@ xdr_size(const T&t)
 //! supertype for most xdr::xdr_traits specializations.
 struct xdr_traits_base {
   static Constexpr const bool valid = true;
+  static Constexpr const bool xdr_defined = true;
   static Constexpr const bool is_bytes = false;
   static Constexpr const bool is_class = false;
   static Constexpr const bool is_enum = false;
@@ -125,6 +138,10 @@ struct xdr_traits_base {
   static Constexpr const bool has_fixed_size = false;
 };
 
+
+////////////////////////////////////////////////////////////////
+// Support for numeric types and bool
+////////////////////////////////////////////////////////////////
 
 //! A reinterpret-cast like function that works between types such as
 //! floating-point and integers of the same size.  Used in marshaling,
@@ -149,6 +166,7 @@ xdr_reinterpret(From f)
 template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   using type = T;
   using uint_type = U;
+  static Constexpr const bool xdr_defined = false;
   static Constexpr const bool is_numeric = true;
   static Constexpr const bool has_fixed_size = true;
   static Constexpr const std::size_t fixed_size = sizeof(uint_type);
@@ -174,6 +192,7 @@ template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
   using uint_type = U;
   static_assert(sizeof(type) == sizeof(uint_type),
 		"Cannot reinterpret between float and int of different size");
+  static Constexpr const bool xdr_defined = false;
   static Constexpr const bool is_numeric = true;
   static Constexpr const bool has_fixed_size = true;
   static Constexpr const std::size_t fixed_size = sizeof(uint_type);
@@ -190,6 +209,7 @@ template<> struct xdr_traits<double>
 
 template<> struct xdr_traits<bool>
   : xdr_integral_base<bool, std::uint32_t> {
+  static Constexpr const bool xdr_defined = false;
   static Constexpr const bool is_enum = true;
   static Constexpr const bool is_numeric = false;
   static type from_uint(uint_type u) { return u != 0; }
@@ -201,6 +221,12 @@ template<> struct xdr_traits<bool>
     return v;
   }
 };
+
+
+////////////////////////////////////////////////////////////////
+// XDR containers (xvector, xarrray, pointer) and bytes (xstring,
+// opaque_vec, opaque_array)
+////////////////////////////////////////////////////////////////
 
 //! Maximum length of vectors.  (The RFC says 0xffffffff, but out of
 //! paranoia for integer overflows we chose something that still fits
@@ -306,6 +332,7 @@ template<uint32_t N = XDR_MAX_LEN> struct opaque_array
   using xarray::xarray;
   // Pay a little performance to avoid heartbleed-type errors...
   opaque_array() : xarray(detail::no_clear) { std::memset(this->data(), 0, N); }
+  opaque_array(detail::no_clear_t) : xarray(detail::no_clear) {}
 };
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static Constexpr const bool is_bytes = true;
@@ -485,6 +512,10 @@ template<typename T> struct xdr_traits<pointer<T>>
   : detail::xdr_container_base<pointer<T>, true, false> {};
 
 
+////////////////////////////////////////////////////////////////
+// Support for XDR struct types
+////////////////////////////////////////////////////////////////
+
 //! Type-level representation of a pointer-to-member value.  When used
 //! as a function object, dereferences the field, and returns it as
 //! the same reference type as its argument (lvalue rference, const
@@ -546,6 +577,10 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 };
 
 
+////////////////////////////////////////////////////////////////
+// XDR-compatible representations of std::tuple and xdr_void
+////////////////////////////////////////////////////////////////
+
 //! Placeholder type used to contain a parameter pack of tuple
 //! indices, so as to unpack a tuple in function call arguments.
 template<std::size_t...N> struct indices {
@@ -582,6 +617,7 @@ struct tuple_base_fs<N, std::tuple<T...>> : xdr_traits_base {
     typename std::remove_reference<
       typename std::tuple_element<N-1, type>::type>::type>::type;
   using next = tuple_base<N-1, type>;
+  static Constexpr const bool xdr_defined = false;
   static Constexpr const bool is_class = true;
   static Constexpr const bool is_struct = true;
   static Constexpr const bool has_fixed_size = true;
@@ -598,6 +634,7 @@ struct tuple_base_vs<N, std::tuple<T...>> : xdr_traits_base {
     typename std::remove_reference<
       typename std::tuple_element<N-1, type>::type>::type>::type;
   using next = tuple_base<N-1, type>;
+  static Constexpr const bool xdr_defined = false;
   static Constexpr const bool is_class = true;
   static Constexpr const bool is_struct = true;
   static Constexpr const bool has_fixed_size = false;
@@ -610,6 +647,7 @@ struct tuple_base_vs<N, std::tuple<T...>> : xdr_traits_base {
 template<typename...T> struct tuple_base<0, std::tuple<T...>>
   : xdr_traits_base {
   using type = std::tuple<T...>;
+  static Constexpr const bool xdr_defined = false;
   static Constexpr const bool is_class = true;
   static Constexpr const bool is_struct = true;
   static Constexpr const bool has_fixed_size = true;
@@ -667,6 +705,10 @@ template<typename...T> struct xdr_traits<std::tuple<T...>>
 //! Placehoder type representing void values marshaled as 0 bytes.
 using xdr_void = std::tuple<>;
 
+
+////////////////////////////////////////////////////////////////
+// XDR union types
+////////////////////////////////////////////////////////////////
 
 namespace detail {
 //! Dereference a pointer to a member of type \c F of a class of type
@@ -750,20 +792,118 @@ struct field_size_t {
 //! union field.
 Constexpr const field_size_t field_size {};
 
-#if MSVC
-inline std::string
-errstr(int no)
-{
-  char buf[1024];
-  if (strerror_s(buf, sizeof(buf), no) == 0) {
-    return std::string(buf);
+
+////////////////////////////////////////////////////////////////
+// Comparison operators
+////////////////////////////////////////////////////////////////
+
+namespace detail {
+template<typename T, typename F> struct struct_equal_helper {
+  static bool equal(const T &a, const T &b) {
+    Constexpr const typename F::field_info fi {};
+    if (!(fi(a) == fi(b)))
+      return false;
+    return struct_equal_helper<T, typename F::next_field>::equal(a, b);
   }
-  return std::string();
+};
+template<typename T> struct struct_equal_helper<T, xdr_struct_base<>> {
+  static bool equal(const T &, const T &) { return true; }
+};
+
+template<typename T, typename F> struct struct_lt_helper {
+  static bool lt(const T &a, const T &b) {
+    Constexpr const typename F::field_info fi {};
+    if ((fi(a) < fi(b)))
+      return true;
+    if ((fi(b) < fi(a)))
+      return false;
+    return struct_lt_helper<T, typename F::next_field>::lt(a, b);
+  }
+};
+template<typename T> struct struct_lt_helper<T, xdr_struct_base<>> {
+  static bool lt(const T &, const T &) { return false; }
+};
+} // namespace detail
+
+
+//! Equality for XDR structures.  To use this operator, you will have
+//! to include using declaration <tt>using xdr::operator==</tt> in the
+//! namespace of your XDR file.  Note that a <tt>using namespace
+//! xdr</tt> using \e directive (as opposed to \e declaration) is
+//! insufficient, because the C++ standard explicitly prevents using
+//! directives from impacting argument-dependent lookup.  A <tt>using
+//! namespace xdr</tt> directive at global scope is also insufficient,
+//! though more subtly, because standard library functions for
+//! comparing vectors will fail.
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
+	       bool>::type
+operator==(const T &a, const T &b)
+{
+  return detail::struct_equal_helper<T, xdr_traits<T>>::equal(a, b);
 }
-#define xdr_strerror xdr::errstr
-#else // !MSVC
-#define xdr_strerror std::strerror
-#endif // !MSVC
+
+//! Ordering of XDR structures.  See note at \c xdr::operator==.
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
+	       bool>::type
+operator<(const T &a, const T &b)
+{
+  return detail::struct_lt_helper<T, xdr_traits<T>>::lt(a, b);
+}
+
+
+namespace detail {
+struct union_field_equal_t {
+  Constexpr union_field_equal_t() {}
+  template<typename T, typename F>
+  void operator()(F T::*mp, const T &a, const T &b, bool &out) const {
+    out = a.*mp == b.*mp;
+  }
+};
+Constexpr const union_field_equal_t union_field_equal {};
+
+struct union_field_lt_t {
+  Constexpr union_field_lt_t() {}
+  template<typename T, typename F>
+  void operator()(F T::*mp, const T &a, const T &b, bool &out) const {
+    out = a.*mp < b.*mp;
+  }
+};
+Constexpr const union_field_lt_t union_field_lt {};
+} // namespace detail
+
+//! Equality of XDR unions.  See note at \c xdr::operator== for XDR
+//! structs.
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_union, bool>::type
+operator==(const T &a, const T &b)
+{
+  if (a._xdr_discriminant() == b._xdr_discriminant()) {
+    bool r{true};
+    a._xdr_with_mem_ptr(detail::union_field_equal,
+			a._xdr_discriminant(), a, b, r);
+    return r;
+  }
+  return false;
+}
+
+//! Ordering of XDR unions.  See note at \c xdr::operator==.
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_union, bool>::type
+operator<(const T &a, const T &b)
+{
+  if (a._xdr_discriminant() < b._xdr_discriminant())
+    return true;
+  if (b._xdr_discriminant() < a._xdr_discriminant())
+    return false;
+
+  bool r{true};
+  a._xdr_with_mem_ptr(detail::union_field_lt,
+		      a._xdr_discriminant(), a, b, r);
+  return r;
+}
+
 
 }
 

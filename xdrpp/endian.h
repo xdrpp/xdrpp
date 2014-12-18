@@ -20,8 +20,21 @@ namespace xdr {
 #pragma warning(disable: 4624)
 // Dtor will not be implicitly called if an exn is thrown:
 #pragma warning(disable: 4594)
+
+inline std::string
+errstr(int no)
+{
+  char buf[1024];
+  if (strerror_s(buf, sizeof(buf), no) == 0) {
+    return std::string(buf);
+  }
+  return std::string();
+}
+#define xdr_strerror xdr::errstr
+
 #else // !MSVC
 #define Constexpr constexpr
+#define xdr_strerror std::strerror
 #endif // !MSVC
 
 #ifndef XDRPP_WORDS_BIGENDIAN
@@ -62,21 +75,21 @@ swap32le(std::uint32_t v)
   return xdr::is_big_endian ? v : swap32(v);
 }
 
-//! Byteswap 32-bit value only on big-endian machines
+//! Byteswap 32-bit value only on big-endian machines.
 Constexpr inline std::uint32_t
 swap32be(std::uint32_t v)
 {
   return xdr::is_big_endian ? swap32(v) : v;
 }
 
-//! Byteswap 64-bit value only on little-endian machines
+//! Byteswap 64-bit value only on little-endian machines.
 Constexpr inline std::uint64_t
 swap64le(std::uint64_t v)
 {
   return xdr::is_big_endian ? v : swap64(v);
 }
 
-//! Byteswap 64-bit value only on big-endian machines
+//! Byteswap 64-bit value only on big-endian machines.
 Constexpr inline std::uint64_t
 swap64be(std::uint64_t v)
 {

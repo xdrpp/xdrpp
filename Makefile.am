@@ -38,11 +38,11 @@ xdrpp/config.h: $(builddir)/config.h
 	cp $(builddir)/config.h xdrpp/config.h
 
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
-	xdrpp/compare.h xdrpp/exception.h xdrpp/iniparse.h		\
-	xdrpp/marshal.h xdrpp/printer.h xdrpp/rpc_msg.hh		\
-	xdrpp/message.h xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h	\
-	xdrpp/server.h xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h	\
-	xdrpp/autocheck.h xdrpp/endian.h xdrpp/build_endian.h
+	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
+	xdrpp/printer.h xdrpp/rpc_msg.hh xdrpp/message.h		\
+	xdrpp/msgsock.h xdrpp/arpc.h xdrpp/pollset.h xdrpp/server.h	\
+	xdrpp/socket.h xdrpp/srpc.h xdrpp/rpcbind.h xdrpp/autocheck.h	\
+	xdrpp/endian.h xdrpp/build_endian.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = xdrpp.pc

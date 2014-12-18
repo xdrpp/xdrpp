@@ -1,12 +1,7 @@
 
 #include <cassert>
-#include <xdrpp/compare.h>
 #include "tests/xdrtest.hh"
 
-using namespace xdr::ord;
-namespace testns {
-using namespace xdr::eq;
-}
 
 int
 main()
@@ -45,7 +40,7 @@ main()
 
   testns::bytes b1, b2;
   assert(b1 == b2);
-  assert(testns::operator==(b1, b2));
+  //assert(testns::operator==(b1, b2));
 
   testns::hasbytes hb1, hb2;
   assert(hb1 == hb2);

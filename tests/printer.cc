@@ -10,7 +10,7 @@ using namespace xdr;
 void
 withshow()
 {
-  using namespace xdr::show;
+  using xdr::operator<<;
 
   bool b = true;
   

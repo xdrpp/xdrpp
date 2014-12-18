@@ -1,3 +1,5 @@
+%using xdr::operator==;
+%using xdr::operator<;
 
 struct test_recursive {
   string elem<>;
@@ -31,6 +33,8 @@ enum color {
 };
 
 namespace testns {
+%using xdr::operator==;
+%using xdr::operator<;
 
 enum other_color {
   RED,
