@@ -461,6 +461,20 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   using value_type = T;
   using std::unique_ptr<T>::unique_ptr;
   using std::unique_ptr<T>::get;
+  pointer() = default;
+  pointer(const pointer &p) : std::unique_ptr<T>(new T(*p)) {}
+  pointer &operator=(pointer &&) = default;
+  pointer &operator=(const pointer &up) {
+    if (const T *tp = up.get()) {
+      if (T *selfp = this->get())
+	*selfp = *tp;
+      else
+	this->reset(new T(*tp));
+    }
+    else
+      this->release();
+    return *this;
+  }
   static void check_size(uint32_t n) {
     if (n > 1)
       throw xdr_overflow("xdr::pointer size must be 0 or 1");
