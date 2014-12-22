@@ -3,7 +3,7 @@
 #ifndef _XDRPP_SOCKET_H_HEADER_INCLUDED_
 #define _XDRPP_SOCKET_H_HEADER_INCLUDED_ 1
 
-//! \file socket.h Simplified support for creatins sockets.
+//! \file socket.h Simplified support for creating sockets.
 
 #include <memory>
 #include <system_error>
