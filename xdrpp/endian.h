@@ -7,6 +7,7 @@
 #define _XDRC_ENDIAN_H_HEADER_INCLUDED_ 1
 
 #include <cstdint>
+#include <string>
 
 namespace xdr {
 
