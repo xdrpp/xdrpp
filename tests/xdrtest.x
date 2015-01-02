@@ -16,8 +16,6 @@ struct fix_12 {
 };
 
 union u_4_12 switch (int which) {
- case 0:
-   void;
  case 4:
    fix_4 f4;
  case 12:
