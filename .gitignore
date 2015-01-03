@@ -14,6 +14,7 @@
 *.suo
 *.tlog
 *.user
+*.log
 *~
 .deps
 .dirstamp
