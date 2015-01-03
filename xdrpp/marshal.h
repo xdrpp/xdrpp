@@ -167,18 +167,13 @@ template<typename Base> struct xdr_generic_get : Base {
 
   template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
   operator()(T &t) {
-    std::uint32_t size;
     if (xdr_traits<T>::variable_nelem) {
       check(4);
-      size = get32(p_);
-      check(size);
+      std::uint32_t size = get32(p_);
       t.resize(size);
     }
-    else {
-      size = size32(t.size());
-      check(size);
-    }
-    get_bytes(p_, t.data(), size);
+    check(t.size());
+    get_bytes(p_, t.data(), t.size());
   }
 
   template<typename T> typename std::enable_if<

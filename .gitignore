@@ -6,6 +6,7 @@
 *.la
 *.lastbuildstate
 *.lib
+*.log
 *.o
 *.obj
 *.opensdf
@@ -14,7 +15,6 @@
 *.suo
 *.tlog
 *.user
-*.log
 *~
 .deps
 .dirstamp
@@ -52,7 +52,7 @@
 /xdrpp-uninstalled.pc
 /xdrpp.pc
 /xdrpp/*.hh
-/xdrpp/config.h
 /xdrpp/build_endian.h
+/xdrpp/config.h
 /ylwrap
 xdrpp-*.tar.gz

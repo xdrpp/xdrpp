@@ -6,6 +6,7 @@
 #define _XDRC_TYPES_H_HEADER_INCLUDED_ 1
 
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -21,6 +22,14 @@
 namespace xdr {
 
 using std::uint32_t;
+
+inline uint32_t
+size32(size_t s)
+{
+  uint32_t r(s);
+  assert(s == r);
+  return r;
+}
 
 
 ////////////////////////////////////////////////////////////////
@@ -248,7 +257,7 @@ struct xdr_container_base : xdr_traits_base {
 
   template<typename Archive> static void save(Archive &a, const T &t) {
     if (variable)
-      archive(a, uint32_t(t.size()));
+      archive(a, size32(t.size()));
     for (const value_type &v : t)
       archive(a, v);
   }
@@ -920,19 +929,7 @@ operator<(const T &a, const T &b)
   return r;
 }
 
-inline uint32_t
-size32(size_t s) {
-    if (s <= std::numeric_limits<uint32_t>::max())
-    {
-        return static_cast<uint32_t>(s);
-    }
-    else
-    {
-        throw std::range_error("size32");
-    }
-}
-
-}
+} // namespace xdr
 
 #endif // !_XDRC_TYPES_H_HEADER_INCLUDED_
 
