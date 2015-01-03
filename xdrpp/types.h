@@ -14,6 +14,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <limits>
 
 #include <xdrpp/endian.h>
 
@@ -260,7 +261,7 @@ struct xdr_container_base : xdr_traits_base {
 	t.resize(n);
     }
     else
-      n = t.size();
+      n = size32(t.size());
     for (uint32_t i = 0; i < n; ++i)
       archive(a, t.extend_at(i));
   }
@@ -919,6 +920,17 @@ operator<(const T &a, const T &b)
   return r;
 }
 
+inline uint32_t
+size32(size_t s) {
+    if (s <= std::numeric_limits<uint32_t>::max())
+    {
+        return static_cast<uint32_t>(s);
+    }
+    else
+    {
+        throw std::range_error("size32");
+    }
+}
 
 }
 

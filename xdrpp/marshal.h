@@ -112,7 +112,7 @@ template<typename Base> struct xdr_generic_put : Base {
   operator()(const T &t) {
     if (xdr_traits<T>::variable_nelem) {
       check(4 + t.size());
-      put32(p_, t.size());
+      put32(p_, size32(t.size()));
     }
     else
       check(t.size());
@@ -167,7 +167,7 @@ template<typename Base> struct xdr_generic_get : Base {
 
   template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
   operator()(T &t) {
-    std::size_t size;
+    std::uint32_t size;
     if (xdr_traits<T>::variable_nelem) {
       check(4);
       size = get32(p_);
@@ -175,7 +175,7 @@ template<typename Base> struct xdr_generic_get : Base {
       t.resize(size);
     }
     else {
-      size = t.size();
+      size = size32(t.size());
       check(size);
     }
     get_bytes(p_, t.data(), size);
