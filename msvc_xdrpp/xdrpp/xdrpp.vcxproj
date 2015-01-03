@@ -98,9 +98,7 @@
       <TreatOutputAsContent>
       </TreatOutputAsContent>
     </CustomBuildStep>
-    <Lib>
-      <TargetMachine>MachineX64</TargetMachine>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
