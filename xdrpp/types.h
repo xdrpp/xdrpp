@@ -24,9 +24,9 @@ namespace xdr {
 using std::uint32_t;
 
 inline uint32_t
-size32(size_t s)
+size32(std::size_t s)
 {
-  uint32_t r(s);
+  uint32_t r {uint32_t(s)};
   assert(s == r);
   return r;
 }

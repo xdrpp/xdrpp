@@ -151,7 +151,7 @@ template<typename Base> struct xdr_generic_get : Base {
   xdr_generic_get(const msg_ptr &m)
     : xdr_generic_get(m->data(), m->end()) {}
 
-  void check(std::uint32_t n) const {
+  void check(std::size_t n) const {
     if (n > std::size_t(reinterpret_cast<const char *>(e_)
 			- reinterpret_cast<const char *>(p_)))
       throw xdr_overflow("insufficient buffer space in xdr_generic_get");
