@@ -16,6 +16,7 @@
 *.tlog
 *.user
 *~
+*.swp
 .deps
 .dirstamp
 /Makefile
@@ -56,3 +57,7 @@
 /xdrpp/config.h
 /ylwrap
 xdrpp-*.tar.gz
+
+#Windows specific
+**/x64/*
+
