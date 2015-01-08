@@ -469,7 +469,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this, source);"
+     << "source." << u.tagid << "_, *this, source);"
      << nl.close << "}"
      << nl << u.tagid << "_ = source." << u.tagid << "_;"
      << nl << "return *this;"
@@ -484,7 +484,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.open << "this->~" << u.id << "();"
      << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this,"
+     << "source." << u.tagid << "_, *this,"
      << nl << "                  std::move(source));"
      << nl.close << "}"
      << nl << u.tagid << "_ = source." << u.tagid << "_;"

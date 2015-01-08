@@ -30,6 +30,13 @@ enum color {
   REDDEST
 };
 
+union uptr switch (bool b) {
+  case FALSE:
+    void;
+  case TRUE:
+    int *val;
+};
+
 namespace testns {
 %using xdr::operator==;
 %using xdr::operator<;
