@@ -923,7 +923,7 @@ operator<(const T &a, const T &b)
   if (b._xdr_discriminant() < a._xdr_discriminant())
     return false;
 
-  bool r{true};
+  bool r{false};
   a._xdr_with_mem_ptr(detail::union_field_lt,
 		      a._xdr_discriminant(), a, b, r);
   return r;
