@@ -128,6 +128,11 @@ main()
   assert(b1.fixed == b2.fixed);
   assert(b1.variable == b2.variable);
 
+  xdr::xdr_from_opaque(xdr::xdr_to_opaque(b1), b2);
+  assert(b1.s == b2.s);
+  assert(b1.fixed == b2.fixed);
+  assert(b1.variable == b2.variable);
+
   testns::numerics n1, n2;
   xdr::xdr_clear(n2);
   n1.b = false;

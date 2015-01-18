@@ -235,6 +235,17 @@ xdr_to_msg(const Args &...args)
   return m;
 }
 
+template<typename...Args> opaque_vec<>
+xdr_to_opaque(const Args &...args)
+{
+  opaque_vec<> m (opaque_vec<>::size_type {xdr_argpack_size(args...)});
+  xdr_put p (m.data(), m.data()+m.size());
+  xdr_argpack_archive(p, args...);
+  assert(p.p_ == p.e_);
+  return m;
+}
+
+
 //! This does the reverse of xdr::xdr_to_msg, unmarshalling one or
 //! more types from a message.  Note that it throws an exception if
 //! the entire buffer is not consumed.
@@ -242,6 +253,14 @@ template<typename...Args> void
 xdr_from_msg(const msg_ptr &m, Args &...args)
 {
   xdr_get g(m);
+  xdr_argpack_archive(g, args...);
+  g.done();
+}
+
+template<typename...Args> void
+xdr_from_opaque(const std::vector<std::uint8_t> &m, Args &...args)
+{
+  xdr_get g(m.data(), m.data()+m.size());
   xdr_argpack_archive(g, args...);
   g.done();
 }
