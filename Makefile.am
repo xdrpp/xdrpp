@@ -111,3 +111,8 @@ MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 
 #xdrpp.pc.in xdrpp-uninstalled.pc.in 
 
+ACLOCAL_AMFLAGS = -I m4
+
+# Workaround for old automake generating parser.h not parser.hh
+.h.hh:
+	cp $< $@
