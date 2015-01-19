@@ -32,6 +32,7 @@
 /config.log
 /config.status
 /configure
+/configure.lineno
 /depcomp
 /doc/html
 /doc/xdrc.1
