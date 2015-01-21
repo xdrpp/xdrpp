@@ -193,12 +193,12 @@ main()
 
   {
     testns::unionvoidtest uv;
-    uv.key.arbitrary(RED);
-    assert(uv.key.arbitrary() == RED);
-    uv.key.arbitrary(REDDER);
-    assert(uv.key.arbitrary() == REDDER);
-    uv.key.arbitrary(REDDEST);
-    assert(uv.key.arbitrary() == REDDEST);
+    uv.arbitrary(RED);
+    assert(uv.arbitrary() == RED);
+    uv.arbitrary(REDDER);
+    assert(uv.arbitrary() == REDDER);
+    uv.arbitrary(REDDEST);
+    assert(uv.arbitrary() == REDDEST);
   }
 
   {
