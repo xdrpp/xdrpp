@@ -192,6 +192,16 @@ main()
   }
 
   {
+    testns::unionvoidtest uv;
+    uv.key.arbitrary(RED);
+    assert(uv.key.arbitrary() == RED);
+    uv.key.arbitrary(REDDER);
+    assert(uv.key.arbitrary() == REDDER);
+    uv.key.arbitrary(REDDEST);
+    assert(uv.key.arbitrary() == REDDEST);
+  }
+
+  {
     testns::containertest ct1, ct2;
     xdr::xdr_clear(ct2);
 

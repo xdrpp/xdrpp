@@ -78,6 +78,16 @@ struct uniontest {
   } key;
 };
 
+struct unionvoidtest {
+  int *ip;
+  union switch (color arbitrary) {
+  case ::RED:
+    opaque big<>;
+  default:
+    void;
+  } key;
+};
+
 typedef string bigstr<>;
 
 struct containertest {

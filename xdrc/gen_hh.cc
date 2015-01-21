@@ -431,6 +431,8 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this);"
      << nl.close << "}"
+     << nl << "else"
+     << nl << "  " << u.tagid << "_ = which;"
      << nl.close << "}";
 
   // Default constructor
