@@ -95,7 +95,11 @@ def_const: T_CONST newid '=' value ';'
 	;
 
 enum_tag: T_ID '=' value { $$.id = $1; $$.val = $3; }
-	| T_ID { $$.id = $1; }
+	| T_ID
+	{
+	  $$.id = $1;
+	  yywarn("RFC4506 requires a value for each enum tag");
+	}
 
 enum_tag_list: enum_tag
 	{ $$.select(); assert($$->empty()); $$->push_back(std::move($1)); }
@@ -115,7 +119,7 @@ def_enum: T_ENUM newid enum_body ';'
 	;
 
 comma_warn: /* empty */
-	| ',' { yywarn("comma not allowed at end of enum"); }
+	| ',' { yywarn("RFC4506 disallows comma after last enum tag"); }
 	;
 
 declaration_list: declaration
@@ -371,7 +375,11 @@ base_type: T_INT { $$ = "int"; }
 	| T_UNSIGNED T_INT { $$ = "unsigned"; }
 	| T_HYPER { $$ = "hyper"; }
 	| T_UNSIGNED T_HYPER { $$ = "unsigned hyper"; }
-	| T_UNSIGNED { $$ = "unsigned"; }
+	| T_UNSIGNED
+	{
+	  $$ = "unsigned";
+	  yywarn("RFC4506 requires \"int\" after \"unsigned\"");
+	}
 	| T_FLOAT { $$ = "float"; }
 	| T_DOUBLE { $$ = "double"; }
 	| T_QUADRUPLE { $$ = "quadruple"; }
