@@ -174,8 +174,15 @@ gen(std::ostream &os, const rpc_struct &s)
     os << nl << decl_type(d) << ' ' << d.id << "{};";
   if (s.decls.size()) {
     os << nl
-       << nl << s.id << "() = default;"
-       << nl << "template<";
+       << nl << s.id << "() = default;";
+    if (s.decls.size() == 1) {
+      // We have to do this to avoid accidentally calling the template
+      // constructor instead of the copy constructor.
+      os << nl << s.id << "(const " << s.id << " &) = default;"
+	 << nl << s.id << "(" << s.id << " &) = default;"
+	 << nl << s.id << "(" << s.id << " &&) = default;";
+    }
+    os << nl << "template<";
     bool first{true};
     for (auto &d : s.decls) {
       if (first)
@@ -206,6 +213,11 @@ gen(std::ostream &os, const rpc_struct &s)
     }
     os << " {}";
   }
+  if (s.decls.size() == 1) {
+    os << nl << s.id << " &operator=(const " << s.id << " &) = default;"
+       << nl << s.id << " &operator=(" << s.id << " &&) = default;";
+  }
+
   os << nl.close << "}";
 
   top_material
