@@ -179,7 +179,9 @@ gen(std::ostream &os, const rpc_struct &s)
       // We have to do this to avoid accidentally calling the template
       // constructor instead of the copy constructor.
       os << nl << s.id << "(const " << s.id << " &) = default;"
+	 << endl << "#if !MSVC"
 	 << nl << s.id << "(" << s.id << " &) = default;"
+	 << endl << "#endif // !MSVC"
 	 << nl << s.id << "(" << s.id << " &&) = default;";
     }
     os << nl << "template<";
