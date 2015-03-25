@@ -263,7 +263,7 @@ gen(std::ostream &os, const rpc_struct &s)
 void
 gen(std::ostream &os, const rpc_enum &e)
 {
-  os << "enum " << id_space(e.id) << ": std::uint32_t {";
+  os << "enum " << id_space(e.id) << ": std::int32_t {";
   ++nl;
   for (const rpc_const &c : e.tags)
     if (c.val.empty())
