@@ -58,7 +58,7 @@ defined in XDR.
   exist.
 
 * XDR enums are translated into simple (non-class) enums with
-  underlying type `std::uint32_t`.
+  underlying type `std::int32_t`.
 
 * XDR pointers (`*`) are translated into C++ `xdr:pointer`, a subtype
   of `std::unique_ptr`.  `xdr::pointer` adds an `activate()` method
@@ -86,16 +86,31 @@ defined in XDR.
 `xdrc` supports the following extensions to the syntax defined in
 RFC4506:
 
-* Portions of the input file may be bracketed by `namespace myns {`
-  ... `}`.  The corresponding C++ will be embedded in the same
-  namespace.
+* The source file is run through the C preprocessor.  Macro XDRC is
+  pre-defined to 1, permitting the use of #ifdef to take advantage of
+  other xdrc-specific features.  Also, with the `-hh` option,
+  `XDRC_HH=1` is pre-defined, and with the `-serverhh` and `-servercc`
+  options, `XDRC_SERVER=1` is predefined.
 
 * Lines beginning with a `%` sign are copied verbatim into the output
   file.
 
+* Portions of the input file may be bracketed by `namespace myns {`
+  ... `}`.  The corresponding C++ will be embedded in the same
+  namespace.
+
 * Type names may include a namespace scope `::`, so as to be able to
   make use of types defined in a different namespace.  (Alternatively,
   a literal can be used, such as `%using namespace otherns;`.)
+
+The namespace-related extensions should be used sparingly if
+compatibility with other languages and XDR compilers is desirable.
+While it may be useful to enclose an entire source file in a
+`namespace` for consistency, it is a good idea to wrap such directives
+inside `#if XDRC` / `#endif` conditionals.  Heavy use of namespaces
+for internal structuring purposes (e.g., wrapping every `enum` in its
+own namespace) is a bad idea as it will make protocols incompatible
+with RFC4506.
 
 ## Serialization and traversing data structures
 
@@ -418,3 +433,11 @@ two field names one of which is the other with an underscore appended.
 `xdrc` translates an XDR `quadruple` to C++ type called `quadruple`,
 but most compilers do not have such a type.  Moreover, libxdrpp does
 nothing to support such a type.
+
+IEEE 754 floating point allows for many different NaN (not a number)
+values.  During serialization, xdrpp simply passes the bytes of a
+floating point value through as-is (byteswapping on little-endian
+machines).  Different C++ compilers and libraries could conceivably
+produce different NaN values from the same code.  Hence, in the
+presence of floating point, the serialization output of seemingly
+deterministic code may depend on the compiler.
