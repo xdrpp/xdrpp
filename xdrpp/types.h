@@ -39,26 +39,41 @@ size32(std::size_t s)
 //! Generic class of XDR unmarshaling errors.
 struct xdr_runtime_error : std::runtime_error {
   using std::runtime_error::runtime_error;
+  explicit xdr_runtime_error(const char *m) : runtime_error(m)
+  {
+  }
 };
 
 //! Attempt to exceed the bounds of a variable-length array or string.
 struct xdr_overflow : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
+  explicit xdr_overflow(const char *m) : xdr_runtime_error(m)
+  {
+  }
 };
 
 //! Message not multiple of 4 bytes, or cannot fully be parsed.
 struct xdr_bad_message_size : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
+  explicit xdr_bad_message_size(const char *m) : xdr_runtime_error(m)
+  {
+  }
 };
 
 //! Attempt to set invalid value for a union discriminant.
 struct xdr_bad_discriminant : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
+  explicit xdr_bad_discriminant(const char *m) : xdr_runtime_error(m)
+  {
+  }
 };
 
 //! Padding bytes that should have contained zero don't.
 struct xdr_should_be_zero : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
+  explicit xdr_should_be_zero(const char *m) : xdr_runtime_error(m)
+  {
+  }
 };
 
 //! Attempt to access wrong field of a union.  Note that this is not
@@ -68,6 +83,9 @@ struct xdr_should_be_zero : xdr_runtime_error {
 //! before accessing the wrong field.
 struct xdr_wrong_union : std::logic_error {
   using std::logic_error::logic_error;
+  explicit xdr_wrong_union(const char *m) : logic_error(m)
+  {
+  }
 };
 
 

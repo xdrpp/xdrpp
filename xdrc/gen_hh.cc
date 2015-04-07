@@ -410,19 +410,30 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "}";
 
   // _xdr_with_mem_ptr
-  os << nl << "template<typename _F, typename...A> static bool"
-     << nl << "_xdr_with_mem_ptr(_F &_f, std::uint32_t which, A&&...a) {"
-     << nl.open << pswitch(u, "which");
+  std::stringstream body;
+  bool usesVars = false;
   for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
-      os << nl << map_case(c);
+        body << nl << map_case(c);
     if (f.decl.type == "void")
-      os << nl << "  return true;";
-    else 
-      os << nl << "  _f(&" << u.id << "::" << f.decl.id
-	 << "_, std::forward<A>(a)...);"
-	 << nl << "  return true;";
+        body << nl << "  return true;";
+    else { 
+        body << nl << "  _f(&" << u.id << "::" << f.decl.id
+        << "_, std::forward<A>(a)...);"
+        << nl << "  return true;";
+        usesVars = true;
+    }
   }
+  os << nl << "template<typename _F, typename...A> static bool"
+      << nl << "_xdr_with_mem_ptr(_F &";
+  if (usesVars)
+      os << "_f";
+  os << ", std::uint32_t which, A&&...";
+  if (usesVars)
+    os << "a";
+  os << ") {";
+  os << nl.open << pswitch(u, "which");
+  os << body.str();
   os << nl << "}";
   if (!u.hasdefault)
     os << nl << "return false;";
