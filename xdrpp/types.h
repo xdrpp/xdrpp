@@ -244,8 +244,8 @@ template<> struct xdr_traits<bool>
   static Constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
-  static const std::vector<uint32_t> &enum_values() {
-    static const std::vector<uint32_t> v = { false, true };
+  static const std::vector<int32_t> &enum_values() {
+    static const std::vector<int32_t> v = { 0, 1 };
     return v;
   }
 };

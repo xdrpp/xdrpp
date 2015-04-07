@@ -292,8 +292,8 @@ gen(std::ostream &os, const rpc_enum &e)
     << "      return nullptr;" << endl
     << "    }" << endl
     << "  }" << endl
-    << "  static const std::vector<uint32_t> &enum_values() {" << endl
-    << "    static const std::vector<uint32_t> _xdr_enum_vec = {";
+    << "  static const std::vector<int32_t> &enum_values() {" << endl
+    << "    static const std::vector<int32_t> _xdr_enum_vec = {";
   bool first = true;
   for (const rpc_const &c : e.tags) {
     if (first)
@@ -319,7 +319,7 @@ pswitch(const rpc_union &u, string id = string())
     id = u.tagid + '_';
   string ret = "switch (";
   if (u.tagtype == "bool")
-    ret += "std::uint32_t{" + id + "}";
+    ret += "std::int32_t{" + id + "}";
   else
     ret += id;
   ret += ") {";
@@ -385,7 +385,7 @@ gen(std::ostream &os, const rpc_union &u)
   if (blank)
     os << endl;
   os << nl.outdent << "private:"
-     << nl << "std::uint32_t " << u.tagid << "_;"
+     << nl << "std::int32_t " << u.tagid << "_;"
      << nl << "union {";
   ++nl;
   for (const rpc_ufield &f : u.fields)
@@ -399,7 +399,7 @@ gen(std::ostream &os, const rpc_union &u)
 
   // _xdr_field_number
   os << nl
-     << "static Constexpr int _xdr_field_number(std::uint32_t which) {";
+     << "static Constexpr int _xdr_field_number(std::int32_t which) {";
   union_function(os, u, "which", [](const rpc_ufield *uf) {
       using std::to_string;
       if (uf)
@@ -428,7 +428,7 @@ gen(std::ostream &os, const rpc_union &u)
       << nl << "_xdr_with_mem_ptr(_F &";
   if (usesVars)
       os << "_f";
-  os << ", std::uint32_t which, A&&...";
+  os << ", std::int32_t which, A&&...";
   if (usesVars)
     os << "a";
   os << ") {";
@@ -442,9 +442,9 @@ gen(std::ostream &os, const rpc_union &u)
 
   // _xdr_discriminant
   //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
-  os << nl << "std::uint32_t _xdr_discriminant() const { return "
+  os << nl << "std::int32_t _xdr_discriminant() const { return "
      << u.tagid << "_; }";
-  os << nl << "void _xdr_discriminant(std::uint32_t which,"
+  os << nl << "void _xdr_discriminant(std::int32_t which,"
      << " bool validate = true) {"
      << nl.open << "int fnum = _xdr_field_number(which);"
      << nl << "if (fnum < 0 && validate)"
@@ -494,7 +494,7 @@ gen(std::ostream &os, const rpc_union &u)
      << u.tagid << "_, *this, source);"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
-     << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
+     << nl << u.tagid << "_ = std::int32_t(-1);" // might help with exceptions
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << "source." << u.tagid << "_, *this, source);"
      << nl.close << "}"
@@ -509,7 +509,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "                    std::move(source));"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
-     << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
+     << nl << u.tagid << "_ = std::int32_t(-1);" // might help with exceptions
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << "source." << u.tagid << "_, *this,"
      << nl << "                  std::move(source));"
@@ -556,7 +556,7 @@ gen(std::ostream &os, const rpc_union &u)
     << u.tagid << "());" << endl << endl;
 
   top_material
-    << "  static const char *union_field_name(std::uint32_t which) {" << endl
+    << "  static const char *union_field_name(std::int32_t which) {" << endl
     << "    switch (union_type::_xdr_field_number(which)) {" << endl;
   for (const rpc_ufield &uf : u.fields) {
     if (uf.fieldno <= 0)
@@ -573,7 +573,7 @@ gen(std::ostream &os, const rpc_union &u)
 
 #if 0
   top_material
-    << "  static Constexpr const char *union_field_name(std::uint32_t which) {";
+    << "  static Constexpr const char *union_field_name(std::int32_t which) {";
   if (!namespaces.empty())
     top_material
       << endl << "    using namespace " << cur_ns() << ";";
@@ -599,11 +599,11 @@ gen(std::ostream &os, const rpc_union &u)
     << "  }" << endl << endl;
 
 #if 0
-    << "  static std::uint32_t union_discriminant(const union_type &u) {"
+    << "  static std::int32_t union_discriminant(const union_type &u) {"
     << endl
     << "    return u." << u.tagid << "_;" << endl
     << "  }" << endl
-    << "  static void union_discriminant(union_type &u, std::uint32_t d,"
+    << "  static void union_discriminant(union_type &u, std::int32_t d,"
     << endl
     << "                                 bool validate = true) {" << endl
     << "    int fnum = union_type::_xdr_field_number(d);" << endl
