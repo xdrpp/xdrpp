@@ -1,6 +1,11 @@
 %using xdr::operator==;
 %using xdr::operator<;
 
+enum senum {
+  SE_NEGATIVE = -1,
+  SE_POSITIVE = 1
+};
+
 struct test_recursive {
   string elem<>;
   test_recursive *next;

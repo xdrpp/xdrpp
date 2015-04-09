@@ -292,8 +292,8 @@ gen(std::ostream &os, const rpc_enum &e)
     << "      return nullptr;" << endl
     << "    }" << endl
     << "  }" << endl
-    << "  static const std::vector<uint32_t> &enum_values() {" << endl
-    << "    static const std::vector<uint32_t> _xdr_enum_vec = {";
+    << "  static const std::vector<int32_t> &enum_values() {" << endl
+    << "    static const std::vector<int32_t> _xdr_enum_vec = {";
   bool first = true;
   for (const rpc_const &c : e.tags) {
     if (first)
