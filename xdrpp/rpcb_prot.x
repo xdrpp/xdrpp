@@ -22,8 +22,8 @@ const RPCB_PORT = 111;
  * every system.
  */
 struct rpcb {
-  unsigned r_prog;         /* program number */
-  unsigned r_vers;         /* version number */
+  unsigned int r_prog;	   /* program number */
+  unsigned int r_vers;     /* version number */
   string r_netid<>;        /* network id */
   string r_addr<>;         /* universal address */
   string r_owner<>;        /* owner of this service */
@@ -41,9 +41,9 @@ typedef rp__list *rpcblist_ptr;        /* results of RPCBPROC_DUMP */
  * Arguments of remote calls
  */
 struct rpcb_rmtcallargs {
-  unsigned prog;             /* program number */
-  unsigned vers;             /* version number */
-  unsigned proc;             /* procedure number */
+  unsigned int prog;         /* program number */
+  unsigned int vers;         /* version number */
+  unsigned int proc;         /* procedure number */
   opaque args<>;             /* argument */
 };
 
@@ -115,7 +115,7 @@ struct rpcb_rmtcallres {
 struct rpcb_entry {
   string          r_maddr<>;            /* merged address of service */
   string          r_nc_netid<>;         /* netid field */
-  unsigned        r_nc_semantics;       /* semantics of transport */
+  unsigned int    r_nc_semantics;       /* semantics of transport */
   string          r_nc_protofmly<>;     /* protocol family */
   string          r_nc_proto<>;         /* protocol name */
 };
@@ -147,8 +147,8 @@ const RPCBVERS_2_STAT   = 0;
 
 /* Link list of all the stats about getport and getaddr */
 struct rpcbs_addrlist {
-  unsigned prog;
-  unsigned vers;
+  unsigned int prog;
+  unsigned int vers;
   int success;
   int failure;
   string netid<>;
@@ -157,9 +157,9 @@ struct rpcbs_addrlist {
 
 /* Link list of all the stats about rmtcall */
 struct rpcbs_rmtcalllist {
-  unsigned prog;
-  unsigned vers;
-  unsigned proc;
+  unsigned int prog;
+  unsigned int vers;
+  unsigned int proc;
   int success;
   int failure;
   int indirect;    /* whether callit or indirect */

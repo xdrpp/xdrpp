@@ -6,6 +6,22 @@ enum senum {
   SE_POSITIVE = 1
 };
 
+union sunion switch (senum d) {
+  case SE_NEGATIVE:
+    bool neg;
+  case SE_POSITIVE:
+    int pos;
+  default:
+    void;
+};
+
+union uunion switch (unsigned d) {
+  case 1:
+    bool one;
+  case 2:
+    int two;
+};
+
 struct test_recursive {
   string elem<>;
   test_recursive *next;

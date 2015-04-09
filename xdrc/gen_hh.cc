@@ -179,9 +179,9 @@ gen(std::ostream &os, const rpc_struct &s)
       // We have to do this to avoid accidentally calling the template
       // constructor instead of the copy constructor.
       os << nl << s.id << "(const " << s.id << " &) = default;"
-	 << endl << "#if !MSVC"
+	 << endl << "#if !OVERSTRICT_COPY_CONSTRUCTOR"
 	 << nl << s.id << "(" << s.id << " &) = default;"
-	 << endl << "#endif // !MSVC"
+	 << endl << "#endif // !OVERSTRICT_COPY_CONSTRUCTOR"
 	 << nl << s.id << "(" << s.id << " &&) = default;";
     }
     os << nl << "template<";
@@ -279,6 +279,7 @@ gen(std::ostream &os, const rpc_enum &e)
   top_material
     << "template<> struct xdr_traits<" << qt << ">" << endl
     << "  : xdr_integral_base<" << qt << ", std::uint32_t> {" << endl
+    << "  using case_type = std::int32_t;" << endl
     << "  static Constexpr const bool is_enum = true;" << endl
     << "  static Constexpr const bool is_numeric = false;" << endl
     << "  static const char *enum_name("
@@ -318,10 +319,14 @@ pswitch(const rpc_union &u, string id = string())
   if (id.empty())
     id = u.tagid + '_';
   string ret = "switch (";
+#if 0
   if (u.tagtype == "bool")
-    ret += "std::uint32_t{" + id + "}";
+    ret += "std::int32_t{" + id + "}";
   else
     ret += id;
+#else
+  ret += id;
+#endif
   ret += ") {";
   return ret;
 }
@@ -384,8 +389,10 @@ gen(std::ostream &os, const rpc_union &u)
       blank = true;
   if (blank)
     os << endl;
-  os << nl.outdent << "private:"
-     << nl << "std::uint32_t " << u.tagid << "_;"
+  os << nl << "using _xdr_case_type = " << "xdr::xdr_traits<" << u.tagtype
+     << ">::case_type;"
+     << nl.outdent << "private:"
+     << nl << "_xdr_case_type " << u.tagid << "_;"
      << nl << "union {";
   ++nl;
   for (const rpc_ufield &f : u.fields)
@@ -394,12 +401,14 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl.close << "};" << endl;
 
   os << nl.outdent << "public:";
+#if 0
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
     " \"union discriminant must be 4 bytes\");" << endl;
+#endif
 
   // _xdr_field_number
   os << nl
-     << "static Constexpr int _xdr_field_number(std::uint32_t which) {";
+     << "static Constexpr int _xdr_field_number(_xdr_case_type which) {";
   union_function(os, u, "which", [](const rpc_ufield *uf) {
       using std::to_string;
       if (uf)
@@ -410,9 +419,9 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "}";
 
   // _xdr_with_mem_ptr
-  os << nl << "template<typename _F, typename...A> static bool"
-     << nl << "_xdr_with_mem_ptr(_F &_f, std::uint32_t which, A&&...a) {"
-     << nl.open << pswitch(u, "which");
+  os << nl << "template<typename _F, typename..._A> static bool"
+     << nl << "_xdr_with_mem_ptr(_F &_f, _xdr_case_type _which, _A&&..._a) {"
+     << nl.open << pswitch(u, "_which");
   for (const rpc_ufield &f : u.fields) {
     for (string c : f.cases)
       os << nl << map_case(c);
@@ -420,7 +429,7 @@ gen(std::ostream &os, const rpc_union &u)
       os << nl << "  return true;";
     else 
       os << nl << "  _f(&" << u.id << "::" << f.decl.id
-	 << "_, std::forward<A>(a)...);"
+	 << "_, std::forward<_A>(_a)...);"
 	 << nl << "  return true;";
   }
   os << nl << "}";
@@ -431,9 +440,9 @@ gen(std::ostream &os, const rpc_union &u)
 
   // _xdr_discriminant
   //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
-  os << nl << "std::uint32_t _xdr_discriminant() const { return "
+  os << nl << "_xdr_case_type _xdr_discriminant() const { return "
      << u.tagid << "_; }";
-  os << nl << "void _xdr_discriminant(std::uint32_t which,"
+  os << nl << "void _xdr_discriminant(_xdr_case_type which,"
      << " bool validate = true) {"
      << nl.open << "int fnum = _xdr_field_number(which);"
      << nl << "if (fnum < 0 && validate)"
@@ -483,7 +492,8 @@ gen(std::ostream &os, const rpc_union &u)
      << u.tagid << "_, *this, source);"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
-     << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
+     // The next line might help with exceptions
+     << nl << u.tagid << "_ = std::numeric_limits<_xdr_case_type>::max();"
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << "source." << u.tagid << "_, *this, source);"
      << nl.close << "}"
@@ -498,7 +508,8 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "                    std::move(source));"
      << nl << "else {"
      << nl.open << "this->~" << u.id << "();"
-     << nl << u.tagid << "_ = std::uint32_t(-1);" // might help with exceptions
+     // The next line might help with exceptions
+     << nl << u.tagid << "_ = std::numeric_limits<_xdr_case_type>::max();"
      << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << "source." << u.tagid << "_, *this,"
      << nl << "                  std::move(source));"
@@ -541,11 +552,12 @@ gen(std::ostream &os, const rpc_union &u)
 
   top_material
     << "  using union_type = " << cur_scope() << ";" << endl
+    << "  using case_type = " << cur_scope() << "::_xdr_case_type;" << endl
     << "  using discriminant_type = decltype(std::declval<union_type>()."
     << u.tagid << "());" << endl << endl;
 
   top_material
-    << "  static const char *union_field_name(std::uint32_t which) {" << endl
+    << "  static const char *union_field_name(case_type which) {" << endl
     << "    switch (union_type::_xdr_field_number(which)) {" << endl;
   for (const rpc_ufield &uf : u.fields) {
     if (uf.fieldno <= 0)
@@ -554,7 +566,7 @@ gen(std::ostream &os, const rpc_union &u)
       top_material << "    default:" << endl;
     else
       top_material << "    case " << uf.fieldno << ":" << endl;
-    top_material << "      return \"" << uf.decl.type << "\";" << endl;
+    top_material << "      return \"" << uf.decl.id << "\";" << endl;
   }
   top_material << "    }" << endl
 	       << "    return nullptr;" << endl

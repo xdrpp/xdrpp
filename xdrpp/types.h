@@ -187,9 +187,14 @@ template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   }
 };
 template<> struct xdr_traits<std::int32_t>
-  : xdr_integral_base<std::int32_t, std::uint32_t> {};
+  : xdr_integral_base<std::int32_t, std::uint32_t> {
+  // Numeric type for case labels in switch statements
+  using case_type = std::int32_t;
+};
 template<> struct xdr_traits<std::uint32_t>
-  : xdr_integral_base<std::uint32_t, std::uint32_t> {};
+  : xdr_integral_base<std::uint32_t, std::uint32_t> {
+  using case_type = std::uint32_t;
+};
 template<> struct xdr_traits<std::int64_t>
   : xdr_integral_base<std::int64_t, std::uint64_t> {};
 template<> struct xdr_traits<std::uint64_t>
@@ -219,6 +224,7 @@ template<> struct xdr_traits<double>
 
 template<> struct xdr_traits<bool>
   : xdr_integral_base<bool, std::uint32_t> {
+  using case_type = std::int32_t;
   static Constexpr const bool xdr_defined = false;
   static Constexpr const bool is_enum = true;
   static Constexpr const bool is_numeric = false;
@@ -226,8 +232,8 @@ template<> struct xdr_traits<bool>
   static Constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
-  static const std::vector<uint32_t> &enum_values() {
-    static const std::vector<uint32_t> v = { false, true };
+  static const std::vector<int32_t> &enum_values() {
+    static const std::vector<int32_t> v = { 0, 1 };
     return v;
   }
 };

@@ -33,6 +33,8 @@ errstr(int no)
 }
 #define xdr_strerror xdr::errstr
 
+#define OVERSTRICT_COPY_CONSTRUCTOR 1
+
 #else // !MSVC
 #define Constexpr constexpr
 #define xdr_strerror std::strerror
