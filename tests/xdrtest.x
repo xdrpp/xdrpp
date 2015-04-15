@@ -20,6 +20,10 @@ union uunion switch (unsigned d) {
     bool one;
   case 2:
     int two;
+  case 3:
+    double three;
+  case 4:
+    string four<>;
 };
 
 struct test_recursive {

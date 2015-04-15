@@ -32,12 +32,7 @@ map_tag(const string &s)
     return "true";
   if (s == "FALSE")
     return "false";
-  if (s[0] == '-')
-    // Stuff should get implicitly converted to unsigned anyway, but
-    // this avoids clang++ warnings.
-    return string("std::uint32_t(") + s + ")";
-  else
-    return s;
+  return s;
 }
 
 string
@@ -572,54 +567,34 @@ gen(std::ostream &os, const rpc_union &u)
 	       << "    return nullptr;" << endl
 	       << "  }" << endl;
 
-#if 0
-  top_material
-    << "  static Constexpr const char *union_field_name(std::uint32_t which) {";
-  if (!namespaces.empty())
-    top_material
-      << endl << "    using namespace " << cur_ns() << ";";
-
-  {
-    int olevel = nl.level_;
-    nl.level_ = 2;
-    union_function(top_material, u, "which", [](const rpc_ufield *uf) {
-	using std::to_string;
-	if (uf && uf->decl.type != "void")
-	  return string("\"") + uf->decl.id + "\"";
-	else
-	  return string("nullptr");
-      });
-    nl.level_ = olevel;
-  }
-  top_material
-    << endl << "  }" << endl;
-#endif
   top_material
     << "  static const char *union_field_name(const union_type &u) {" << endl
     << "    return union_field_name(u._xdr_discriminant());" << endl
     << "  }" << endl << endl;
 
-#if 0
-    << "  static std::uint32_t union_discriminant(const union_type &u) {"
+  top_material
+    << "  static const std::vector<discriminant_type> &discriminant_values() {"
     << endl
-    << "    return u." << u.tagid << "_;" << endl
-    << "  }" << endl
-    << "  static void union_discriminant(union_type &u, std::uint32_t d,"
-    << endl
-    << "                                 bool validate = true) {" << endl
-    << "    int fnum = union_type::_xdr_field_number(d);" << endl
-    << "    if (fnum < 0 && validate)" << endl
-    << "      throw xdr::xdr_bad_discriminant(\"bad value of "
-    << u.tagid << " in " << u.id << "\");" << endl
-    << "    if (fnum != union_type::_xdr_field_number(union_discriminant(u))) {"
-    << endl
-    << "      u.~union_type();" << endl
-    << "      u." << u.tagid << "_ = d;" << endl
-    << "      union_type::_xdr_with_mem_ptr(xdr::field_constructor, d, u);"
-    << endl
-    << "    }" << endl
-    << "  }" << endl;
-#endif
+    << "    static const std::vector<discriminant_type> _xdr_disc_vec {";
+  if (u.hasdefault)
+    top_material << "};" << endl;
+  else {
+    bool first {true};
+    for (const rpc_ufield &f : u.fields) {
+      for (const string &c : f.cases) {
+	if (first)
+	  first = false;
+	else
+	  top_material << ',';
+	top_material << endl << "      " << map_tag (c);
+      }
+    }
+    top_material
+      << endl << "    };" << endl;
+  }
+  top_material
+    << "    return _xdr_disc_vec;" << endl
+    << "  }" << endl << endl;
 
   top_material
     << "  static std::size_t serial_size(const " << cur_scope()

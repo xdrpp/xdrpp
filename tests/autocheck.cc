@@ -36,6 +36,14 @@ main()
       assert (eq == (x == y));
     }
   }
+
+  {
+    autocheck::generator<uunion> g;
+    for (size_t i = 0; i < 100; i++) {
+      auto x = g(i), y = g(i);
+      cout << xdr_to_string(x, "x", 4);
+    }
+  }
   
   return 0;
 }

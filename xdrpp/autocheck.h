@@ -32,12 +32,14 @@ struct generator_t {
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_union>::type
   operator()(T &t) const {
-    size_t s = size_;
-    uint32_t v;
-    do {
-      v = autocheck::generator<uint32_t>{}(s);
-      s >>= 1;
-    } while (v > 0 && T::_xdr_field_number(v) == -1);
+    const auto &vals = xdr_traits<T>::discriminant_values();
+    typename xdr_traits<T>::case_type v;
+    if (vals.empty())
+      v = autocheck::generator<decltype(v)>{}(size_);
+    else {
+      size_t n = autocheck::generator<size_t>{}(size_);
+      v = vals[n % vals.size()];
+    }
     t._xdr_discriminant(v, false);
     t._xdr_with_mem_ptr(field_archiver, v, *this, t, nullptr);
   }
