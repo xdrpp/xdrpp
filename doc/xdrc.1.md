@@ -204,7 +204,7 @@ contains the following fields:
     * `res_type` - the type returned by the procedure, including
       `void` for procedures declared to return void.
 
-    * `res_wire_type` - tye type returned by the procedure, except for
+    * `res_wire_type` - the type returned by the procedure, except for
       procedures returning `void`, for which `res_wire_type` is
       typedefed to `xdr_void` (a.k.a., `std::tuple<>`), an empty data
       structure whose wire representation is 0 bytes.
