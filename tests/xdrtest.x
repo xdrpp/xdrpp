@@ -29,6 +29,7 @@ union uunion switch (unsigned d) {
 struct test_recursive {
   string elem<>;
   test_recursive *next;
+  test_recursive nextvec<>;
 };
 
 struct fix_4 {
