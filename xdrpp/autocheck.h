@@ -32,7 +32,7 @@ struct generator_t {
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_union>::type
   operator()(T &t) const {
-    const auto &vals = xdr_traits<T>::discriminant_values();
+    const auto &vals = T::_xdr_discriminant_values();
     typename xdr_traits<T>::case_type v;
     if (vals.empty())
       v = autocheck::generator<decltype(v)>{}(size_);

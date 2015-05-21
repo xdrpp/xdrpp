@@ -73,6 +73,13 @@ enum other_color {
   REDDEST
 };
 
+union other_union switch (other_color oc) {
+  case RED:
+    string red_string<>;
+  case REDDER:
+    string reder_string<>;
+};
+
 struct bytes {
   string s<16>;
   opaque fixed[16];
@@ -124,9 +131,9 @@ struct containertest1 {
 };
 
 union ContainsEnum switch (color c) {
- case RED:
+ case color::RED:
    string foo<>;
- case REDDER:
+ case color::REDDER:
    enum { ONE, TWO } num;
 };
 

@@ -401,6 +401,28 @@ gen(std::ostream &os, const rpc_union &u)
     " \"union discriminant must be 4 bytes\");" << endl;
 #endif
 
+  // _xdr_discriminant_values
+  os << nl << "static const std::vector<" << u.tagtype
+     << "> &_xdr_discriminant_values() {" << nl
+     << "  static const std::vector<" << u.tagtype << "> _xdr_disc_vec {";
+  if (u.hasdefault)
+    os << "};" << nl;
+  else {
+    bool first {true};
+    for (const rpc_ufield &f : u.fields) {
+      for (const string &c : f.cases) {
+	if (first)
+	  first = false;
+	else
+	  os << ',';
+	os << nl << "    " << map_tag (c);
+      }
+    }
+    os << nl << "  };" << nl;
+  }
+  os << "  return _xdr_disc_vec;" << nl
+     << "}";
+
   // _xdr_field_number
   os << nl
      << "static Constexpr int _xdr_field_number(_xdr_case_type which) {";
@@ -572,9 +594,13 @@ gen(std::ostream &os, const rpc_union &u)
     << "    return union_field_name(u._xdr_discriminant());" << endl
     << "  }" << endl << endl;
 
+#if 0
   top_material
     << "  static const std::vector<discriminant_type> &discriminant_values() {"
-    << endl
+    << endl;
+  if (!namespaces.empty())
+    top_material << "    using namespace " << cur_ns() << ";" << endl;
+  top_material
     << "    static const std::vector<discriminant_type> _xdr_disc_vec {";
   if (u.hasdefault)
     top_material << "};" << endl;
@@ -595,6 +621,7 @@ gen(std::ostream &os, const rpc_union &u)
   top_material
     << "    return _xdr_disc_vec;" << endl
     << "  }" << endl << endl;
+#endif
 
   top_material
     << "  static std::size_t serial_size(const " << cur_scope()
