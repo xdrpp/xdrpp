@@ -126,6 +126,19 @@ template<typename T> struct xdr_traits {
   static Constexpr const bool has_fixed_size = false;
 };
 
+namespace detail {
+// When a type T includes itself recursively (for instance because it
+// contains a vector of itself), xdr_traits<T> will be incomplete at
+// some points where one needs to know if the structure has a fixed
+// size.  However, such recursive structures don't have a fixed size,
+// anyway, so it is okay to short-circuit and return a false
+// has_fixed_size.  The point of has_fixed_size_t is to allow
+// specializations (notably for xvector<T>) that short-cirtuit to
+// false.
+template<typename T> struct has_fixed_size_t
+  : std::integral_constant<bool, xdr_traits<T>::has_fixed_size> {};
+}
+
 //! Return the marshaled size of an XDR data type.
 template<typename T> std::size_t
 xdr_size(const T&t)
@@ -253,7 +266,7 @@ namespace detail {
 //! Convenience supertype for traits of the three container types
 //! (xarray, xvectors, and pointer).
 template<typename T, bool variable,
-	 bool VFixed = xdr_traits<typename T::value_type>::has_fixed_size>
+	 bool VFixed = detail::has_fixed_size_t<typename T::value_type>::value>
 struct xdr_container_base : xdr_traits_base {
   using value_type = typename T::value_type;
   static Constexpr const bool is_container = true;
@@ -393,6 +406,10 @@ struct xvector : std::vector<T> {
     vector::resize(n);
   }
 };
+
+namespace detail {
+template<typename T> struct has_fixed_size_t<xvector<T>> : std::false_type {};
+}
 
 template<typename T, uint32_t N> struct xdr_traits<xvector<T,N>>
   : detail::xdr_container_base<xvector<T,N>, true> {};
@@ -599,10 +616,10 @@ template<> struct xdr_struct_base<> : xdr_traits_base {
   }
 };
 template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
-  : std::conditional<(xdr_traits<typename FP::field_type>::has_fixed_size
+  : std::conditional<(detail::has_fixed_size_t<typename FP::field_type>::value
 		      && xdr_struct_base<Rest...>::has_fixed_size),
-                      detail::xdr_struct_base_fs<FP, Rest...>,
-                      detail::xdr_struct_base_vs<FP, Rest...>>::type {
+    detail::xdr_struct_base_fs<FP, Rest...>,
+    detail::xdr_struct_base_vs<FP, Rest...>>::type {
   using field_info = FP;
   using next_field = xdr_struct_base<Rest...>;
 };
