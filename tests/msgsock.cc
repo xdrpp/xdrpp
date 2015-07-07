@@ -6,7 +6,6 @@
 #include <thread>
 #include <sys/socket.h>
 #include <xdrpp/msgsock.h>
-
 #include <xdrpp/printer.h>
 
 using namespace std;
@@ -21,13 +20,15 @@ echoserver(sock_t s)
   int i = 0;
 
   ss.setrcb([&done,&ss,&i](msg_ptr b) {
-      cerr << "echoing #" << i++ << " (" << b->size() << " bytes)" << endl;
-      if (b)
+      if (b) {
+	cout << "echoing #" << i++ << " (" << b->size() << " bytes)" << endl;
 	ss.putmsg(b);
+      }
       else
 	done = true;
     });
 
+  ps.signal_cb(SIGPIPE, [](){});
   while (!done && ps.pending())
     ps.poll();
 }
@@ -46,7 +47,7 @@ echoclient(sock_t s)
   ss.setrcb([&i,&ss](msg_ptr b) {
       assert(b);
       assert(b->size() == i);
-      cerr << b->size() << ": " << hexdump(b->data(), b->size()) << std::endl;
+      cout << b->size() << ": " << hexdump(b->data(), b->size()) << std::endl;
       for (unsigned j = 0; j < b->size(); j++) {
 	assert(unsigned(b->data()[j]) == b->size());
       }

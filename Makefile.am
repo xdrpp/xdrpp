@@ -52,11 +52,15 @@ LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
 	tests/test-srpc tests/test-printer tests/test-listener	\
 	tests/test-arpc tests/test-compare tests/test-types
+TESTS = tests/test-msgsock tests/test-printer tests/test-compare	\
+	tests/test-types
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
+TESTS += tests/test-cereal
 endif
 if USE_AUTOCHECK
 check_PROGRAMS += tests/test-autocheck
+TESTS += tests/test-autocheck
 endif
 #TESTS = $(check_PROGRAMS)
 tests_test_printer_SOURCES = tests/printer.cc
