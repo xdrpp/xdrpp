@@ -29,27 +29,18 @@ struct generator_t {
   std::enable_if<xdr_traits<T>::is_struct>::type
   operator()(T &t) const { xdr_traits<T>::load(*this, t); }
 
-  static inline size_t elt_size(size_t nelts, size_t size) {
-    switch (nelts) {
-    case 0:
-      return 0;
-    case 1:
-      return size >> 1;
-    default:
-      return size / (nelts >> 1);
-    }
-  }
+  // Shrunken size for elements of a container
+  inline size_t elt_size() const { return size_ >> 1; }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_union>::type
   operator()(T &t) const {
     const auto &vals = T::_xdr_discriminant_values();
     typename xdr_traits<T>::case_type v;
-    size_t esize = elt_size(vals.size(), size_);
     if (vals.empty())
-      v = autocheck::generator<decltype(v)>{}(esize);
+      v = autocheck::generator<decltype(v)>{}(size_);
     else {
-      size_t n = autocheck::generator<size_t>{}(esize);
+      size_t n = autocheck::generator<size_t>{}(size_);
       v = vals[n % vals.size()];
     }
     t._xdr_discriminant(v, false);
@@ -61,7 +52,7 @@ struct generator_t {
   operator()(T &t) const {
     t.resize(autocheck::generator<std::uint32_t>{}(size_) % t.max_size());
     autocheck::generator<typename T::value_type> gen;
-    size_t esize = elt_size(t.size(), size_);
+    size_t esize = elt_size();
     for (auto &e : t)
       e = gen(esize);
   }
@@ -70,7 +61,7 @@ struct generator_t {
   std::enable_if<xdr_traits<T>::variable_nelem == false>::type
   operator()(T &t) const {
     autocheck::generator<typename T::value_type> gen;
-    size_t esize = elt_size(t.size(), size_);
+    size_t esize = elt_size();
     for (auto &e : t)
       e = gen(esize);
   }
@@ -78,8 +69,8 @@ struct generator_t {
   template<typename T> void
   operator()(pointer<T> &t) const {
     if (autocheck::generator<std::uint32_t>{}(size_)) {
-      generator_t g(size_ >> 1);
-      archive(g, t.activate());
+      autocheck::generator<T> gen;
+      t.reset(new T{gen(elt_size())});
     }
     else
       t.reset();

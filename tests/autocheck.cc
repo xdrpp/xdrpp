@@ -30,9 +30,10 @@ main()
       auto m1 = xdr_to_msg(x), m2 = xdr_to_msg(y);
       bool eq = (m1->size() == m2->size()
 		 && !memcmp(m1->data(), m2->data(), m1->size()));
+#if 0
       cout << boolalpha << eq << ':' << endl
-	   << xdr_to_string(x, "x", 4)
-	   << xdr_to_string(y, "y", 4);
+	   << xdr_to_string(x, "x", 4) << xdr_to_string(y, "y", 4);
+#endif
       assert (eq == (x == y));
     }
   }
@@ -41,7 +42,7 @@ main()
     autocheck::generator<uunion> g;
     for (size_t i = 0; i < 100; i++) {
       auto x = g(i), y = g(i);
-      cout << xdr_to_string(x, "x", 4);
+      // cout << xdr_to_string(x, "x", 4);
     }
   }
   
