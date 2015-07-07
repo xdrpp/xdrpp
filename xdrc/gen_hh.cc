@@ -167,61 +167,53 @@ gen(std::ostream &os, const rpc_struct &s)
 
   for (auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << "{};";
-  if (s.decls.size()) {
-    os << nl
-       << nl << s.id << "() = default;";
-    if (s.decls.size() == 1) {
-      // We have to do this to avoid accidentally calling the template
-      // constructor instead of the copy constructor.
-      os << nl << s.id << "(const " << s.id << " &) = default;"
-	 << endl << "#if !OVERSTRICT_COPY_CONSTRUCTOR"
-	 << nl << s.id << "(" << s.id << " &) = default;"
-	 << endl << "#endif // !OVERSTRICT_COPY_CONSTRUCTOR"
-	 << nl << s.id << "(" << s.id << " &&) = default;";
-    }
-    os << nl << "template<";
-    bool first{true};
-    for (auto &d : s.decls) {
-      if (first)
-	first = false;
-      else
-	os << "," << nl << "         ";
-      os << "typename _" << d.id << "_T";
-    }
-    os << ">"
-       << nl << "explicit " << s.id << "(";
-    first = true;
-    for (auto &d : s.decls) {
-      if (first)
-	first = false;
-      else
-	os << "," << nl << string(10 + s.id.size(), ' ');
-      os << "_" << d.id << "_T &&_" << d.id;
-    }
-    os << ")"
-       << nl << "  : ";
-    first = true;
-    for (auto &d : s.decls) {
-      if (first)
-	first = false;
-      else
-	os << "," << nl << "    ";
-      os << d.id << "(std::forward<_" << d.id << "_T>(_" << d.id << "))";
-    }
-    os << " {}";
+  os << nl
+     << nl << s.id << "() = default;"
+     << nl << "template<";
+  bool first{true};
+  for (auto &d : s.decls) {
+    os << "typename _" << d.id << "_T,"
+       << nl << "         ";
   }
-  if (s.decls.size() == 1) {
-    os << nl << s.id << " &operator=(const " << s.id << " &) = default;"
-       << nl << s.id << " &operator=(" << s.id << " &&) = default;";
+  os << "typename = typename"
+     << nl << "         std::enable_if<";
+  first = true;
+  for (auto &d : s.decls) {
+    if (first)
+      first = false;
+    else
+      os << nl << "                        && ";
+    os << "std::is_constructible<" << decl_type(d) << ", _"
+       << d.id << "_T>::value";
   }
-
-  os << nl.close << "}";
+  os << nl << "                       >::type>"
+     << nl << "explicit " << s.id << "(";
+  first = true;
+  for (auto &d : s.decls) {
+    if (first)
+      first = false;
+    else
+      os << "," << nl << string(10 + s.id.size(), ' ');
+    os << "_" << d.id << "_T &&_" << d.id;
+  }
+  os << ")"
+     << nl << "  : ";
+  first = true;
+  for (auto &d : s.decls) {
+    if (first)
+      first = false;
+    else
+      os << "," << nl << "    ";
+    os << d.id << "(std::forward<_" << d.id << "_T>(_" << d.id << "))";
+  }
+  os << " {}"
+     << nl.close << "}";
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
     << ">" << endl
     << "  : xdr_struct_base<";
-  bool first{true};
+  first = true;
   for (auto &d : s.decls) {
     if (first)
       first = false;
