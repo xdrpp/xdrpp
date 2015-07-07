@@ -13,7 +13,15 @@ namespace xdr {
 
 struct generator_t {
   std::size_t size_;  
-  Constexpr generator_t(std::size_t size) : size_(size) {}
+  Constexpr explicit generator_t(std::size_t size) : size_(size) {}
+
+  // Handle char and uint8_t (which can legally be the same type for
+  // some compilers), allowing variable_nelem cases to handle both
+  // containers and bytes (string/opaque).
+  template<typename T> typename
+  std::enable_if<(std::is_same<T, char>::value
+		  || std::is_same<T, std::uint8_t>::value)>::type
+  operator()(T &t) const { t = autocheck::generator<T>{}(size_); }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_numeric>::type
@@ -28,9 +36,6 @@ struct generator_t {
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_struct>::type
   operator()(T &t) const { xdr_traits<T>::load(*this, t); }
-
-  // Shrunken size for elements of a container
-  inline size_t elt_size() const { return size_ >> 1; }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_union>::type
@@ -47,30 +52,31 @@ struct generator_t {
     t._xdr_with_mem_ptr(field_archiver, v, *this, t, nullptr);
   }
 
+  // Shrunken size for elements of a container
+  inline size_t elt_size() const { return size_ >> 1; }
+
   template<typename T> typename
   std::enable_if<xdr_traits<T>::variable_nelem == true>::type
   operator()(T &t) const {
     t.resize(autocheck::generator<std::uint32_t>{}(size_) % t.max_size());
-    autocheck::generator<typename T::value_type> gen;
-    size_t esize = elt_size();
+    generator_t g(elt_size());
     for (auto &e : t)
-      e = gen(esize);
+      archive(g, e);
   }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::variable_nelem == false>::type
   operator()(T &t) const {
-    autocheck::generator<typename T::value_type> gen;
-    size_t esize = elt_size();
+    generator_t g(elt_size());
     for (auto &e : t)
-      e = gen(esize);
+      archive(g, e);
   }
 
   template<typename T> void
   operator()(pointer<T> &t) const {
     if (autocheck::generator<std::uint32_t>{}(size_)) {
-      autocheck::generator<T> gen;
-      t.reset(new T{gen(elt_size())});
+      generator_t g(elt_size());
+      archive(g, t.activate());
     }
     else
       t.reset();
