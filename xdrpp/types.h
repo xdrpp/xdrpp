@@ -490,10 +490,14 @@ template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
 
 
 //! Optional data (represented with pointer notation in XDR source).
-template<typename T> struct pointer : std::unique_ptr<T> {
+template<typename T> struct pointer : protected std::unique_ptr<T> {
   using value_type = T;
   using std::unique_ptr<T>::unique_ptr;
   using std::unique_ptr<T>::get;
+  using std::unique_ptr<T>::reset;
+  using std::unique_ptr<T>::operator bool;
+  using std::unique_ptr<T>::operator*;
+  using std::unique_ptr<T>::operator->;
   pointer() = default;
   pointer(const pointer &p) : std::unique_ptr<T>(p ? new T(*p) : nullptr) {}
   pointer(pointer &&p) = default;
@@ -545,10 +549,15 @@ template<typename T> struct pointer : std::unique_ptr<T> {
     return *this->get();
   }
 
-  //! Compare for equality by value, rather than looking at the value
-  //! of the pointer.
+  //! Compare by value, rather than looking at the value of the pointer.
   friend bool operator==(const pointer &a, const pointer &b) {
     return (!a && !b) || (a && b && *a == *b);
+  }
+  friend bool operator!=(const pointer &a, const pointer &b) {
+      return !(a == b);
+  }
+  friend bool operator<(const pointer &a, const pointer &b) {
+      return (!a && b) || (a && b && *a < *b);
   }
 };
 
