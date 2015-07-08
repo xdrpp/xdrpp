@@ -505,7 +505,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
 	this->reset(new T(*tp));
     }
     else
-      this->release();
+      this->reset();
     return *this;
   }
   pointer &operator=(pointer &&) = default;
