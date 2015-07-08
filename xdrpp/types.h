@@ -509,6 +509,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
     return *this;
   }
   pointer &operator=(pointer &&) = default;
+
   static void check_size(uint32_t n) {
     if (n > 1)
       throw xdr_overflow("xdr::pointer size must be 0 or 1");
@@ -545,10 +546,24 @@ template<typename T> struct pointer : std::unique_ptr<T> {
     return *this->get();
   }
 
-  //! Compare for equality by value, rather than looking at the value
-  //! of the pointer.
+  //! Compare by value, rather than looking at the value of the pointer.
   friend bool operator==(const pointer &a, const pointer &b) {
     return (!a && !b) || (a && b && *a == *b);
+  }
+  friend bool operator!=(const pointer &a, const pointer &b) {
+    return !(a == b);
+  }
+  friend bool operator<(const pointer &a, const pointer &b) {
+    return (!a && b) || (a && b && *a < *b);
+  }
+  friend bool operator>(const pointer &a, const pointer &b) {
+    return b < a;
+  }
+  friend bool operator<=(const pointer &a, const pointer &b) {
+    return !(b < a);
+  }
+  friend bool operator>=(const pointer &a, const pointer &b) {
+    return !(a < b);
   }
 };
 
@@ -891,6 +906,14 @@ operator==(const T &a, const T &b)
   return detail::struct_equal_helper<T, xdr_traits<T>>::equal(a, b);
 }
 
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
+	       bool>::type
+operator!=(const T &a, const T &b)
+{
+  return !(a == b);
+}
+
 //! Ordering of XDR structures.  See note at \c xdr::operator==.
 template<typename T> inline typename
 std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
@@ -900,6 +923,29 @@ operator<(const T &a, const T &b)
   return detail::struct_lt_helper<T, xdr_traits<T>>::lt(a, b);
 }
 
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
+	       bool>::type
+operator>(const T &a, const T &b)
+{
+  return b < a;
+}
+
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
+	       bool>::type
+operator<=(const T &a, const T &b)
+{
+  return !(b < a);
+}
+
+template<typename T> inline typename
+std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
+	       bool>::type
+operator>=(const T &a, const T &b)
+{
+  return !(a < b);
+}
 
 namespace detail {
 struct union_field_equal_t {
