@@ -8,18 +8,15 @@ xdrc_xdrc_SOURCES = xdrc/xdrc.cc xdrc/gen_hh.cc xdrc/gen_server.cc	\
 	xdrc/scan.ll xdrc/parse.yy xdrc/union.h xdrc/xdrc_internal.h
 if NEED_GETOPT_LONG
 xdrc_xdrc_SOURCES += compat/getopt_long.c compat/getopt.h
-getopt.h: $(top_srcdir)/compat/getopt.h
-	cp $(top_srcdir)/compat/getopt.h getopt.h
-MAYBE_GETOPT = getopt.h
-else # ! NEED_GETOPT_LONG
-MAYBE_GETOPT =
 endif # ! NEED_GETOPT_LONG
-xdrc/xdrc.$(OBJEXT): xdrpp/config.h $(MAYBE_GETOPT)
 xdrc_xdrc_LDADD =
 
 AM_YFLAGS = -d
-BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
-	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh xdrpp/config.h
+# Next line is needed on very parallel builds
+xdrc/scan.$(OBJEXT) xdrc/parse.$(OBJEXT): xdrc/parse.hh
+# Next line for old automakes that generate parse.h, not parse.hh
+.h.hh:
+	cp $< $@
 
 lib_LIBRARIES = xdrpp/libxdrpp.a
 xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
@@ -29,6 +26,9 @@ xdrpp_libxdrpp_a_SOURCES = xdrpp/iniparse.cc xdrpp/marshal.cc	\
 
 nodist_pkginclude_HEADERS = xdrpp/build_endian.h
 
+BUILT_SOURCES = xdrc/parse.cc xdrc/parse.hh xdrc/scan.cc	\
+	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh xdrpp/config.h
+
 # If we use AC_CONFIG_HEADERS([xdrpp/config.h]) in configure.ac, then
 # autoconf adds -Ixdrpp, which causes errors for files like endian.h
 # (system headers find the xdrpp version instead of the system
@@ -36,6 +36,7 @@ nodist_pkginclude_HEADERS = xdrpp/build_endian.h
 # solves the problem.
 xdrpp/config.h: $(builddir)/config.h
 	cp $(builddir)/config.h xdrpp/config.h
+xdrc/xdrc.$(OBJEXT): xdrpp/config.h
 
 pkginclude_HEADERS = xdrpp/types.h xdrpp/cereal.h xdrpp/clear.h		\
 	xdrpp/exception.h xdrpp/iniparse.h xdrpp/marshal.h		\
@@ -62,7 +63,6 @@ if USE_AUTOCHECK
 check_PROGRAMS += tests/test-autocheck
 TESTS += tests/test-autocheck
 endif
-#TESTS = $(check_PROGRAMS)
 tests_test_printer_SOURCES = tests/printer.cc
 tests_test_msgsock_SOURCES = tests/msgsock.cc
 tests_test_marshal_SOURCES = tests/marshal.cc
@@ -113,10 +113,4 @@ EXTRA_DIST = .gitignore autogen.sh doc/xdrc.1 doc/xdrc.1.md		\
 MAINTAINERCLEANFILES = xdrc/parse.hh xdrc/parse.cc xdrc/scan.cc	\
 	$(srcdir)/doc/xdrc.1
 
-#xdrpp.pc.in xdrpp-uninstalled.pc.in 
-
 ACLOCAL_AMFLAGS = -I m4
-
-# Workaround for old automake generating parser.h not parser.hh
-.h.hh:
-	cp $< $@

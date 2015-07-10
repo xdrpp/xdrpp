@@ -1,7 +1,7 @@
 // -*- C++ -*-
-// Warning: Make sure to edit xdrc_endian.h.in, not xdrc_endian.h.
 
-/** \file endian.h Endianness of build machine. */
+/** \file endian.h Low-level byteswap and miscellaneous OS
+ *  compatibility routines. */
 
 #ifndef _XDRC_ENDIAN_H_HEADER_INCLUDED_
 #define _XDRC_ENDIAN_H_HEADER_INCLUDED_ 1
