@@ -1,5 +1,8 @@
 // -*- C++ -*-
 
+//! \file rpcbind.h Support for registering and (upon exit)
+//! unregistering with rpcbind.
+
 #ifndef _XDRPP_RPCBIND_H_HEADER_INCLUDED_
 #define _XDRPP_RPCBIND_H_HEADER_INCLUDED_ 1
 
