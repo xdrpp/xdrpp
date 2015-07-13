@@ -19,6 +19,7 @@
 
 #include <xdrpp/endian.h>
 
+//! Most of the xdrpp library is encapsulated in the xdr namespace.
 namespace xdr {
 
 using std::uint32_t;

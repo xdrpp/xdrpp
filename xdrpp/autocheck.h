@@ -1,7 +1,21 @@
 // -*- C++ -*-
 
-/** \file autocheck.h Support for using the autocheck framework with
-  * XDR data types. */
+/** \file autocheck.h Support for using the [autocheck
+  * framework](https://github.com/thejohnfreeman/autocheck/wiki) with
+  * XDR data types.  If you include this file (which requires the
+  * autocheck headers to be available), you can generate arbitrary
+  * instances of XDR types for testing your application.  For example:
+  * \code
+  *   // g will generate arbitrary values of type my_xdr_type
+  *   autocheck::generator<my_xdr_type> g;
+  *   // For variable size objects (vectors, strings, linked lists),
+  *   // size indicates how big to make them.  For numeric values,
+  *   // size affects how big the number is likely to be.
+  *   size_t size = 50;
+  *   my_xdr_type arbitrary_value = g(object_size);
+  *   fuzz_with(arbitrary_value);
+  * \endcode
+  */
 
 #ifndef _XDRC_AUTOCHECK_H_HEADER_INCLUDED_
 #define _XDRC_AUTOCHECK_H_HEADER_INCLUDED_ 1
@@ -103,4 +117,3 @@ public:
 } // namespace autocheck
 
 #endif // !_XDRC_AUTOCHECK_H_HEADER_INCLUDED_
-

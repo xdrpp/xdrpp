@@ -223,37 +223,33 @@ contains the following fields:
   program/version.  `call_dispatch` is perhaps best illustrated by
   example.  Given the source:
 
-    ~~~
-    program myprog {
-      version myprog1 {
-        void null(void) = 0;
-        void non_null(int) = 1;
-      } = 1;
-    } = 0x40000000;
-    ~~~
+        program myprog {
+          version myprog1 {
+             void null(void) = 0;
+             void non_null(int) = 1;
+          } = 1;
+        } = 0x40000000;
   
-      You will get:
+  You will get:
 
-    ~~~ {.cxx}
-    struct myprog1 {
-      // ...
-      struct null_t { /* ... */ };
-      struct non_null_t { /* ... */ };
+        struct myprog1 {
+          // ...
+          struct null_t { /* ... */ };
+          struct non_null_t { /* ... */ };
 
-      template<typename T, typename...A> static bool
-      call_dispatch(T &&t, std::uint32_t proc, A &&...a) {
-        switch(proc) {
-        case 0:
-          t.template dispatch<null_t>(std::forward<A>(a)...);
-          return true;
-        case 1:
-          t.template dispatch<non_null_t>(std::forward<A>(a)...);
-          return true;
-        }
-        return false;
-      }
-    };
-    ~~~
+          template<typename T, typename...A> static bool
+          call_dispatch(T &&t, std::uint32_t proc, A &&...a) {
+            switch(proc) {
+            case 0:
+              t.template dispatch<null_t>(std::forward<A>(a)...);
+              return true;
+            case 1:
+              t.template dispatch<non_null_t>(std::forward<A>(a)...);
+              return true;
+            }
+            return false;
+          }
+        };
 
 * `_xdr_client` - a template struct, `template<typename T> struct
   _xdr_client`, containing a `T` (a pointer-like type), and whose
@@ -266,29 +262,27 @@ contains the following fields:
   this procedure.  Continuing the example above, `myprog1` would
   contain the following structure:
 
-    ~~~ {.cxx}
-    template<typename T> struct _xdr_client {
-      T t_;
-      template<typename...ARGS> _xdr_client(ARGS &&...args)
-        : t_(std::forward<ARGS>(args)...) {}
+        template<typename T> struct _xdr_client {
+          T t_;
+          template<typename...ARGS> _xdr_client(ARGS &&...args)
+            : t_(std::forward<ARGS>(args)...) {}
 
-      template<typename...ARGS> auto
-      null(ARGS &&...args) ->
-      decltype(t_->template invoke<null_t>(
-               std::forward<ARGS>(args)...)) {
-        return t_->template invoke<null_t>(
-               std::forward<ARGS>(args)...);
-      }
+          template<typename...ARGS> auto
+          null(ARGS &&...args) ->
+          decltype(t_->template invoke<null_t>(
+                   std::forward<ARGS>(args)...)) {
+            return t_->template invoke<null_t>(
+                   std::forward<ARGS>(args)...);
+          }
 
-      template<typename...ARGS> auto
-      non_null(ARGS &&...args) ->
-      decltype(t_->template invoke<non_null_t, int>(
-               std::forward<ARGS>(args)...)) {
-        return t_->template invoke<non_null_t, int>(
-               std::forward<ARGS>(args)...);
-      }
-    };
-    ~~~
+          template<typename...ARGS> auto
+          non_null(ARGS &&...args) ->
+          decltype(t_->template invoke<non_null_t, int>(
+                   std::forward<ARGS>(args)...)) {
+            return t_->template invoke<non_null_t, int>(
+                   std::forward<ARGS>(args)...);
+          }
+        };
 
 # OPTIONS
 
@@ -299,11 +293,25 @@ contains the following fields:
 \-serverhh
 :   Generates a C++ header file containing declarations of objects you
     can use to implement a server for each interface, using
-    `rpc_tcp_listener`.  See the EXAMPLES section.
+    `srpc_tcp_listener` or `arpc_tcp_listener`.  See the EXAMPLES
+    section.
 
 \-servercc
 :   Generates a .cc file containing empty method definitions
     corresponding to the object files created with `-serverhh`.
+
+\-a, -async
+:   With `-serverhh` or `-servercc`, says to generate scaffolding for
+    an event-driven interface to be used with `arpc_tcp_listener`, as
+    opposed to the default `srpc_tcp_listener`.
+
+\-p, -ptr
+:   With `-serverhh` or `-servercc`, says to generate methods that take
+    arguments and return values as `unique_ptr<T>`.  The default is to
+    pass arguments by C++ reference.  Note that the library works with
+    both references and `unique_ptr` arguments, so this argument only
+    says what one would like to start out with, and one can later edit
+    individual prototypes to change pointers to references.
 
 \-o _outfile_
 :   Specifies the output file into which to write the generated code.
@@ -364,7 +372,7 @@ port with rpcbind) as follows:
     main(int argc, char **argv)
     {
       MyProg1_server s;
-      rpc_tcp_listener rl;
+      srpc_tcp_listener rl;
       rl.register_service(s);
       rl.run();
       return 1;
