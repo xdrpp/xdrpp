@@ -102,8 +102,7 @@ distclean-local:
 	rm -rf autom4te.cache
 
 maintainer-clean-local:
-	+@echo rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
-	rm -rf `sed -ne 's!^/!!p' .gitignore` Makefile.in
+	cd $(srcdir) && rm -rf `sed -ne 's!^/!!p' .gitignore`
 
 man_MANS = doc/xdrc.1
 EXTRA_DIST = .gitignore autogen.sh doc/xdrc.1 doc/xdrc.1.md		\
