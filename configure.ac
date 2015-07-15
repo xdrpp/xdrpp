@@ -32,17 +32,6 @@ AC_LANG(C++)
 # -pthread Seems to be required by g++ -stc=c++1[14]
 AX_APPEND_COMPILE_FLAGS([-pthread])
 
-# Permit user to build with ccache
-AC_ARG_ENABLE([ccache],
-              AS_HELP_STRING([--enable-ccache], [build with ccache]))
-AS_IF([test "x$enable_ccache" = "xyes"], [
-  unset CCACHE
-  AC_CHECK_PROGS([CCACHE], [ccache])
-  test -n "$CCACHE" || AC_MSG_ERROR(ccache program not found)
-  CC="$CCACHE $CC"
-  CXX="$CCACHE $CXX"
-])
-
 AC_C_BIGENDIAN
 AC_C_BIGENDIAN(IS_BIG_ENDIAN=1, IS_BIG_ENDIAN=0)
 AC_SUBST(IS_BIG_ENDIAN)
