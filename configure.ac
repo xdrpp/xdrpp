@@ -25,6 +25,7 @@ test "${WFLAGS+set}" || WFLAGS="-Wall"
 AM_PROG_LEX
 AC_CHECK_PROGS(YACC, 'bison -y', bison -y)
 AC_PROG_CC
+AM_PROG_CC_C_O
 AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r xlC])
 AX_CXX_COMPILE_STDCXX_11(noext,mandatory)
 test -z "$WFLAGS" || CXXFLAGS="$CXXFLAGS $WFLAGS"
