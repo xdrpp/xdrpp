@@ -3,20 +3,39 @@
     ./configure
     make
 
-# To see the documentation, run:
+# Documentation
+
+Documentation is available on-line at the project home page,
+<http://xdrpp.github.io/xdrpp/>.
+
+To generate and view a local copy of the documentation, run:
 
     doxygen
     xdg-open doc/html/index.html
 
-# To build after a git checkout without that doesn't have ./configure, run:
+Finally, if you have neither an Internet connection nor doxygen, a
+copy of the documentation can also be found in the `gh-pages` branch
+of the repository, which you can access as:
 
-    autoreconf -i
+    git archive --prefix=www/ origin/gh-pages | bsdtar xf -
+    xdg-open www/index.html
+
+# Building
+
+To build after a git checkout that doesn't have ./configure, run:
+
+    ./autogen.sh
     ./configure
     make
 
+As is traditional, the software can be installed with
+
+    make install
+
 # To enable the cereal test
 
-You need cereal in the top directory, for which you should run:
+You need cereal in the top directory (before running `./configure`),
+which you can get by running:
 
     git clone https://github.com/USCiLab/cereal.git
 
