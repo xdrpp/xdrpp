@@ -44,7 +44,7 @@ struct generator_t {
 		  || std::is_same<T, std::uint8_t>::value)>::type
   operator()(T &t) const {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
-    t = autocheck::generator<int>{}(0x10000);
+    t = autocheck::generator<int>{}(0x10000) & 0xFF;
 #else // !XDR_AUTOCHECK_FUZZY_STRINGS
     t = autocheck::generator<T>{}(size_);
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
