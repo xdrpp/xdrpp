@@ -25,6 +25,13 @@
 
 namespace xdr {
 
+#ifndef XDR_AUTOCHECK_FUZZY_STRINGS
+// If defined to 0, changes the behavior of the library to generate
+// strings with ASCII characters with small size parameters.  The
+// default (1) generates strings with arbitrary bytes.
+#define XDR_AUTOCHECK_FUZZY_STRINGS 1
+#endif // !XDR_AUTOCHECK_FUZZY_STRINGS
+
 struct generator_t {
   std::size_t size_;  
   Constexpr explicit generator_t(std::size_t size) : size_(size) {}
@@ -35,7 +42,13 @@ struct generator_t {
   template<typename T> typename
   std::enable_if<(std::is_same<T, char>::value
 		  || std::is_same<T, std::uint8_t>::value)>::type
-  operator()(T &t) const { t = autocheck::generator<T>{}(size_); }
+  operator()(T &t) const {
+#if XDR_AUTOCHECK_FUZZY_STRINGS
+    t = autocheck::generator<int>{}(0x10000);
+#else // !XDR_AUTOCHECK_FUZZY_STRINGS
+    t = autocheck::generator<T>{}(size_);
+#endif // !XDR_AUTOCHECK_FUZZY_STRINGS
+  }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_numeric>::type

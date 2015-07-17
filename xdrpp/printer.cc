@@ -30,7 +30,7 @@ escape_string(const std::string &s)
 	os << "\\\"";
 	break;
       default:
-	os << '\\' << std::setw(3) << std::setfill('0')
+	os << "\\x" << std::setw(2) << std::setfill('0')
 	   << std::oct << (unsigned(c) & 0xff);
 	break;
       }
