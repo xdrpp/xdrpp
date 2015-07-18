@@ -62,6 +62,11 @@ struct xdr_should_be_zero : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
 };
 
+//! Exception for use by \c xdr::xdr_validate.
+struct xdr_invariant_failed : xdr_runtime_error {
+  using xdr_runtime_error::xdr_runtime_error;
+};
+
 //! Attempt to access wrong field of a union.  Note that this is not
 //! an \c xdr_runtime_error, because it cannot result from
 //! unmarshalling garbage arguments.  Rather it is a logic error in
@@ -75,6 +80,18 @@ struct xdr_wrong_union : std::logic_error {
 ////////////////////////////////////////////////////////////////
 // Templates for XDR traversal and processing
 ////////////////////////////////////////////////////////////////
+
+//! If this function is overloaded, it provides a means of placing
+//! extra restrictions on XDR data structures (beyond those of the XDR
+//! specification).  When an overloaded \c xdr_validate function
+//! detects a bad data argument, it should throw an exception of type
+//! \c xdr::xdr_invariant_failed.  Note this applies only to
+//! user-defined XDR structs and unions, not to enums, typedef
+//! aliases, or build-in types (int, hyper, string, vectors, etc.).
+template<typename T> inline void
+xdr_validate(const T &t)
+{
+}
 
 //! This is used to apply an archive to a field.  It is designed as a
 //! template class that can be specialized to various archive formats,

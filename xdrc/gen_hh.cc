@@ -229,6 +229,7 @@ gen(std::ostream &os, const rpc_struct &s)
 
   top_material
     << "> {" << endl;
+  int round = 0;
   for (string decl :
     { string("  template<typename Archive> static void\n"
 	     "  save(Archive &ar, const ")
@@ -240,7 +241,9 @@ gen(std::ostream &os, const rpc_struct &s)
     for (size_t i = 0; i < s.decls.size(); ++i)
       top_material << "    archive(ar, obj." << s.decls[i].id
 		   << ", \"" << s.decls[i].id << "\");" << endl;
-    top_material << "  }" << endl;;
+    if (round++)
+      top_material << "    xdr_validate(obj);" << endl;
+    top_material << "  }" << endl;
   }
   top_material << "};" << endl;
 
@@ -646,8 +649,8 @@ gen(std::ostream &os, const rpc_union &u)
     << "    obj." << u.tagid << "(which);" << endl
     << "    obj._xdr_with_mem_ptr(field_archiver, obj."
     << u.tagid << "(), ar, obj," << endl
-    << "                          union_field_name(which));"
-    << endl
+    << "                          union_field_name(which));" << endl
+    << "    xdr_validate(obj);" << endl
     << "  }" << endl;
   top_material
     << "};" << endl;
