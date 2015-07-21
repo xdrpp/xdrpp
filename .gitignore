@@ -49,6 +49,7 @@
 /tests/test-*
 /xdrc/parse.cc
 /xdrc/parse.hh
+/xdrc/parse.h
 /xdrc/scan.cc
 /xdrc/xdrc
 /xdrpp-uninstalled.pc
