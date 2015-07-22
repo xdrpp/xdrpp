@@ -81,16 +81,38 @@ struct xdr_wrong_union : std::logic_error {
 // Templates for XDR traversal and processing
 ////////////////////////////////////////////////////////////////
 
-//! If this function is overloaded, it provides a means of placing
-//! extra restrictions on XDR data structures (beyond those of the XDR
-//! specification).  When an overloaded \c xdr_validate function
-//! detects a bad data argument, it should throw an exception of type
-//! \c xdr::xdr_invariant_failed.  Note this applies only to
-//! user-defined XDR structs and unions, not to enums, typedef
-//! aliases, or build-in types (int, hyper, string, vectors, etc.).
+namespace detail {
+// If a class actually contains a method called validate, then the
+// validate function might as well call it.  So we use the standard
+// gross overload resolution hack that argument 0 will match a
+// pointer-to-method argument before it will match a ... argument.
 template<typename T> inline void
-xdr_validate(const T &t)
+call_validate(const T &t, decltype(&T::validate))
 {
+  t.validate();
+}
+
+// Conventional wisdom holds that varargs don't inline, but, perhpas
+// because we don't actually call va_start, both gcc and clang seem
+// able to make this compile to nothing (with optimization).
+template<typename T> inline void
+call_validate(const T &, ...)
+{
+}
+}
+
+//! If this function template is specialized, it provides a means of
+//! placing extra restrictions on XDR data structures (beyond those of
+//! the XDR specification).  When a specialized \c xdr::validate
+//! function detects a bad data argument, it should throw an exception
+//! of type \c xdr::xdr_invariant_failed.  Note this mechanism only
+//! works for user-defined XDR structs and unions.  It does not work
+//! for enums, typedef aliases, or built-in types (int, hyper, string,
+//! vectors, etc.).
+template<typename T> inline void
+validate(const T &t)
+{
+  detail::call_validate(t, 0);
 }
 
 //! This is used to apply an archive to a field.  It is designed as a

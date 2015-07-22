@@ -6,8 +6,11 @@ namespace xdr {
 msg_ptr
 message_t::alloc(std::size_t size)
 {
-  // In RPC, the high bit means a continuation packet follows, which
-  // we don't implement but reserve for future compatibility.
+  // In RPC (see RFC5531 section 11), the high bit means this is the
+  // last record fragment in a record.  If the high bit is clear, it
+  // means another fragment follows.  We don't currently implement
+  // continuation fragments, and instead always set the last-record
+  // bit to produce a single-fragment record.
   assert(size < 0x80000000);
   void *raw = operator new(offsetof(message_t, buf_[size + 4]));
   if (!raw)

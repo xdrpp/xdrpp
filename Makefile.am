@@ -52,9 +52,10 @@ LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 
 check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
 	tests/test-srpc tests/test-printer tests/test-listener	\
-	tests/test-arpc tests/test-compare tests/test-types
+	tests/test-arpc tests/test-compare tests/test-types	\
+	tests/test-validate
 TESTS = tests/test-msgsock tests/test-printer tests/test-compare	\
-	tests/test-types
+	tests/test-types tests/test-validate
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 TESTS += tests/test-cereal
@@ -73,6 +74,7 @@ tests_test_arpc_SOURCES = tests/arpc.cc
 tests_test_autocheck_SOURCES = tests/autocheck.cc
 tests_test_compare_SOURCES = tests/compare.cc
 tests_test_types_SOURCES = tests/types.cc
+tests_test_validate_SOURCES = tests/validate.cc
 tests/arpc.$(OBJEXT): tests/xdrtest.hh
 tests/marshal.$(OBJEXT): tests/xdrtest.hh
 tests/printer.$(OBJEXT): tests/xdrtest.hh
@@ -83,6 +85,7 @@ tests/arpc.$(OBJEXT): tests/xdrtest.hh
 tests/autocheck.$(OBJEXT): tests/xdrtest.hh
 tests/compare.$(OBJEXT): tests/xdrtest.hh
 tests/types.$(OBJEXT): tests/xdrtest.hh
+tests/validate.$(OBJEXT): tests/xdrtest.hh
 
 SUFFIXES = .x .hh
 .x.hh:

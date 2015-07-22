@@ -242,7 +242,7 @@ gen(std::ostream &os, const rpc_struct &s)
       top_material << "    archive(ar, obj." << s.decls[i].id
 		   << ", \"" << s.decls[i].id << "\");" << endl;
     if (round++)
-      top_material << "    xdr_validate(obj);" << endl;
+      top_material << "    xdr::validate(obj);" << endl;
     top_material << "  }" << endl;
   }
   top_material << "};" << endl;
@@ -650,7 +650,7 @@ gen(std::ostream &os, const rpc_union &u)
     << "    obj._xdr_with_mem_ptr(field_archiver, obj."
     << u.tagid << "(), ar, obj," << endl
     << "                          union_field_name(which));" << endl
-    << "    xdr_validate(obj);" << endl
+    << "    xdr::validate(obj);" << endl
     << "  }" << endl;
   top_material
     << "};" << endl;
