@@ -119,6 +119,7 @@ default:
 };
 
 typedef string bigstr<>;
+typedef opaque bigopaque<>;
 
 struct containertest {
   u_4_12 uvec<>;

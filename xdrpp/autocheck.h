@@ -32,6 +32,36 @@ namespace xdr {
 #define XDR_AUTOCHECK_FUZZY_STRINGS 1
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
 
+namespace detail {
+
+//! Convert an int to a uint8_t or char, extracting the low byte.
+//! This is harder than it sounds when char is signed, because
+//! converting to a smaller signed type yields an
+//! implementation-defined value.  Worse, MSVC with certain options
+//! goes even further and crashes the program when you simply cast an
+//! int to a char.  Since there's no equivalent of reinterpret_cast
+//! between signed and unsigned values, and since even the standard
+//! union trick may be unsafe according to:
+//!
+//!     http://stackoverflow.com/questions/11373203/accessing-inactive-union-member-undefined
+//! 
+//! we just gave up and did the brute force arithmetic thing, taking
+//! advantage of the fact that all these one-byte values get promoted
+//! to int for arithmetic.
+template<typename T> constexpr T
+to_int8(uint8_t u)
+{
+  return u <= std::numeric_limits<T>::max() ? u :
+    u + (std::numeric_limits<T>::min() - std::numeric_limits<T>::max());
+}
+template<> constexpr uint8_t
+to_int8<uint8_t>(uint8_t u)
+{
+  return u;
+}
+
+}
+
 struct generator_t {
   std::size_t size_;  
   Constexpr explicit generator_t(std::size_t size) : size_(size) {}
@@ -44,9 +74,9 @@ struct generator_t {
 		  || std::is_same<T, std::uint8_t>::value)>::type
   operator()(T &t) const {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
-    t = autocheck::generator<int>{}(0x10000);
+    t = detail::to_int8<T>(autocheck::generator<int>{}(0x10000));
 #else // !XDR_AUTOCHECK_FUZZY_STRINGS
-    t = autocheck::generator<T>{}(size_);
+    t = detail::to_int8<T>(autocheck::generator<T>{}(size_));
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
   }
 
