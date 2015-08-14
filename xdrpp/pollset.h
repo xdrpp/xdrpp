@@ -269,17 +269,17 @@ public:
 
   //! Add a callback for a particular signal.  Note that only one
   //! callback can be added for a particular signal across all
-  //! `PollSet`s in a single process.  Hence, calling this function
-  //! may "steal" a signal from a different `PollSet` (erasing
-  //! whatever callback the other `PollSet` had for the signal).  Such
-  //! callback stealing is atomic, allowing one to steal a `PollSet`s
-  //! signals before deleting it with no risk of signals going
-  //! uncaught.
+  //! `pollset_plus` instances in a single process.  Hence, calling
+  //! this function may "steal" a signal from a different
+  //! `pollset_plus` (erasing whatever callback the other
+  //! `pollset_plus` had for the signal).  Such callback stealing is
+  //! atomic, allowing one to steal a `pollset_plus`'s signals before
+  //! deleting it with no risk of signals going uncaught.
   void signal_cb(int sig, cb_t cb);
 
   //! Remove any previously added callback for a particular signal.
   //! Because signal callbacks are process-wide, this static method
-  //! will affect whatever `PollSet` currently owns the signal.
+  //! will affect whatever `pollset_plus` currently owns the signal.
   static void signal_cb(int sig, std::nullptr_t = nullptr);
 };
 

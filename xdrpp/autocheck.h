@@ -44,7 +44,7 @@ namespace detail {
 //! union trick may be unsafe according to:
 //!
 //!     http://stackoverflow.com/questions/11373203/accessing-inactive-union-member-undefined
-//! 
+//!
 //! we just gave up and did the brute force arithmetic thing, taking
 //! advantage of the fact that all these one-byte values get promoted
 //! to int for arithmetic.

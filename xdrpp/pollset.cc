@@ -137,7 +137,7 @@ pollset::fd_cb_helper(sock_t s, op_t op)
   }
   if (op & kReadFlag) {
     if (op & kWriteFlag) {
-      std::cerr << "Illegal call to pollset_light::fd_cb with ReadWrite"
+      std::cerr << "Illegal call to pollset::fd_cb with ReadWrite"
 		<< std::endl;
       std::terminate();
     }
@@ -151,7 +151,7 @@ pollset::fd_cb_helper(sock_t s, op_t op)
     return fs.wcb;
   }
   else {
-    std::cerr << "Illegal call to pollset_light::fd_cb with"
+    std::cerr << "Illegal call to pollset::fd_cb with"
                  " neither Read nor Write"
 	      << std::endl;
     std::terminate();
@@ -257,8 +257,11 @@ pollset::run_timeouts()
   if (i != time_cbs_.end()) {
     int64_t now = now_ms();
     while (i != time_cbs_.end() && now >= i->first) {
+      struct cleanup {
+	cb_t cb_;
+	~cleanup() { cb_(); }
+      } c {[&]() { time_cbs_.erase(i++); }};
       i->second();
-      time_cbs_.erase(i++);
     }
   }
 }
@@ -273,9 +276,9 @@ pollset_plus::run_subtype_handlers()
   // change signal callbacks (so we have to release signal_owners_lock
   // for the duration of the callback), B) callbacks can throw
   // exceptions (and we don't want to lose other signals just because
-  // one callback throws a callback), and C) other threads could steal
-  // our signal callbacks (invalidating iterators to signal_cbs_)
-  // whenever we release signal_owners_lock.
+  // one callback throws an exception), and C) other threads could
+  // steal our signal callbacks (invalidating iterators to
+  // signal_cbs_) whenever we release signal_owners_lock.
   std::vector<int> pending;
   std::unique_lock<std::mutex> lk {signal_owners_lock};
   for (auto i : signal_cbs_)
