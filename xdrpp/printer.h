@@ -17,7 +17,7 @@ namespace xdr {
 //! Poor man's version of C++14 enable_if_t.
 #define ENABLE_IF(expr) typename std::enable_if<expr>::type
 
-//! Use octal escapes for non-printable characters, and prefix
+//! Use hex escapes for non-printable characters, and prefix
 //! backslashes and quotes with backslash.
 std::string escape_string(const std::string &s);
 //! Turn a string into a double-length sequence of hex nibbles.
