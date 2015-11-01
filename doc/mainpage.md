@@ -122,4 +122,8 @@ scaffolding for `class MyProg` and its declaration.
 
 Note that these examples assume the server is running `rpcbind`, so
 that the client can find the TCP port number of the RPC program on the
-server.  It is also possible to pass file descriptors 
+server.  It is also possible to connect manually and pass file
+descriptors for a connected socket to the constructor for
+`srpc_client`, or to pass a `unique_fd` to an `srpc_tcp_listener` (in
+which case the `srpc_tcp_listener` takes ownership of the file
+descriptor).
