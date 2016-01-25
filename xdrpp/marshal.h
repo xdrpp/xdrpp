@@ -170,7 +170,7 @@ template<typename Base> struct xdr_generic_get : Base {
     if (xdr_traits<T>::variable_nelem) {
       check(4);
       std::uint32_t size = get32(p_);
-      check(t.size());
+      check(size);
       t.resize(size);
     }
     else
