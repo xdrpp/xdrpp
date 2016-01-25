@@ -517,6 +517,9 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   ASSIGN_LIKE(replace)
   ASSIGN_LIKE(swap)
 #undef ASSIGN_LIKE
+
+  void resize(size_type n) { check_size(n); string::resize(n); }
+  void resize(size_type n, char ch) { check_size(n); string::resize(n, ch); }
 };
 
 template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
