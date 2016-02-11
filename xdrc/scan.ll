@@ -33,7 +33,7 @@ WSPACE	[ \t]
 
 ^#pragma\ 	{ BEGIN (GNL); }
 ^#\ *[0-9]+\ *	{ lineno = atoi (yytext + 1); BEGIN (GFILE); }
-<GFILE>.*	{ filename.assign(yytext+1, yyleng-2); BEGIN (GNL); }
+<GFILE>\".*\"	{ filename.assign(yytext+1, yyleng-2); BEGIN (GNL); }
 <GFILE>\n	{ filename = "(stdin)"; BEGIN (GNL); }
 <GNL>.		/* discard */;
 <GNL>\n		BEGIN (0);
