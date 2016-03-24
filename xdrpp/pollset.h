@@ -128,6 +128,15 @@ public:
     Timeout(iterator i) : i_(i) {}
     Timeout &operator=(iterator i) { i_ = i; return *this; }
     friend class pollset;
+  public:
+    //! An uninitialized timeout.  Anything other than assignment is
+    //! undefined.  Sometimes this is useful for declaring a \c
+    //! Timeout before you have a \c pollset around.  This is a
+    //! special value (as opposed to having a public default
+    //! constructor of \c Timeout) just to make it harder to introduce
+    //! uninitialized values accidentally.  In particular, an
+    //! uninitialized \c Timeout may not be null.
+    static Timeout uninitialized;
   };
 
   //! Set a callback to run a certain number of milliseconds from now.
@@ -147,6 +156,13 @@ public:
   //! An invalid timeout, useful for initializing PollSet::Timeout
   //! values before a timeout has been scheduled.
   Timeout timeout_null() { return time_cbs_.end(); }
+
+  //! Returns \b true if a timeout is equal to
+  //! PollSet::timeout_null().  Note that a PollSet::Timeout is
+  //! invalid but not null after firing.  Hence, additional care must
+  //! be taken by the programmer to avoid canceling already executed
+  //! `Timeout`s.
+  bool timeout_is_null(Timeout t) { return t.i_ == timeout_null().i_; }
 
   //! Returns \b true if a timeout is not equal to
   //! PollSet::timeout_null().  Note that a PollSet::Timeout is

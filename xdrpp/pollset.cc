@@ -16,6 +16,7 @@ namespace xdr {
 std::mutex pollset_plus::signal_owners_lock;
 pollset_plus *pollset_plus::signal_owners[num_sig];
 volatile std::sig_atomic_t pollset_plus::signal_flags[num_sig];
+pollset::Timeout pollset::Timeout::uninitialized (iterator{});
 
 void
 pollset_plus::signal_handler(int sig)
