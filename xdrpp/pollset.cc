@@ -416,7 +416,7 @@ pollset::now_ms()
 void
 pollset::timeout_cancel(Timeout &t)
 {
-  if (timeout_is_not_null(t)) {
+  if (t) {
     assert(time_cbs_.find(t.i_->first) != time_cbs_.end());
     time_cbs_.erase(t.i_);
     t = timeout_null();
