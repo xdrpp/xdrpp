@@ -21,6 +21,7 @@
 .dirstamp
 /Makefile
 /Makefile.in
+/TAGS
 /aclocal.m4
 /ar-lib
 /autocheck
