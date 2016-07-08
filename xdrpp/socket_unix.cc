@@ -60,9 +60,10 @@ void
 close(sock_t s)
 {
   while (::close(s.fd()) == -1)
-    if (!sock_eagain())
+    if (!sock_eagain()) { // EINTR possible
       std::cerr << "close: " << sock_errmsg() << std::endl;
       return;
+    }
 }
 
 void
