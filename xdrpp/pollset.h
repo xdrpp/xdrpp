@@ -151,7 +151,7 @@ public:
   //! Set a callback to run at a specific time (as returned by
   //! PollSet::now_ms()).
   template<typename CB> Timeout timeout_at(std::int64_t ms, CB &&cb) {
-    return time_cbs_.emplace(ms, std::forward<CB>(cb));
+    return Timeout(time_cbs_.emplace(ms, std::forward<CB>(cb)));
   }
 
   //! An invalid timeout, useful for initializing PollSet::Timeout
