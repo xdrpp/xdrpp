@@ -26,7 +26,7 @@ For the latest source code, run:
 
     git clone https://github.com/xdrpp/xdrpp.git
 
-**See the [xdrc manual page](md_doc_xdrc_81.html) for more
+**See the [xdrc manual page](md_doc_xdrc.1.html) for more
  information.**
 
 A high-level example gives a flavor for the library.  To use RPC you
