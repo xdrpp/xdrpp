@@ -101,6 +101,10 @@ DISTCLEANFILES = xdrpp/config.h getopt.h
 $(srcdir)/doc/xdrc.1: $(srcdir)/doc/xdrc.1.md
 	-pandoc -s -w man $(srcdir)/doc/xdrc.1.md -o $(srcdir)/doc/xdrc.1
 
+.PHONY: gh-pages
+gh-pages:
+	cd $(srcdir) && doxygen && ./mk-gh-pages
+
 distclean-local:
 	rm -rf autom4te.cache
 
