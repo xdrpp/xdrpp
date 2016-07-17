@@ -10,7 +10,7 @@
  * need to implement your own `archive` (or `save`/`load`) methods.
  *
  * Note you still need to include the cereal archive headers you want
- * to use, e.g., <tt>#include &lt;<cereal/archives/json.hpp&gt;</tt>.
+ * to use, e.g., <tt>#include &lt;cereal/archives/json.hpp&gt;</tt>.
  *
  * [cereal]: http://uscilab.github.io/cereal/
  */
