@@ -2,9 +2,9 @@
 
 //! \file printer.h Support for pretty-printing XDR data types.
 //! Function xdr::xdr_to_string converts an arbitrary XDR data type to
-//! a string.  In addition, if you say <tt>using namespace
-//! xdr::show;</tt>, you can use the standard \c operator<< to print
-//! XDR types.
+//! a string.  In addition, if you say <tt>using
+//! xdr::operator<<;</tt>, you can use the standard \c operator<< to
+//! print XDR types.
 
 #ifndef _XDRPP_PRINT_H_HEADER_INCLUDED_
 #define _XDRPP_PRINT_H_HEADER_INCLUDED_ 1
