@@ -104,6 +104,10 @@ $(srcdir)/doc/xdrc.1: $(srcdir)/doc/xdrc.1.md
 .PHONY: gh-pages
 gh-pages:
 	cd $(srcdir) && doxygen && ./mk-gh-pages
+	@echo '************************************************************'
+	@echo 'Now you may wan to run:'
+	@echo '  git push -f origin gh-pages'
+	@echo '************************************************************'
 
 distclean-local:
 	rm -rf autom4te.cache
