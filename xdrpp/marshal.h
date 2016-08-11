@@ -237,6 +237,8 @@ xdr_to_msg(const Args &...args)
   return m;
 }
 
+//! Marshal one or a series of XDR types into a newly allocated opaque
+//! structure for embedding in other XDR types.
 template<typename...Args> opaque_vec<>
 xdr_to_opaque(const Args &...args)
 {
@@ -259,8 +261,20 @@ xdr_from_msg(const msg_ptr &m, Args &...args)
   g.done();
 }
 
-template<typename...Args> void
-xdr_from_opaque(const std::vector<std::uint8_t> &m, Args &...args)
+namespace detail {
+// Fake function accepting types we are willing to unmarshal from, so
+// that xdr_from_opaque works with types such as str::string and
+// std::vector<std::uint8_t> but not std::vector<bool>.
+void bytes_to_void(const std::uint8_t *);
+void bytes_to_void(const char *);
+}
+
+//! The reverse of xdr::xdr_to_opaque.  For convenience, accepts the
+//! data in std::string and std::vector (of byte types) in addition to
+//! xdr::xdr_opaque<>.
+template<typename Bytes, typename...Args> auto
+xdr_from_opaque(const Bytes &m, Args &...args)
+  -> decltype(detail::bytes_to_void(m.data()))
 {
   xdr_get g(m.data(), m.data()+m.size());
   xdr_argpack_archive(g, args...);

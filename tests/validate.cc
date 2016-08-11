@@ -27,6 +27,11 @@ main()
   v = xdr_to_opaque(f4);
   xdr_from_opaque(v, f4);
 
+  string ss(reinterpret_cast<const char *> (v.data()), v.size());
+  fix_4 ff4;
+  xdr_from_opaque(ss, ff4);
+  assert (f4 == ff4);
+
   f4.i = 0;
   v = xdr_to_opaque(f4);
   bool ok = false;
