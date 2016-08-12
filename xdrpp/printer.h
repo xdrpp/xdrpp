@@ -72,7 +72,7 @@ struct Printer {
   // Don't print 1-tuple as tuple (even Haskell doesn't have 1-tuples).
   template<typename T> void
   operator()(const char *field, const std::tuple<T> &t) {
-    (*this)(field, std::get<0>(t));
+    archive(*this, std::get<0>(t), field);
   }
 
   template<typename T> void operator()(const char *field, const pointer<T> &t) {
