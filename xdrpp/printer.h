@@ -6,7 +6,6 @@
 //! xdr::operator<<;</tt>, you can use the standard \c operator<< to
 //! print XDR types.
 //!
-
 //! You can customize how a particular user-defined type \c T gets
 //! printed by defining a function <tt>std::string xdr_printer(const
 //! T&)</tt> in the same namespace as <tt>T</tt>.
