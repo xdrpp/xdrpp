@@ -471,7 +471,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.close << "}";
 
   // Default constructor
-  os << nl << u.id << "(" << map_type(u.tagtype) << " which = "
+  os << nl << "explicit " << u.id << "(" << map_type(u.tagtype) << " which = "
      << map_type(u.tagtype) << "{}) : " << u.tagid << "_(which) {"
      << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
      << u.tagid << "_, *this);"

@@ -841,7 +841,7 @@ member(T &&t, F T::*mp)
 struct field_constructor_t {
   Constexpr field_constructor_t() {}
   template<typename T, typename F> void operator()(F T::*mp, T &t) const {
-    new (&(t.*mp)) F;
+    new (&(t.*mp)) F{};
   }
   template<typename T, typename F, typename TT> void
   operator()(F T::*mp, T &t, TT &&tt) const {
