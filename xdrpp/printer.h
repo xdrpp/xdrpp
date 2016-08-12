@@ -15,6 +15,7 @@
 namespace xdr {
 
 //! Poor man's version of C++14 enable_if_t.
+#undef ENABLE_IF
 #define ENABLE_IF(expr) typename std::enable_if<expr>::type
 
 //! Use hex escapes for non-printable characters, and prefix
@@ -35,9 +36,40 @@ struct Printer {
   Printer(int indent) : indent_(indent) {}
 
   std::ostream &bol(const char *name = nullptr);
-  void operator()(const char *field, const char *s) { bol(field) << s; }
-  void operator()(const char *field, const std::string &s) { bol(field) << s; }
+  void p(const char *field, const char *s) { bol(field) << s; }
+  void p(const char *field, const std::string &s) { bol(field) << s; }
+
   void operator()(const char *field, xdr_void) { bol(field) << "void"; }
+
+  template<std::uint32_t N> void
+  operator()(const char *field, const xstring<N> &s) {
+    p(field, escape_string(s));
+  }
+  template<std::uint32_t N> void
+  operator()(const char *field, const opaque_array<N> &v) {
+    p(field, hexdump(v.data(), v.size()));
+  }
+  template<std::uint32_t N>
+  void operator()(const char *field, const opaque_vec<N> &v) {
+    p(field, hexdump(v.data(), v.size()));
+  }
+
+  template<typename T> ENABLE_IF(xdr_traits<T>::is_enum)
+  operator()(const char *field, T t) {
+    if (const char *n = xdr_traits<T>::enum_name(t))
+      p(field, n);
+    else
+      p(field, std::to_string(t));
+  }
+
+  template<typename T> ENABLE_IF(xdr_traits<T>::is_numeric)
+  operator()(const char *field, T t) { p(field, std::to_string(t)); }
+
+  // Don't print 1-tuple as tuple (even Haskell doesn't have 1-tuples).
+  template<typename T> void
+  operator()(const char *field, const std::tuple<T> &t) {
+    (*this)(field, std::get<0>(t));
+  }
 
   template<typename T> void operator()(const char *field, const pointer<T> &t) {
     if (t)
@@ -95,40 +127,8 @@ struct Printer {
 template<> struct archive_adapter<detail::Printer> {
   using Printer = detail::Printer;
 
-  template<std::uint32_t N>
-  static void apply(Printer &p, const xstring<N> &s, const char *field) {
-    p(field, escape_string(s));
-  }
-  template<std::uint32_t N>
-  static void apply(Printer &p, const opaque_array<N> &v, const char *field) {
-    p(field, hexdump(v.data(), v.size()));
-  }
-  template<std::uint32_t N>
-  static void apply(Printer &p, const opaque_vec<N> &v, const char *field) {
-    p(field, hexdump(v.data(), v.size()));
-  }
-
-  template<typename T> static ENABLE_IF(xdr_traits<T>::is_enum)
-  apply(Printer &p, T t, const char *field) {
-    if (const char *n = xdr_traits<T>::enum_name(t))
-      p(field, n);
-    else
-      p(field, std::to_string(t));
-  }
-  template<typename T> static ENABLE_IF(xdr_traits<T>::is_numeric)
-  apply(Printer &p, T t, const char *field) {
-    p(field, std::to_string(t));
-  };
-
-  template<typename T> static ENABLE_IF(xdr_traits<T>::is_class
-					|| xdr_traits<T>::is_container)
-  apply(Printer &p, const T &obj, const char *field) { p(field, obj); }
-
-  // Don't print 1-tuple as tuple (even Haskell doesn't have 1-tuples).
   template<typename T> static void
-  apply(Printer &p, const std::tuple<T> &t, const char *field) {
-    archive(p, std::get<0>(t), field);
-  }
+  apply(Printer &p, const T &obj, const char *field) { p(field, obj); }
 };
 
 //! Return a std::string containing a pretty-printed version an XDR
