@@ -5,6 +5,11 @@
 //! a string.  In addition, if you say <tt>using
 //! xdr::operator<<;</tt>, you can use the standard \c operator<< to
 //! print XDR types.
+//!
+
+//! You can customize how a particular user-defined type \c T gets
+//! printed by defining a function <tt>std::string xdr_printer(const
+//! T&)</tt> in the same namespace as <tt>T</tt>.
 
 #ifndef _XDRPP_PRINT_H_HEADER_INCLUDED_
 #define _XDRPP_PRINT_H_HEADER_INCLUDED_ 1
@@ -122,13 +127,31 @@ struct Printer {
   }
 };
 
+template<typename T> class has_xdr_printer {
+  template<typename U> static std::true_type
+  test(decltype(xdr_printer(*(U*)0)) *);
+
+  template<typename U> static std::false_type test(...);
+public:
+  static constexpr bool value = decltype(test<T>(0))::value;
+};
+
 } // namespace detail
 
 template<> struct archive_adapter<detail::Printer> {
   using Printer = detail::Printer;
 
-  template<typename T> static void
-  apply(Printer &p, const T &obj, const char *field) { p(field, obj); }
+  template<typename T> static
+  typename std::enable_if<!detail::has_xdr_printer<T>::value>::type
+  apply(Printer &p, const T &obj, const char *field) {
+    p(field, obj);
+  }
+
+  template<typename T> static
+  typename std::enable_if<detail::has_xdr_printer<T>::value>::type
+  apply(Printer &p, const T &obj, const char *field) {
+    p.p(field, xdr_printer(obj));
+  }
 };
 
 //! Return a std::string containing a pretty-printed version an XDR

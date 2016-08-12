@@ -7,6 +7,14 @@
 using namespace std;
 using namespace xdr;
 
+static string
+xdr_printer(const fix_4 &f4)
+{
+  ostringstream os;
+  os << "FIX4(" << f4.i << ")";
+  return os.str();
+}
+
 void
 withshow()
 {
@@ -19,6 +27,12 @@ withshow()
   u.f12().d = 99.99;
 
   cout << boolalpha << b << " " << u << endl;
+
+  u.which(4);
+  cout << u << endl;
+
+  string tmp = xdr_to_string(fix_4{0});
+  assert(tmp == "FIX4(0)\n");
 
   testns::numerics n;
 
