@@ -146,7 +146,7 @@ public:
     return ret;
   }
   void clear() {
-    if (s_) {
+    if (s_ != invalid_sock) {
       close(s_);
       s_ = invalid_sock;
     }
