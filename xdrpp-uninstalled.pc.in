@@ -3,5 +3,5 @@ xdrc=${pcfiledir}/xdrc/xdrc
 Name: xdrpp
 Description: RFC5531 RPC library
 Version: @PACKAGE_VERSION@
-Libs: -L${pcfiledir}/xdrpp -lxdrpp
+Libs: ${pcfiledir}/xdrpp/libxdrpp.a
 Cflags: -I@abs_top_srcdir@ -I${pcfiledir}
