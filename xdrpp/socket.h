@@ -19,6 +19,7 @@ struct iovec {
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <netinet/in.h>
 #endif // !MSVC
 
 namespace xdr {
