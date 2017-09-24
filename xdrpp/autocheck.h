@@ -63,7 +63,7 @@ to_int8<uint8_t>(uint8_t u)
 }
 
 struct generator_t {
-  std::size_t size_;  
+  std::size_t size_;
   Constexpr explicit generator_t(std::size_t size) : size_(size) {}
 
   // Handle char and uint8_t (which can legally be the same type for
@@ -74,7 +74,7 @@ struct generator_t {
 		  || std::is_same<T, std::uint8_t>::value)>::type
   operator()(T &t) const {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
-    t = detail::to_int8<T>(autocheck::generator<int>{}(0x10000));
+    t = detail::to_int8<T>(uint8_t(autocheck::generator<int>{}(0x10000)));
 #else // !XDR_AUTOCHECK_FUZZY_STRINGS
     t = detail::to_int8<T>(autocheck::generator<T>{}(size_));
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
