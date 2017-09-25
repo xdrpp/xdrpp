@@ -1,0 +1,4 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$classxdr_1_1pollset.html" title="Structure to poll for a set of file descriptors and timeouts. " alt="" coords="5,5,92,32"/>
+<area shape="rect" id="node2" href="$classxdr_1_1pollset__plus.html" title="Adds support for signal handlers, asynchonous events, and callbacks injected from other threads to th..." alt="" coords="140,5,257,32"/>
+</map>

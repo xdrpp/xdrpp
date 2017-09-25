@@ -1,0 +1,13 @@
+<map id="xdrpp/server.h" name="xdrpp/server.h">
+<area shape="rect" id="node3" href="$marshal_8h.html" title="Support for marshaling XDR types in the format specified by RFC4506. " alt="" coords="637,80,752,107"/>
+<area shape="rect" id="node20" href="$printer_8h.html" title="Support for pretty&#45;printing XDR data types. " alt="" coords="822,80,927,107"/>
+<area shape="rect" id="node22" href="$msgsock_8h.html" title="Send and receive delimited messages over non&#45;blocking sockets. " alt="" coords="1161,80,1284,107"/>
+<area shape="rect" id="node41" href="$rpcbind_8h.html" title="Support for registering and (upon exit) unregistering with rpcbind. " alt="" coords="1746,80,1857,107"/>
+<area shape="rect" id="node42" href="$rpc__msg_8hh_source.html" title="xdrpp/rpc_msg.hh" alt="" coords="486,80,613,107"/>
+<area shape="rect" id="node5" href="$endian_8h.html" title="Low&#45;level byteswap and miscellaneous OS compatibility routines. " alt="" coords="600,229,707,256"/>
+<area shape="rect" id="node9" href="$message_8h.html" title="Message buffer with space for marshaled length. " alt="" coords="788,155,911,181"/>
+<area shape="rect" id="node13" href="$types_8h.html" title="Type definitions for xdrc compiler output. " alt="" coords="512,155,613,181"/>
+<area shape="rect" id="node8" href="$build__endian_8h.html" title="Endianness of build machine. " alt="" coords="520,304,661,331"/>
+<area shape="rect" id="node24" href="$pollset_8h.html" title="Asynchronous I/O and event harness. " alt="" coords="1364,155,1471,181"/>
+<area shape="rect" id="node33" href="$socket_8h.html" title="Simplified support for creating sockets. " alt="" coords="1945,229,2053,256"/>
+</map>

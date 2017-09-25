@@ -1,0 +1,7 @@
+<map id="xdrpp/msgsock.h" name="xdrpp/msgsock.h">
+<area shape="rect" id="node3" href="$message_8h.html" title="Message buffer with space for marshaled length. " alt="" coords="182,80,305,107"/>
+<area shape="rect" id="node11" href="$pollset_8h.html" title="Asynchronous I/O and event harness. " alt="" coords="746,80,853,107"/>
+<area shape="rect" id="node8" href="$endian_8h.html" title="Low&#45;level byteswap and miscellaneous OS compatibility routines. " alt="" coords="235,155,342,181"/>
+<area shape="rect" id="node10" href="$build__endian_8h.html" title="Endianness of build machine. " alt="" coords="333,229,474,256"/>
+<area shape="rect" id="node21" href="$socket_8h.html" title="Simplified support for creating sockets. " alt="" coords="1297,155,1405,181"/>
+</map>

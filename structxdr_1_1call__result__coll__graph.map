@@ -1,0 +1,4 @@
+<map id="xdr::call_result&lt; T &gt;" name="xdr::call_result&lt; T &gt;">
+<area shape="rect" id="node4" href="$structxdr_1_1xvector.html" title="xdr::xvector\&lt; std::\luint8_t, N \&gt;" alt="" coords="261,81,391,123"/>
+<area shape="rect" id="node6" href="$structxdr_1_1rpc__call__stat.html" title="Structure encoding all the various reasons a server can decline to process an RPC call it received..." alt="" coords="415,89,538,115"/>
+</map>

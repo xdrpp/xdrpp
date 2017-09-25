@@ -1,0 +1,12 @@
+<map id="xdr::rpc_msg::_body_t" name="xdr::rpc_msg::_body_t">
+<area shape="rect" id="node2" href="$structxdr_1_1call__body.html" title="xdr::call_body" alt="" coords="235,496,338,523"/>
+<area shape="rect" id="node7" href="$structxdr_1_1rejected__reply_1_1__mismatch__info__t.html" title="xdr::rejected_reply\l::_mismatch_info_t" alt="" coords="501,222,635,263"/>
+<area shape="rect" id="node10" href="$structxdr_1_1accepted__reply_1_1__reply__data__t_1_1__mismatch__info__t.html" title="xdr::accepted_reply\l::_reply_data_t::_mismatch\l_info_t" alt="" coords="297,215,477,271"/>
+<area shape="rect" id="node4" href="$structxdr_1_1opaque__auth.html" title="xdr::opaque_auth" alt="" coords="237,385,360,411"/>
+<area shape="rect" id="node8" href="$structxdr_1_1accepted__reply.html" title="xdr::accepted_reply" alt="" coords="363,496,499,523"/>
+<area shape="rect" id="node5" href="$structxdr_1_1reply__body.html" title="xdr::reply_body" alt="" coords="375,585,486,612"/>
+<area shape="rect" id="node6" href="$structxdr_1_1rejected__reply.html" title="xdr::rejected_reply" alt="" coords="503,444,633,471"/>
+<area shape="rect" id="node9" href="$structxdr_1_1accepted__reply_1_1__reply__data__t.html" title="xdr::accepted_reply\l::_reply_data_t" alt="" coords="384,377,520,419"/>
+<area shape="rect" id="node11" href="$structxdr_1_1opaque__array.html" title="xdr::opaque_array\&lt; 0 \&gt;" alt="" coords="5,229,163,256"/>
+<area shape="rect" id="node12" href="$structxdr_1_1xarray.html" title="xdr::xarray\&lt; std::uint8\l_t, N \&gt;" alt="" coords="9,96,159,137"/>
+</map>

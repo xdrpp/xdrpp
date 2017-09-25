@@ -1,0 +1,5 @@
+<map id="xdr::accepted_reply::_reply_data_t" name="xdr::accepted_reply::_reply_data_t">
+<area shape="rect" id="node2" href="$structxdr_1_1accepted__reply_1_1__reply__data__t_1_1__mismatch__info__t.html" title="xdr::accepted_reply\l::_reply_data_t::_mismatch\l_info_t" alt="" coords="5,215,185,271"/>
+<area shape="rect" id="node4" href="$structxdr_1_1opaque__array.html" title="xdr::opaque_array\&lt; 0 \&gt;" alt="" coords="210,229,367,256"/>
+<area shape="rect" id="node5" href="$structxdr_1_1xarray.html" title="xdr::xarray\&lt; std::uint8\l_t, N \&gt;" alt="" coords="213,96,364,137"/>
+</map>

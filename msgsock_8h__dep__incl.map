@@ -1,0 +1,11 @@
+<map id="xdrpp/msgsock.h" name="xdrpp/msgsock.h">
+<area shape="rect" id="node2" href="$server_8h.html" title="Classes for implementing RPC servers. " alt="" coords="262,80,367,107"/>
+<area shape="rect" id="node9" href="$msgsock_8cc_source.html" title="xdrpp/msgsock.cc" alt="" coords="394,155,523,181"/>
+<area shape="rect" id="node3" href="$arpc_8h.html" title="Asynchronous RPC interface. " alt="" coords="9,229,103,256"/>
+<area shape="rect" id="node5" href="$srpc_8h.html" title="Simple synchronous RPC functions. " alt="" coords="139,155,234,181"/>
+<area shape="rect" id="node10" href="$server_8cc_source.html" title="xdrpp/server.cc" alt="" coords="259,155,371,181"/>
+<area shape="rect" id="node4" href="$arpc_8cc_source.html" title="xdrpp/arpc.cc" alt="" coords="5,304,107,331"/>
+<area shape="rect" id="node6" href="$rpcbind_8cc_source.html" title="xdrpp/rpcbind.cc" alt="" coords="127,229,246,256"/>
+<area shape="rect" id="node7" href="$socket__unix_8cc_source.html" title="xdrpp/socket_unix.cc" alt="" coords="271,229,417,256"/>
+<area shape="rect" id="node8" href="$srpc_8cc_source.html" title="xdrpp/srpc.cc" alt="" coords="441,229,543,256"/>
+</map>

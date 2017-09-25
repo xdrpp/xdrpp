@@ -1,0 +1,6 @@
+<map id="xdr::generic_rpc_tcp_listener&lt; ServiceType, Session, SessionAllocator &gt;" name="xdr::generic_rpc_tcp_listener&lt; ServiceType, Session, SessionAllocator &gt;">
+<area shape="rect" id="node2" href="$classxdr_1_1rpc__tcp__listener__common.html" title="Listens for connections on a TCP socket (optionally registering the socket with rpcbind), and then serves one or more program/version interfaces to accepted connections. " alt="" coords="165,95,305,136"/>
+<area shape="rect" id="node3" href="$classxdr_1_1rpc__server__base.html" title="xdr::rpc_server_base" alt="" coords="5,5,149,32"/>
+<area shape="rect" id="node4" href="$classxdr_1_1unique__sock.html" title="Self&#45;closing socket. " alt="" coords="174,5,295,32"/>
+<area shape="rect" id="node5" href="$classxdr_1_1pollset.html" title="Structure to poll for a set of file descriptors and timeouts. " alt="" coords="319,5,406,32"/>
+</map>

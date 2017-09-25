@@ -1,0 +1,4 @@
+<map id="xdr::marshal_base" name="xdr::marshal_base">
+<area shape="rect" id="node2" href="$structxdr_1_1marshal__noswap.html" title="Numeric marshaling mixin that does not byteswap any numeric values (which will produce RFC4506 output..." alt="" coords="5,80,151,107"/>
+<area shape="rect" id="node3" href="$structxdr_1_1marshal__swap.html" title="Numeric marshaling mixin that byteswaps all numeric values (thus producing RFC4506 output on a little..." alt="" coords="175,80,306,107"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="xdr::service_base" name="xdr::service_base">
+<area shape="rect" id="node2" href="$classxdr_1_1arpc__service.html" title="xdr::arpc_service\&lt;\l T, Session, Interface \&gt;" alt="" coords="179,5,339,47"/>
+<area shape="rect" id="node3" href="$classxdr_1_1srpc__service.html" title="xdr::srpc_service\&lt;\l T, Session, Interface \&gt;" alt="" coords="179,71,339,112"/>
+</map>

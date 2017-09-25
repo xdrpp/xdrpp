@@ -1,0 +1,4 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$structxdr_1_1xdr__struct__base.html" title="xdr::xdr_struct_base\l\&lt; field_ptr\&lt;::xdr::rpcb\l_stat, decltype(::xdr::\lrpcb_stat::info), &amp;::xdr\l::rpcb_stat::info \&gt;, field\l_ptr\&lt;::xdr::rpcb_stat, decltype\l(::xdr::rpcb_stat::setinfo), &amp;\l::xdr::rpcb_stat::setinfo \&gt;, field\l_ptr\&lt;::xdr::rpcb_stat, decltype(::\lxdr::rpcb_stat::unsetinfo), &amp;::xdr\l::rpcb_stat::unsetinfo \&gt;, field_ptr\l\&lt;::xdr::rpcb_stat, decltype(::xdr::rpcb\l_stat::addrinfo), &amp;::xdr::rpcb_stat::addrinfo\l \&gt;, field_ptr\&lt;::xdr::rpcb_stat, decltype(::\lxdr::rpcb_stat::rmtinfo), &amp;::xdr::rpcb_stat::rmtinfo \&gt; \&gt;" alt="" coords="5,5,336,237"/>
+<area shape="rect" id="node2" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1rpcb__stat_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::rpcb_stat \&gt;" alt="" coords="384,101,520,142"/>
+</map>

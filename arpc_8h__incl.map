@@ -1,0 +1,16 @@
+<map id="xdrpp/arpc.h" name="xdrpp/arpc.h">
+<area shape="rect" id="node2" href="$exception_8h.html" title="Exceptions raised by RPC calls. " alt="" coords="453,155,579,181"/>
+<area shape="rect" id="node19" href="$server_8h.html" title="Classes for implementing RPC servers. " alt="" coords="634,155,739,181"/>
+<area shape="rect" id="node46" href="$srpc_8h.html" title="Simple synchronous RPC functions. " alt="" coords="554,80,649,107"/>
+<area shape="rect" id="node3" href="$rpc__msg_8hh_source.html" title="xdrpp/rpc_msg.hh" alt="" coords="554,229,681,256"/>
+<area shape="rect" id="node4" href="$types_8h.html" title="Type definitions for xdrc compiler output. " alt="" coords="516,304,617,331"/>
+<area shape="rect" id="node16" href="$endian_8h.html" title="Low&#45;level byteswap and miscellaneous OS compatibility routines. " alt="" coords="245,379,352,405"/>
+<area shape="rect" id="node17" href="$build__endian_8h.html" title="Endianness of build machine. " alt="" coords="211,453,352,480"/>
+<area shape="rect" id="node21" href="$marshal_8h.html" title="Support for marshaling XDR types in the format specified by RFC4506. " alt="" coords="415,229,529,256"/>
+<area shape="rect" id="node24" href="$printer_8h.html" title="Support for pretty&#45;printing XDR data types. " alt="" coords="705,229,810,256"/>
+<area shape="rect" id="node26" href="$msgsock_8h.html" title="Send and receive delimited messages over non&#45;blocking sockets. " alt="" coords="1245,229,1368,256"/>
+<area shape="rect" id="node45" href="$rpcbind_8h.html" title="Support for registering and (upon exit) unregistering with rpcbind. " alt="" coords="1623,229,1734,256"/>
+<area shape="rect" id="node22" href="$message_8h.html" title="Message buffer with space for marshaled length. " alt="" coords="789,304,912,331"/>
+<area shape="rect" id="node28" href="$pollset_8h.html" title="Asynchronous I/O and event harness. " alt="" coords="1360,304,1467,331"/>
+<area shape="rect" id="node37" href="$socket_8h.html" title="Simplified support for creating sockets. " alt="" coords="1874,379,1982,405"/>
+</map>

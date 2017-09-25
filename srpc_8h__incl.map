@@ -1,0 +1,15 @@
+<map id="xdrpp/srpc.h" name="xdrpp/srpc.h">
+<area shape="rect" id="node2" href="$exception_8h.html" title="Exceptions raised by RPC calls. " alt="" coords="1669,80,1794,107"/>
+<area shape="rect" id="node19" href="$server_8h.html" title="Classes for implementing RPC servers. " alt="" coords="1307,80,1412,107"/>
+<area shape="rect" id="node3" href="$rpc__msg_8hh_source.html" title="xdrpp/rpc_msg.hh" alt="" coords="1617,155,1744,181"/>
+<area shape="rect" id="node4" href="$types_8h.html" title="Type definitions for xdrc compiler output. " alt="" coords="1494,229,1595,256"/>
+<area shape="rect" id="node16" href="$endian_8h.html" title="Low&#45;level byteswap and miscellaneous OS compatibility routines. " alt="" coords="1353,304,1459,331"/>
+<area shape="rect" id="node17" href="$build__endian_8h.html" title="Endianness of build machine. " alt="" coords="1397,379,1538,405"/>
+<area shape="rect" id="node21" href="$marshal_8h.html" title="Support for marshaling XDR types in the format specified by RFC4506. " alt="" coords="1349,155,1463,181"/>
+<area shape="rect" id="node24" href="$printer_8h.html" title="Support for pretty&#45;printing XDR data types. " alt="" coords="1488,155,1593,181"/>
+<area shape="rect" id="node26" href="$msgsock_8h.html" title="Send and receive delimited messages over non&#45;blocking sockets. " alt="" coords="793,155,915,181"/>
+<area shape="rect" id="node45" href="$rpcbind_8h.html" title="Support for registering and (upon exit) unregistering with rpcbind. " alt="" coords="940,155,1051,181"/>
+<area shape="rect" id="node22" href="$message_8h.html" title="Message buffer with space for marshaled length. " alt="" coords="1126,229,1249,256"/>
+<area shape="rect" id="node28" href="$pollset_8h.html" title="Asynchronous I/O and event harness. " alt="" coords="523,229,630,256"/>
+<area shape="rect" id="node37" href="$socket_8h.html" title="Simplified support for creating sockets. " alt="" coords="681,304,789,331"/>
+</map>

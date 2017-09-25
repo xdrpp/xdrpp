@@ -1,0 +1,6 @@
+<map id="xdr::rpc_server_base" name="xdr::rpc_server_base">
+<area shape="rect" id="node2" href="$classxdr_1_1arpc__server.html" title="xdr::arpc_server" alt="" coords="5,87,121,114"/>
+<area shape="rect" id="node3" href="$classxdr_1_1rpc__tcp__listener__common.html" title="Listens for connections on a TCP socket (optionally registering the socket with rpcbind), and then serves one or more program/version interfaces to accepted connections. " alt="" coords="145,80,285,121"/>
+<area shape="rect" id="node5" href="$classxdr_1_1srpc__server.html" title="Attach RPC services to a single, connected stream socket. " alt="" coords="309,87,425,114"/>
+<area shape="rect" id="node4" href="$classxdr_1_1generic__rpc__tcp__listener.html" title="xdr::generic_rpc_tcp\l_listener\&lt; ServiceType,\l Session, SessionAllocator \&gt;" alt="" coords="120,169,311,225"/>
+</map>

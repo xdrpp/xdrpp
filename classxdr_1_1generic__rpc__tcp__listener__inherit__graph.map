@@ -1,0 +1,4 @@
+<map id="xdr::generic_rpc_tcp_listener&lt; ServiceType, Session, SessionAllocator &gt;" name="xdr::generic_rpc_tcp_listener&lt; ServiceType, Session, SessionAllocator &gt;">
+<area shape="rect" id="node2" href="$classxdr_1_1rpc__tcp__listener__common.html" title="Listens for connections on a TCP socket (optionally registering the socket with rpcbind), and then serves one or more program/version interfaces to accepted connections. " alt="" coords="31,80,171,121"/>
+<area shape="rect" id="node3" href="$classxdr_1_1rpc__server__base.html" title="xdr::rpc_server_base" alt="" coords="29,5,173,32"/>
+</map>

@@ -1,0 +1,10 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node2" href="$structxdr_1_1xdr__runtime__error.html" title="Generic class of XDR unmarshaling errors. " alt="" coords="152,165,301,192"/>
+<area shape="rect" id="node3" href="$structxdr_1_1xdr__bad__discriminant.html" title="Attempt to set invalid value for a union discriminant. " alt="" coords="357,5,527,32"/>
+<area shape="rect" id="node4" href="$structxdr_1_1xdr__bad__message__size.html" title="Message not multiple of 4 bytes, or cannot fully be parsed. " alt="" coords="349,56,535,83"/>
+<area shape="rect" id="node5" href="$structxdr_1_1xdr__call__error.html" title="This is the exception raised in an RPC client when it reaches the server and transmits a call..." alt="" coords="379,107,505,133"/>
+<area shape="rect" id="node6" href="$structxdr_1_1xdr__invariant__failed.html" title="Exception for use by xdr::xdr_validate. " alt="" coords="381,158,503,199"/>
+<area shape="rect" id="node7" href="$structxdr_1_1xdr__overflow.html" title="Attempt to exceed the bounds of a variable&#45;length array or string. " alt="" coords="381,224,503,251"/>
+<area shape="rect" id="node8" href="$structxdr_1_1xdr__should__be__zero.html" title="Padding bytes that should have contained zero don&#39;t. " alt="" coords="360,275,524,301"/>
+<area shape="rect" id="node9" href="$structxdr_1_1xdr__system__error.html" title="This exception represents a system error encountered while attempting to send RPC messages over a soc..." alt="" coords="367,325,517,352"/>
+</map>

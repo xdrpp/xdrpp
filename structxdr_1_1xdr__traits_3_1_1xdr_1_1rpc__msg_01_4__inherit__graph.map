@@ -1,0 +1,3 @@
+<map id="xdr::xdr_traits&lt;::xdr::rpc_msg &gt;" name="xdr::xdr_traits&lt;::xdr::rpc_msg &gt;">
+<area shape="rect" id="node2" href="$structxdr_1_1xdr__struct__base.html" title="xdr::xdr_struct_base\l\&lt; field_ptr\&lt;::xdr::rpc\l_msg, decltype(::xdr::rpc\l_msg::xid), &amp;::xdr::rpc_msg\l::xid \&gt;, field_ptr\&lt;::xdr::rpc\l_msg, decltype(::xdr::rpc_msg\l::body), &amp;::xdr::rpc_msg::body \&gt; \&gt;" alt="" coords="5,5,228,120"/>
+</map>

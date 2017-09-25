@@ -1,0 +1,44 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$structxdr_1_1xdr__traits__base.html" title="Default xdr_traits values for actual XDR types, used as a supertype for most xdr::xdr_traits speciali..." alt="" coords="5,901,143,927"/>
+<area shape="rect" id="node4" href="$structxdr_1_1xdr__fp__base.html" title="Default traits for use as supertype of specializations of xdr_traits for floating&#45;point types..." alt="" coords="208,71,376,98"/>
+<area shape="rect" id="node5" href="$structxdr_1_1xdr__integral__base.html" title="Default traits for use as supertype of specializations of xdr_traits for integral types..." alt="" coords="217,123,367,164"/>
+<area shape="rect" id="node6" href="$structxdr_1_1xdr__struct__base_3_4.html" title="Supertype to construct XDR traits of structure objects, used in output of the xdrc compiler..." alt="" coords="213,189,371,215"/>
+<area shape="rect" id="node7" href="$structxdr_1_1xdr__traits_3_01opaque__array_3_01_n_01_4_01_4.html" title="xdr::xdr_traits\&lt; opaque\l_array\&lt; N \&gt; \&gt;" alt="" coords="214,240,370,281"/>
+<area shape="rect" id="node8" href="$structxdr_1_1xdr__traits_3_01rpc__success__hdr_01_4.html" title="xdr::xdr_traits\&lt; rpc\l_success_hdr \&gt;" alt="" coords="226,305,358,347"/>
+<area shape="rect" id="node9" href="$structxdr_1_1xdr__traits_3_01xstring_3_01_n_01_4_01_4.html" title="xdr::xdr_traits\&lt; xstring\l\&lt; N \&gt; \&gt;" alt="" coords="215,371,369,412"/>
+<area shape="rect" id="node10" href="$structxdr_1_1xdr__traits_3_01xvector_3_01std_1_1uint8__t_00_01_n_01_4_01_4.html" title="xdr::xdr_traits\&lt; xvector\l\&lt; std::uint8_t, N \&gt; \&gt;" alt="" coords="213,436,371,477"/>
+<area shape="rect" id="node11" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1accepted__reply_1_1__reply__data__t_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::accepted_reply::_reply\l_data_t \&gt;" alt="" coords="211,502,373,558"/>
+<area shape="rect" id="node12" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1rejected__reply_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::rejected_reply \&gt;" alt="" coords="224,583,360,624"/>
+<area shape="rect" id="node13" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1reply__body_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::reply_body \&gt;" alt="" coords="224,648,360,689"/>
+<area shape="rect" id="node14" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1rpc__msg_1_1__body__t_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::rpc_msg::_body_t \&gt;" alt="" coords="219,713,365,755"/>
+<area shape="rect" id="node21" href="$structxdr_1_1xdr__fp__base.html" title="xdr::xdr_fp_base\&lt; double,\l std::uint64_t \&gt;" alt="" coords="205,991,379,1032"/>
+<area shape="rect" id="node23" href="$structxdr_1_1xdr__fp__base.html" title="xdr::xdr_fp_base\&lt; float,\l std::uint32_t \&gt;" alt="" coords="212,1056,372,1097"/>
+<area shape="rect" id="node25" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt; bool, std::uint32_t \&gt;" alt="" coords="217,1121,367,1163"/>
+<area shape="rect" id="node27" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt; std::int32_t, std::uint32_t \&gt;" alt="" coords="197,1187,387,1228"/>
+<area shape="rect" id="node29" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt; std::int64_t, std::uint64_t \&gt;" alt="" coords="197,1252,387,1293"/>
+<area shape="rect" id="node31" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt; std::uint32_t, std::\luint32_t \&gt;" alt="" coords="217,1318,367,1374"/>
+<area shape="rect" id="node33" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt; std::uint64_t, std::\luint64_t \&gt;" alt="" coords="217,1398,367,1454"/>
+<area shape="rect" id="node35" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt;::xdr::accept_stat, std\l::uint32_t \&gt;" alt="" coords="213,1478,371,1534"/>
+<area shape="rect" id="node37" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt;::xdr::auth_flavor, std\l::uint32_t \&gt;" alt="" coords="215,1558,369,1614"/>
+<area shape="rect" id="node39" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt;::xdr::auth_stat, std\l::uint32_t \&gt;" alt="" coords="217,1638,367,1694"/>
+<area shape="rect" id="node41" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt;::xdr::msg_type, std\l::uint32_t \&gt;" alt="" coords="217,1718,367,1774"/>
+<area shape="rect" id="node43" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt;::xdr::reject_stat, std\l::uint32_t \&gt;" alt="" coords="217,1798,367,1854"/>
+<area shape="rect" id="node45" href="$structxdr_1_1xdr__integral__base.html" title="xdr::xdr_integral_base\l\&lt;::xdr::reply_stat, std\l::uint32_t \&gt;" alt="" coords="217,1878,367,1934"/>
+<area shape="rect" id="node3" href="$structxdr_1_1xdr__traits_3_01transparent__ptr_3_01_t_01_4_01_4.html" title="xdr::xdr_traits\&lt; transparent\l_ptr\&lt; T \&gt; \&gt;" alt="" coords="441,5,620,47"/>
+<area shape="rect" id="node16" href="$structxdr_1_1xdr__traits_3_01pointer_3_01_t_01_4_01_4.html" title="xdr::xdr_traits\&lt; pointer\l\&lt; T \&gt; \&gt;" alt="" coords="454,787,607,828"/>
+<area shape="rect" id="node18" href="$structxdr_1_1xdr__traits_3_01xarray_3_01_t_00_01_n_01_4_01_4.html" title="xdr::xdr_traits\&lt; xarray\l\&lt; T, N \&gt; \&gt;" alt="" coords="455,860,606,901"/>
+<area shape="rect" id="node20" href="$structxdr_1_1xdr__traits_3_01xvector_3_01_t_00_01_n_01_4_01_4.html" title="xdr::xdr_traits\&lt; xvector\l\&lt; T, N \&gt; \&gt;" alt="" coords="452,925,609,967"/>
+<area shape="rect" id="node22" href="$structxdr_1_1xdr__traits_3_01double_01_4.html" title="xdr::xdr_traits\&lt; double \&gt;" alt="" coords="449,998,613,1025"/>
+<area shape="rect" id="node24" href="$structxdr_1_1xdr__traits_3_01float_01_4.html" title="xdr::xdr_traits\&lt; float \&gt;" alt="" coords="455,1063,606,1090"/>
+<area shape="rect" id="node26" href="$structxdr_1_1xdr__traits_3_01bool_01_4.html" title="xdr::xdr_traits\&lt; bool \&gt;" alt="" coords="455,1129,606,1155"/>
+<area shape="rect" id="node28" href="$structxdr_1_1xdr__traits_3_01std_1_1int32__t_01_4.html" title="xdr::xdr_traits\&lt; std\l::int32_t \&gt;" alt="" coords="465,1187,597,1228"/>
+<area shape="rect" id="node30" href="$structxdr_1_1xdr__traits_3_01std_1_1int64__t_01_4.html" title="xdr::xdr_traits\&lt; std\l::int64_t \&gt;" alt="" coords="465,1252,597,1293"/>
+<area shape="rect" id="node32" href="$structxdr_1_1xdr__traits_3_01std_1_1uint32__t_01_4.html" title="xdr::xdr_traits\&lt; std\l::uint32_t \&gt;" alt="" coords="465,1325,597,1367"/>
+<area shape="rect" id="node34" href="$structxdr_1_1xdr__traits_3_01std_1_1uint64__t_01_4.html" title="xdr::xdr_traits\&lt; std\l::uint64_t \&gt;" alt="" coords="465,1405,597,1447"/>
+<area shape="rect" id="node36" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1accept__stat_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::accept_stat \&gt;" alt="" coords="463,1485,599,1527"/>
+<area shape="rect" id="node38" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1auth__flavor_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::auth_flavor \&gt;" alt="" coords="463,1565,599,1607"/>
+<area shape="rect" id="node40" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1auth__stat_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::auth_stat \&gt;" alt="" coords="463,1645,599,1687"/>
+<area shape="rect" id="node42" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1msg__type_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::msg_type \&gt;" alt="" coords="463,1725,599,1767"/>
+<area shape="rect" id="node44" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1reject__stat_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::reject_stat \&gt;" alt="" coords="463,1805,599,1847"/>
+<area shape="rect" id="node46" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1reply__stat_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::reply_stat \&gt;" alt="" coords="463,1885,599,1927"/>
+</map>

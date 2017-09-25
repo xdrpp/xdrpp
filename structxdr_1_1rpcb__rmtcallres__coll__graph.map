@@ -1,0 +1,4 @@
+<map id="xdr::rpcb_rmtcallres" name="xdr::rpcb_rmtcallres">
+<area shape="rect" id="node2" href="$structxdr_1_1xstring.html" title="A string with a maximum length (returned by xstring::max_size()). " alt="" coords="5,89,125,115"/>
+<area shape="rect" id="node4" href="$structxdr_1_1xvector.html" title="xdr::xvector\&lt; std::\luint8_t, N \&gt;" alt="" coords="150,81,279,123"/>
+</map>

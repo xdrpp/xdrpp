@@ -1,0 +1,12 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node2" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; rpcbs\l_addrlist \&gt;" alt="" coords="154,5,285,47"/>
+<area shape="rect" id="node3" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; rpcbs\l_rmtcalllist \&gt;" alt="" coords="154,71,285,112"/>
+<area shape="rect" id="node4" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; xdr::\lpmaplist_entry \&gt;" alt="" coords="157,136,282,177"/>
+<area shape="rect" id="node5" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; xdr::\lrp__list \&gt;" alt="" coords="157,201,282,243"/>
+<area shape="rect" id="node6" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; xdr::\lrpcb_entry_list \&gt;" alt="" coords="157,267,282,308"/>
+<area shape="rect" id="node7" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; xdr::\lrpcbs_addrlist \&gt;" alt="" coords="157,332,282,373"/>
+<area shape="rect" id="node8" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; xdr::\lrpcbs_rmtcalllist \&gt;" alt="" coords="155,397,284,439"/>
+<area shape="rect" id="node9" href="$structxdr_1_1call__result.html" title="A unique_ptr to a call result, or NULL if the call failed (in which case message returns an error mes..." alt="" coords="150,463,289,490"/>
+<area shape="rect" id="node10" href="$structxdr_1_1pointer.html" title="Optional data (represented with pointer notation in XDR source). " alt="" coords="160,514,279,541"/>
+<area shape="rect" id="node11" href="$structxdr_1_1transparent__ptr.html" title="A pointer, but that gets marshalled as the underlying object and can convert to the underlying type..." alt="" coords="136,565,303,591"/>
+</map>

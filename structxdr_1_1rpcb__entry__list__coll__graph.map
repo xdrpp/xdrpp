@@ -1,0 +1,5 @@
+<map id="xdr::rpcb_entry_list" name="xdr::rpcb_entry_list">
+<area shape="rect" id="node2" href="$structxdr_1_1pointer.html" title="xdr::pointer\&lt; xdr::\lrpcb_entry_list \&gt;" alt="" coords="12,229,137,271"/>
+<area shape="rect" id="node4" href="$structxdr_1_1rpcb__entry.html" title="xdr::rpcb_entry" alt="" coords="161,237,271,263"/>
+<area shape="rect" id="node6" href="$structxdr_1_1xstring.html" title="A string with a maximum length (returned by xstring::max_size()). " alt="" coords="277,89,397,115"/>
+</map>

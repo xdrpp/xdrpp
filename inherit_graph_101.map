@@ -1,0 +1,4 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="node1" href="$structxdr_1_1xdr__struct__base.html" title="xdr::xdr_struct_base\l\&lt; field_ptr\&lt;::xdr::pmaplist\l_entry, decltype(::xdr::pmaplist\l_entry::map), &amp;::xdr::pmaplist\l_entry::map \&gt;, field_ptr\&lt;::xdr\l::pmaplist_entry, decltype(::xdr\l::pmaplist_entry::next), &amp;::xdr::\lpmaplist_entry::next \&gt; \&gt;" alt="" coords="5,5,208,135"/>
+<area shape="rect" id="node2" href="$structxdr_1_1xdr__traits_3_1_1xdr_1_1pmaplist__entry_01_4.html" title="xdr::xdr_traits\&lt;::xdr\l::pmaplist_entry \&gt;" alt="" coords="256,49,392,91"/>
+</map>

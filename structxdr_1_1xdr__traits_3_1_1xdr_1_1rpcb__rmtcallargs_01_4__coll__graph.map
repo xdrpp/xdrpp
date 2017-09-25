@@ -1,0 +1,3 @@
+<map id="xdr::xdr_traits&lt;::xdr::rpcb_rmtcallargs &gt;" name="xdr::xdr_traits&lt;::xdr::rpcb_rmtcallargs &gt;">
+<area shape="rect" id="node2" href="$structxdr_1_1xdr__struct__base.html" title="xdr::xdr_struct_base\l\&lt; field_ptr\&lt;::xdr::rpcb\l_rmtcallargs, decltype\l(::xdr::rpcb_rmtcallargs\l::prog), &amp;::xdr::rpcb_rmtcallargs\l::prog \&gt;, field_ptr\&lt;::xdr::rpcb\l_rmtcallargs, decltype(::xdr::rpcb\l_rmtcallargs::vers), &amp;::xdr::rpcb\l_rmtcallargs::vers \&gt;, field_ptr\&lt;::xdr\l::rpcb_rmtcallargs, decltype(::xdr::rpcb\l_rmtcallargs::proc), &amp;::xdr::rpcb_rmtcallargs\l::proc \&gt;, field_ptr\&lt;::xdr::rpcb_rmtcallargs,\l decltype(::xdr::rpcb_rmtcallargs::args), &amp;::\lxdr::rpcb_rmtcallargs::args \&gt; \&gt;" alt="" coords="5,5,283,223"/>
+</map>

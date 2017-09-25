@@ -1,0 +1,3 @@
+<map id="xdr::xdr_traits&lt;::xdr::rejected_reply::_mismatch_info_t &gt;" name="xdr::xdr_traits&lt;::xdr::rejected_reply::_mismatch_info_t &gt;">
+<area shape="rect" id="node2" href="$structxdr_1_1xdr__struct__base.html" title="xdr::xdr_struct_base\l\&lt; field_ptr\&lt;::xdr::rejected\l_reply::_mismatch_info_t,\l decltype(::xdr::rejected\l_reply::_mismatch_info_t::low)\l, &amp;::xdr::rejected_reply::_mismatch\l_info_t::low \&gt;, field_ptr\&lt;::xdr::\lrejected_reply::_mismatch_info_t,\l decltype(::xdr::rejected_reply::_mismatch\l_info_t::high), &amp;::xdr::rejected_reply::\l_mismatch_info_t::high \&gt; \&gt;" alt="" coords="5,5,272,179"/>
+</map>
