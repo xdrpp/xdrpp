@@ -26,8 +26,7 @@ For the latest source code, run:
 
     git clone https://github.com/xdrpp/xdrpp.git
 
-**See the [xdrc manual page](md_doc_xdrc.1.html) for more
- information.**
+**See the [xdrc manual page][manpage] for more information.**
 
 A high-level example gives a flavor for the library.  To use RPC you
 first define a protocol by writing a `.x` file in
@@ -127,3 +126,5 @@ descriptors for a connected socket to the constructor for
 `srpc_client`, or to pass a `unique_fd` to an `srpc_tcp_listener` (in
 which case the `srpc_tcp_listener` takes ownership of the file
 descriptor).
+
+[manpage]: md_doc_xdrc_81.html
