@@ -53,6 +53,10 @@ Constexpr const bool is_big_endian = true;
 Constexpr const bool is_big_endian = false;
 #endif // !XDRPP_WORDS_BIGENDIAN
 
+// Needed on OpenBSD
+#undef swap32
+#undef swap64
+
 //! Byteswap 32-bit number.
 Constexpr inline std::uint32_t
 swap32(std::uint32_t v)
