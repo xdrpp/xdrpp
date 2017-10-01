@@ -22,6 +22,16 @@ message_t::alloc(std::size_t size)
 }
 
 void
+message_t::shrink(std::size_t newsize)
+{
+  if (newsize > size_)
+    throw std::out_of_range("message_t::shrink new size bigger than old");
+  size_ = newsize;
+  *reinterpret_cast<std::uint32_t *>(raw_data()) =
+    swap32le(size32(newsize) | 0x80000000);
+}
+
+void
 marshal_base::get_bytes(const std::uint32_t *&pr, void *buf, std::size_t len)
 {
   const char *p = reinterpret_cast<const char *>(pr);

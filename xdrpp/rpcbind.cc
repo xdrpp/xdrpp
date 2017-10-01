@@ -34,6 +34,50 @@ set_cleanup()
 
 } // namespace
 
+std::unique_ptr<sockaddr>
+lookup_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
+	   socklen_t *lenp, int family, int sotype)
+{
+  unique_addrinfo ail = get_addrinfo(host, SOCK_STREAM, "sunrpc", family);
+
+  for (const addrinfo *ai = ail.get(); ai; ai = ai->ai_next) {
+    try {
+      auto s = tcp_connect1(ai);
+      srpc_client<xdr::RPCBVERS4> c{s.get()};
+
+      rpcb arg;
+      arg.r_prog = prog;
+      arg.r_vers = vers;
+      arg.r_netid = sotype == SOCK_DGRAM ? "udp" : "tcp";
+      if (ai->ai_family == AF_INET6)
+	arg.r_netid += '6';
+      arg.r_addr = make_uaddr(s.get());
+      auto res = c.RPCBPROC_GETADDR(arg);
+
+      int port = parse_uaddr_port(*res);
+      if (port == -1)
+	continue;
+
+      switch (ai->ai_family) {
+      case AF_INET:
+	((sockaddr_in *) ai->ai_addr)->sin_port = htons(port);
+	break;
+      case AF_INET6:
+	((sockaddr_in6 *) ai->ai_addr)->sin6_port = htons(port);
+	break;
+      }
+
+      std::unique_ptr<sockaddr> ret
+	{ static_cast<sockaddr *>(::operator new(ai->ai_addrlen)) };
+      memcpy(ret.get(), ai->ai_addr, ai->ai_addrlen);
+      return ret;
+    }
+    catch(const std::system_error &) {}
+  }
+  throw std::system_error(std::make_error_code(std::errc::connection_refused),
+			  "Could not obtain port from rpcbind");
+}
+
 unique_sock
 tcp_connect_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
 		int family)
@@ -127,7 +171,7 @@ make_uaddr(sock_t s)
 }
 
 void
-rpcbind_register(const sockaddr *sa, socklen_t salen,
+rpcbind_register(const sockaddr *sa, socklen_t salen, int so_type,
 		 std::uint32_t prog, std::uint32_t vers)
 {
   set_cleanup();
@@ -138,7 +182,9 @@ rpcbind_register(const sockaddr *sa, socklen_t salen,
   rpcb arg;
   arg.r_prog = prog;
   arg.r_vers = vers;
-  arg.r_netid = sa->sa_family == AF_INET6 ? "tcp6" : "tcp";
+  arg.r_netid = so_type == SOCK_DGRAM ? "udp" : "tcp";
+  if (sa->sa_family == AF_INET6)
+    arg.r_netid += '6';
   arg.r_addr = make_uaddr(sa, salen);
   arg.r_owner = std::to_string(geteuid());
   c.RPCBPROC_UNSET(arg);
@@ -160,7 +206,7 @@ rpcbind_register(sock_t s, std::uint32_t prog, std::uint32_t vers)
   std::memset(&ss, 0, salen);
   if (getsockname(s.fd_, &sa, &salen) == -1)
     throw_sockerr("getsockname");
-  rpcbind_register(&sa, salen, prog, vers);
+  rpcbind_register(&sa, salen, socket_type(s.fd()), prog, vers);
 }
 
 } // namespace xdr

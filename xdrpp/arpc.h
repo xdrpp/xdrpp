@@ -46,7 +46,7 @@ public:
     hdr.body.cbody().prog = P::interface_type::program;
     hdr.body.cbody().vers = P::interface_type::version;
     hdr.body.cbody().proc = P::proc;
-    
+
     if (xdr_trace_client) {
       std::string s = "CALL ";
       s += P::proc_name();
@@ -186,7 +186,7 @@ public:
     wrap_transparent_ptr<typename P::arg_tuple_type> arg;
     if (!decode_arg(g, arg))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
-    
+
     if (xdr_trace_server) {
       std::string s = "CALL ";
       s += P::proc_name();

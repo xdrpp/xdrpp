@@ -8,6 +8,9 @@
 #include <cstdint>
 #include <memory>
 #include <xdrpp/endian.h>
+#include <xdrpp/socket.h>
+
+struct sockaddr;
 
 //! \file message.h Message buffer with space for marshaled length.
 
@@ -22,14 +25,16 @@ using msg_ptr = std::unique_ptr<message_t>;
 //! \c message_t structure.  Hence \c message_t is just a data
 //! structure at the beginning of the buffer.
 class message_t {
-  const std::size_t size_;
+  std::unique_ptr<sockaddr> peer_;
+  std::size_t size_;
   alignas(std::uint32_t) char buf_[4];
   message_t(std::size_t size) : size_(size) {}
 public:
   std::size_t size() const { return size_; }
+  void shrink(std::size_t newsize);
   char *data() { return buf_ + 4; }
   const char *data() const { return buf_ + 4; }
-  const uint32_t word(std::ptrdiff_t i) const { 
+  const uint32_t word(std::ptrdiff_t i) const {
     return reinterpret_cast<const uint32_t *>(data())[i];
   }
   //const void *offset(std::ptrdiff_t i) const { return buf_ + i; }
@@ -43,9 +48,17 @@ public:
   //! Size of 4-byte length plus data.
   std::size_t raw_size() const { return size_ + 4; }
 
+  //! Return socket address of peer (or nullptr if none).
+  const sockaddr *peer() const { return peer_.get(); }
+  //! Returns unique_ptr to peer address so it can be set/moved.
+  std::unique_ptr<sockaddr> &&unique_peer() { return std::move(peer_); }
+
   //! Allocate a new buffer.
   static msg_ptr alloc(std::size_t size);
 };
+
+static_assert(std::is_standard_layout<message_t>::value,
+	      "message_t should be standard layout");
 
 }
 

@@ -10,6 +10,10 @@
 
 namespace xdr {
 
+std::unique_ptr<sockaddr> lookup_rpc(const char *host, std::uint32_t prog,
+				     std::uint32_t vers, socklen_t *lenp,
+				     int family, int sotype);
+
 //! Create a TCP connection to an RPC server on \c host, first
 //! querying \c rpcbind on \c host to determine the port.
 unique_sock tcp_connect_rpc(const char *host,
@@ -17,7 +21,7 @@ unique_sock tcp_connect_rpc(const char *host,
 			    int family = AF_UNSPEC);
 
 //! Register a service listening on \c sa with \c rpcbind.
-void rpcbind_register(const sockaddr *sa, socklen_t salen,
+void rpcbind_register(const sockaddr *sa, socklen_t salen, int so_type,
 		      std::uint32_t prog, std::uint32_t vers);
 void rpcbind_register(sock_t s, std::uint32_t prog, std::uint32_t vers);
 

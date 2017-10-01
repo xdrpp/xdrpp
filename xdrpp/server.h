@@ -154,7 +154,7 @@ struct dispatch_session_helper<P, C, T, indices<I...>> {
 //! a tuple that should be unpacked into multiple arguments.  For
 //! example,
 //! \code
-//!   dispatch_with_session<P>(c, (void *) 0, make_tuple(1, //! 2), 3, 4);
+//!   dispatch_with_session<P>(c, (void *) 0, make_tuple(1, 2), 3, 4);
 //! \endcode
 //! is equivalent to
 //! \code

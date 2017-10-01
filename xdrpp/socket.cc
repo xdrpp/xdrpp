@@ -6,6 +6,19 @@ namespace xdr {
 
 using std::string;
 
+socklen_t
+socksize(const sockaddr *sa)
+{
+  switch (sa->sa_family) {
+  case AF_INET:
+    return sizeof(sockaddr_in);
+  case AF_INET6:
+    return sizeof(sockaddr_in6);
+  default:
+    throw std::runtime_error("addr2string: invalid socket type");
+  }
+}
+
 #if 0
 string
 addrinfo_to_string(const addrinfo *ai)
@@ -129,34 +142,58 @@ tcp_connect(const char *host, const char *service, int family)
   return tcp_connect(get_addrinfo(host, SOCK_STREAM, service, family));
 }
 
-unique_sock
-tcp_listen(const char *service, int family, int backlog)
+unique_addrinfo
+bindable_address(const char *service, int family, int socktype)
 {
   addrinfo hints, *res;
   std::memset(&hints, 0, sizeof(hints));
-  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_socktype = socktype;
   hints.ai_family = family;
   hints.ai_flags = AI_ADDRCONFIG | AI_PASSIVE;
   int err = getaddrinfo(nullptr, service ? service : "0", &hints, &res);
   if (err)
     throw std::system_error(err, gai_category(), "AI_PASSIVE");
-  unique_addrinfo ai{res};
+  return unique_addrinfo(res);
+}
 
-  // XXX
-  //std::cerr << "listening at " << addrinfo_to_string(ai.get()) << std::endl;
-
+unique_sock
+tcp_listen(const char *service, int family, int backlog)
+{
+  unique_addrinfo ai = bindable_address(service, family, SOCK_STREAM);
   unique_sock s(sock_t(socket(ai->ai_family, ai->ai_socktype,
 			      ai->ai_protocol)));
   if (!s)
     throw_sockerr("socket");
   if (bind(s.get().fd_, ai->ai_addr, ai->ai_addrlen) == -1)
     throw_sockerr("bind");
-  if (listen (s.get().fd_, backlog) == -1)
+  if (listen(s.get().fd_, backlog) == -1)
     throw_sockerr("listen");
   return s;
 }
 
+unique_sock
+udp_listen(const char *service, int family)
+{
+  unique_addrinfo ai = bindable_address(service, family, SOCK_DGRAM);
+  unique_sock s(sock_t(socket(ai->ai_family, ai->ai_socktype,
+			      ai->ai_protocol)));
+  if (!s)
+    throw_sockerr("socket");
+  if (bind(s.get().fd_, ai->ai_addr, ai->ai_addrlen) == -1)
+    throw_sockerr("bind");
+  return s;
+}
 
-
+int
+socket_type(int fd)
+{
+  int opt;
+  socklen_t optlen = sizeof(opt);
+  if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &opt, &optlen) == -1)
+    throw_sockerr("getsockopt(SO_TYPE)");
+  if (opt != SOCK_STREAM && opt != SOCK_DGRAM)
+    throw std::runtime_error("SO_TYPE returned invalid socket type");
+  return opt;
+}
 
 }

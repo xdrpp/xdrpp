@@ -86,8 +86,8 @@ public:
 //! descriptor).  A simple example looks like this:
 //!
 //! \code
-//!    unique_fd fd = tcp_connect_rpc(argc > 2 ? argv[2] : nullptr,
-//!                                   MyProg1::program, MyProg1::version);
+//!    unique_sock fd = tcp_connect_rpc(argc > 2 ? argv[2] : nullptr,
+//!                                     MyProg1::program, MyProg1::version);
 //!    srpc_client<MyProg1> c{fd.get()};
 //!    unique_ptr<big_string> result = c.hello(5);
 //! \endcode

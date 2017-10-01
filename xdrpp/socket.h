@@ -55,6 +55,9 @@ template<> struct hash<xdr::sock_t> {
 
 constexpr sock_t invalid_sock{};
 
+//! Returns the size of an AF_INET or AF_INET6 socket (based on sa_family).
+socklen_t socksize(const sockaddr *sa);
+
 //! Returns true if the most recent (socket) error is a temporary
 //! error, such as EAGAIN, EWOULDBLOCK, or EINTR.
 bool sock_eagain();
@@ -153,6 +156,8 @@ public:
     }
   }
   void reset(sock_t s) { clear(); s_ = s; }
+  //! Return underlying file descriptor.
+  sock_t::type fd() const { return s_.fd(); }
 };
 
 //! Try connecting to the first \b addrinfo in a linked list.
@@ -169,10 +174,16 @@ unique_sock tcp_connect(const char *host, const char *service,
 			int family = AF_UNSPEC);
 
 //! Create bind a listening TCP socket.
-unique_sock tcp_listen(const char *service = "0",
+unique_sock tcp_listen(const char *service = nullptr,
 		       int family = AF_UNSPEC,
 		       int backlog = 5);
 
+//! Create and bind a UDP socket.
+unique_sock udp_listen(const char *service = nullptr,
+		       int family = AF_UNSPEC);
+
+//! Returns SOCK_STREAM or SOCK_DGRAM.
+int socket_type(int fd);
 }
 
 #endif // !_XDRPP_SOCKET_H_HEADER_INCLUDED_

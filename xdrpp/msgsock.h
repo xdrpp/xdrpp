@@ -49,7 +49,7 @@ public:
   //! Returns pointer to a \c bool that becomes \c true once the
   //! msg_sock has been deleted.
   std::shared_ptr<const bool> destroyed_ptr() const { return destroyed_; }
-  pollset &get_pollset() { return ps_; }
+  // pollset &get_pollset() { return ps_; }
   //! Returns the socket, but do not do IO on it.  This is just for
   //! calling things like \c getpeername.
   sock_t get_sock() const { return s_; }
