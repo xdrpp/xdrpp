@@ -76,18 +76,21 @@ struct generator_t {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
     t = detail::to_int8<T>(uint8_t(autocheck::generator<int>{}(0x10000)));
 #else // !XDR_AUTOCHECK_FUZZY_STRINGS
-    t = detail::to_int8<T>(autocheck::generator<T>{}(size_));
+    t = detail::to_int8<T>(autocheck::generator<T>{}(
+        std::numeric_limits<T>::max()));
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
   }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_numeric>::type
-  operator()(T &t) const { t = autocheck::generator<T>{}(size_); }
+  operator()(T &t) const { t = autocheck::generator<T>{}(
+      std::numeric_limits<T>::max()); }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::is_enum>::type
   operator()(T &t) const {
-    t = xdr_traits<T>::from_uint(autocheck::generator<uint32_t>{}(size_));
+    t = xdr_traits<T>::from_uint(autocheck::generator<uint32_t>{}(
+        std::numeric_limits<uint32_t>::max()));
   }
 
   template<typename T> typename
@@ -102,7 +105,8 @@ struct generator_t {
     if (vals.empty())
       v = autocheck::generator<decltype(v)>{}(size_);
     else {
-      size_t n = autocheck::generator<size_t>{}(size_);
+      size_t n = autocheck::generator<size_t>{}(
+          std::numeric_limits<uint32_t>::max());
       v = vals[n % vals.size()];
     }
     t._xdr_discriminant(v, false);
@@ -110,12 +114,13 @@ struct generator_t {
   }
 
   // Shrunken size for elements of a container
-  inline size_t elt_size() const { return size_ >> 1; }
+  inline size_t elt_size() const { return (size_ == 0) ? 0 : (size_ - 1); }
 
   template<typename T> typename
   std::enable_if<xdr_traits<T>::variable_nelem == true>::type
   operator()(T &t) const {
-    t.resize(autocheck::generator<std::uint32_t>{}(size_) % t.max_size());
+    t.resize(
+        autocheck::generator<std::uint32_t>{}(size_+1) % (t.max_size()+1));
     generator_t g(elt_size());
     for (auto &e : t)
       archive(g, e);
@@ -131,7 +136,8 @@ struct generator_t {
 
   template<typename T> void
   operator()(pointer<T> &t) const {
-    if (autocheck::generator<std::uint32_t>{}(size_)) {
+    if (size_ > std::numeric_limits<int>::max()-2 ||
+        autocheck::generator<int>{}(size_)*(size_+2) <= (size_+1)) {
       generator_t g(elt_size());
       archive(g, t.activate());
     }
