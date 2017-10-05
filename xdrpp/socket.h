@@ -9,10 +9,14 @@
 #include <system_error>
 #if MSVC
 #include <WinSock2.h>
+#include <Ws2tcpip.h>
 struct iovec {
   void *iov_base;
   size_t iov_len;
 };
+typedef int socklen_t;
+typedef unsigned __int64 ssize_t;
+
 #else // !MSVC
 #include <netdb.h>
 #include <unistd.h>
