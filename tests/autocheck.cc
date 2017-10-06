@@ -14,7 +14,8 @@ main()
 
   {
     autocheck::generator<test_recursive> g;
-    for (size_t i = 0; i < 50; i++) {
+    for (size_t i = 0; i < 25; i++) {
+      cout << "test_recursive " << i << endl;
       auto x = g(i);
       string name = "size " + to_string(i);
       // cout << xdr_to_string(x, name.c_str());

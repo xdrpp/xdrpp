@@ -167,7 +167,7 @@ gen(std::ostream &os, const rpc_struct &s)
 
   for (auto &d : s.decls)
     os << nl << decl_type(d) << ' ' << d.id << "{};";
-  os << nl
+  os << endl
      << nl << s.id << "() = default;"
      << nl << "template<";
   bool first{true};
@@ -396,9 +396,16 @@ gen(std::ostream &os, const rpc_union &u)
     " \"union discriminant must be 4 bytes\");" << endl;
 #endif
 
-  // _xdr_discriminant_values
+  // _xdr_has_default_case
+  os << nl << "static Constexpr const bool _xdr_has_default_case = "
+     << (u.hasdefault ? "true;" : "false;");
+
+  // _xdr_case_values
+  // We put this here rather than in xdr_traits because we want the
+  // namespace lookup for the tags to be identical to what it is where
+  // the structure is defined.
   os << nl << "static const std::vector<" << u.tagtype
-     << "> &_xdr_discriminant_values() {" << nl
+     << "> &_xdr_case_values() {" << nl
      << "  static const std::vector<" << u.tagtype << "> _xdr_disc_vec {";
   if (u.hasdefault)
     os << "};" << nl;
@@ -439,7 +446,7 @@ gen(std::ostream &os, const rpc_union &u)
       os << nl << map_case(c);
     if (f.decl.type == "void")
       os << nl << "  return true;";
-    else 
+    else
       os << nl << "  _f(&" << u.id << "::" << f.decl.id
 	 << "_, std::forward<_A>(_a)...);"
 	 << nl << "  return true;";
@@ -497,8 +504,7 @@ gen(std::ostream &os, const rpc_union &u)
 
   // Assignment
   os << nl << u.id << " &operator=(const " << u.id << " &source) {"
-     << nl.open << "if (_xdr_field_number(" << u.tagid
-     << "_) "
+     << nl.open << "if (_xdr_field_number(" << u.tagid << "_)"
      << nl << "    == _xdr_field_number(source." << u.tagid << "_))"
      << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
      << u.tagid << "_, *this, source);"
@@ -560,7 +566,8 @@ gen(std::ostream &os, const rpc_union &u)
     << "> : xdr_traits_base {" << endl
     << "  static Constexpr const bool is_class = true;" << endl
     << "  static Constexpr const bool is_union = true;" << endl
-    << "  static Constexpr const bool has_fixed_size = false;" << endl << endl;
+    << "  static Constexpr const bool has_fixed_size = false;" << endl
+    << endl;
 
   top_material
     << "  using union_type = " << cur_scope() << ";" << endl
