@@ -50,12 +50,12 @@ pkgconfig_DATA = xdrpp.pc
 
 LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 
-check_PROGRAMS = tests/test-msgsock tests/test-marshal		\
-	tests/test-srpc tests/test-printer tests/test-listener	\
-	tests/test-arpc tests/test-compare tests/test-types	\
-	tests/test-validate
-TESTS = tests/test-msgsock tests/test-printer tests/test-compare	\
+check_PROGRAMS = tests/test-stacklim tests/test-msgsock		\
+	tests/test-marshal tests/test-srpc tests/test-printer	\
+	tests/test-listener tests/test-arpc tests/test-compare	\
 	tests/test-types tests/test-validate
+TESTS = tests/test-stacklim tests/test-msgsock tests/test-printer	\
+	tests/test-compare tests/test-types tests/test-validate
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 TESTS += tests/test-cereal
@@ -64,26 +64,28 @@ if USE_AUTOCHECK
 check_PROGRAMS += tests/test-autocheck
 TESTS += tests/test-autocheck
 endif
-tests_test_printer_SOURCES = tests/printer.cc
-tests_test_msgsock_SOURCES = tests/msgsock.cc
-tests_test_marshal_SOURCES = tests/marshal.cc
-tests_test_cereal_SOURCES = tests/cereal.cc
-tests_test_srpc_SOURCES = tests/srpc.cc
-tests_test_listener_SOURCES = tests/listener.cc
 tests_test_arpc_SOURCES = tests/arpc.cc
 tests_test_autocheck_SOURCES = tests/autocheck.cc
+tests_test_cereal_SOURCES = tests/cereal.cc
 tests_test_compare_SOURCES = tests/compare.cc
+tests_test_listener_SOURCES = tests/listener.cc
+tests_test_marshal_SOURCES = tests/marshal.cc
+tests_test_msgsock_SOURCES = tests/msgsock.cc
+tests_test_printer_SOURCES = tests/printer.cc
+tests_test_srpc_SOURCES = tests/srpc.cc
+tests_test_stacklim_SOURCES = tests/stacklim.cc
 tests_test_types_SOURCES = tests/types.cc
 tests_test_validate_SOURCES = tests/validate.cc
 tests/arpc.$(OBJEXT): tests/xdrtest.hh
-tests/marshal.$(OBJEXT): tests/xdrtest.hh
-tests/printer.$(OBJEXT): tests/xdrtest.hh
-tests/cereal.$(OBJEXT): tests/xdrtest.hh
-tests/srpc.$(OBJEXT): tests/xdrtest.hh
-tests/listener.$(OBJEXT): tests/xdrtest.hh
 tests/arpc.$(OBJEXT): tests/xdrtest.hh
 tests/autocheck.$(OBJEXT): tests/xdrtest.hh
+tests/cereal.$(OBJEXT): tests/xdrtest.hh
 tests/compare.$(OBJEXT): tests/xdrtest.hh
+tests/listener.$(OBJEXT): tests/xdrtest.hh
+tests/marshal.$(OBJEXT): tests/xdrtest.hh
+tests/printer.$(OBJEXT): tests/xdrtest.hh
+tests/srpc.$(OBJEXT): tests/xdrtest.hh
+tests/stacklim.$(OBJEXT): tests/xdrtest.hh
 tests/types.$(OBJEXT): tests/xdrtest.hh
 tests/validate.$(OBJEXT): tests/xdrtest.hh
 

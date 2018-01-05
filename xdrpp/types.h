@@ -47,6 +47,11 @@ struct xdr_overflow : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
 };
 
+//! Attempt to exceed recursion limits.
+struct xdr_stack_overflow : xdr_runtime_error {
+  using xdr_runtime_error::xdr_runtime_error;
+};
+
 //! Message not multiple of 4 bytes, or cannot fully be parsed.
 struct xdr_bad_message_size : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
