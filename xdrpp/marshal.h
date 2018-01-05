@@ -132,6 +132,7 @@ template<typename Base> struct xdr_generic_put : Base {
     if (!marshal_base::stack_limit--)
       throw xdr_stack_overflow("stack overflow in xdr_generic_put");
     xdr_traits<T>::save(*this, t);
+    ++marshal_base::stack_limit;
   }
 };
 
@@ -195,6 +196,7 @@ template<typename Base> struct xdr_generic_get : Base {
     if (!marshal_base::stack_limit--)
       throw xdr_stack_overflow("stack overflow in xdr_generic_get");
     xdr_traits<T>::load(*this, t);
+    ++marshal_base::stack_limit;
   }
 
   void done() {

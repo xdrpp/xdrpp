@@ -11,11 +11,14 @@ main()
   test_recursive tr;
   tr.next.activate().next.activate();
 
+  xdr::marshaling_stack_limit = 8;
+
   auto bytes = xdr_to_opaque(tr);
-  xdr_from_opaque(bytes, tr);
+  for (int i = 16; i; --i)
+    xdr_from_opaque(bytes, tr);
 
   bool bad = true;
-  xdr::marshaling_stack_limit = 8;
+  xdr::marshaling_stack_limit = 5;
   try {
     xdr_from_opaque(bytes, tr);
   }
