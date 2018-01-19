@@ -921,19 +921,7 @@ template<typename T> struct struct_equal_helper<T, xdr_struct_base<>> {
   static bool equal(const T &, const T &) { return true; }
 };
 
-template<typename T, typename F> struct struct_lt_helper {
-  static bool lt(const T &a, const T &b) {
-    Constexpr const typename F::field_info fi {};
-    if ((fi(a) < fi(b)))
-      return true;
-    if ((fi(b) < fi(a)))
-      return false;
-    return struct_lt_helper<T, typename F::next_field>::lt(a, b);
-  }
-};
-template<typename T> struct struct_lt_helper<T, xdr_struct_base<>> {
-  static bool lt(const T &, const T &) { return false; }
-};
+template<typename T, typename F> struct struct_lt_helper;
 } // namespace detail
 
 
@@ -1045,6 +1033,22 @@ operator<(const T &a, const T &b)
 		      a._xdr_discriminant(), a, b, r);
   return r;
 }
+
+namespace detail {
+template<typename T, typename F> struct struct_lt_helper {
+  static bool lt(const T &a, const T &b) {
+    Constexpr const typename F::field_info fi {};
+    if ((fi(a) < fi(b)))
+      return true;
+    if ((fi(b) < fi(a)))
+      return false;
+    return struct_lt_helper<T, typename F::next_field>::lt(a, b);
+  }
+};
+template<typename T> struct struct_lt_helper<T, xdr_struct_base<>> {
+  static bool lt(const T &, const T &) { return false; }
+};
+} // namespace detail
 
 } // namespace xdr
 
