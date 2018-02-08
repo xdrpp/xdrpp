@@ -279,19 +279,21 @@ xdr_from_msg(const msg_ptr &m, Args &...args)
 }
 
 namespace detail {
-// Fake function accepting types we are willing to unmarshal from, so
-// that xdr_from_opaque works with types such as str::string and
-// std::vector<std::uint8_t> but not std::vector<bool>.
-void bytes_to_void(const std::uint8_t *);
-void bytes_to_void(const char *);
+// Fake function accepting types we are willing to unmarshal from.
+// Intentionally doesn't work with std::string because strings are not
+// 4-byte aligned on MacOS.  (XXX Sadly, std::vector<std::uint8_t> is
+// not guaranteed to be aligned either, but might work for now.)
+void bytes_to_void(const std::vector<uint8_t> &);
+void bytes_to_void(const std::vector<char> &);
+void bytes_to_void(const xdr::message_t &);
 }
 
 //! The reverse of xdr::xdr_to_opaque.  For convenience, accepts the
-//! data in std::string and std::vector (of byte types) in addition to
+//! data in std::vector (of byte types) in addition to
 //! xdr::xdr_opaque<>.
 template<typename Bytes, typename...Args> auto
 xdr_from_opaque(const Bytes &m, Args &...args)
-  -> decltype(detail::bytes_to_void(m.data()))
+  -> decltype(detail::bytes_to_void(m))
 {
   xdr_get g(m.data(), m.data()+m.size());
   xdr_argpack_archive(g, args...);
@@ -301,4 +303,3 @@ xdr_from_opaque(const Bytes &m, Args &...args)
 }
 
 #endif // !_XDRPP_MARSHAL_H_HEADER_INCLUDED_
-
