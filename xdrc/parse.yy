@@ -4,9 +4,13 @@
 #include "xdrc/xdrc_internal.h"
 
 string xdr_unbounded = "";
-static int proc_compare(const void *, const void *);
-static int vers_compare(const void *, const void *);
 static string getnewid(string, bool repeats_bad);
+
+template<typename T> inline int
+compare_val(const T &a, const T &b)
+{
+  return a.val < b.val ? -1 : a.val != b.val;
+}
 %}
 
 %token <str> T_ID
@@ -251,8 +255,8 @@ def_program: T_PROGRAM newid '{'
 	{
 	  rpc_sym *s = &symlist.back();
 	  s->sprogram->val = $8;
-	  qsort(s->sprogram->vers.data(), s->sprogram->vers.size(),
-	        sizeof (rpc_vers), vers_compare);
+	  std::sort(s->sprogram->vers.begin(), s->sprogram->vers.end(),
+	  	    compare_val<rpc_vers>);
 	}
 	;
 
@@ -270,8 +274,7 @@ version_decl: T_VERSION newid '{'
 	  rpc_sym *s = &symlist.back();
 	  rpc_vers *rv = &s->sprogram->vers.back();
 	  rv->val = $8;
-	  qsort(rv->procs.data(), rv->procs.size(),
-		sizeof (rpc_proc), proc_compare);
+	  std::sort(rv->procs.begin(), rv->procs.end(), compare_val<rpc_proc>);
 	}
 	;
 
@@ -295,7 +298,7 @@ def_namespace: T_NAMESPACE newid '{'
 	  rpc_sym *s = &symlist.push_back ();
 	  s->settype (rpc_sym::NAMESPACE);
 	  s->sliteral = $2;
-        } 
+        }
 	file '}'
 	{
 	  rpc_sym *s = &symlist.push_back ();
@@ -400,22 +403,6 @@ qid: T_ID | T_QID
 
 %%
 symlist_t symlist;
-
-static int
-proc_compare(const void *_a, const void *_b)
-{
-  rpc_proc *a = (rpc_proc *) _a;
-  rpc_proc *b = (rpc_proc *) _b;
-  return a->val < b->val ? -1 : a->val != b->val;
-}
-
-static int
-vers_compare(const void *_a, const void *_b)
-{
-  rpc_vers *a = (rpc_vers *) _a;
-  rpc_vers *b = (rpc_vers *) _b;
-  return a->val < b->val ? -1 : a->val != b->val;
-}
 
 void
 checkliterals()
