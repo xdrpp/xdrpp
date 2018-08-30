@@ -34,7 +34,7 @@ public:
   void shrink(std::size_t newsize);
   char *data() { return buf_ + 4; }
   const char *data() const { return buf_ + 4; }
-  const uint32_t word(std::ptrdiff_t i) const {
+  uint32_t word(std::ptrdiff_t i) const {
     return reinterpret_cast<const uint32_t *>(data())[i];
   }
   //const void *offset(std::ptrdiff_t i) const { return buf_ + i; }

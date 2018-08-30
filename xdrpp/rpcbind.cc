@@ -36,7 +36,7 @@ set_cleanup()
 
 std::unique_ptr<sockaddr>
 lookup_rpc(const char *host, std::uint32_t prog, std::uint32_t vers,
-	   socklen_t *lenp, int family, int sotype)
+	   socklen_t *, int family, int sotype)
 {
   unique_addrinfo ail = get_addrinfo(host, SOCK_STREAM, "sunrpc", family);
 
@@ -210,4 +210,3 @@ rpcbind_register(sock_t s, std::uint32_t prog, std::uint32_t vers)
 }
 
 } // namespace xdr
-

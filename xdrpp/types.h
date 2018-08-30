@@ -238,7 +238,7 @@ template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   static Constexpr const bool is_numeric = true;
   static Constexpr const bool has_fixed_size = true;
   static Constexpr const std::size_t fixed_size = sizeof(uint_type);
-  static Constexpr const std::size_t serial_size(type) { return fixed_size; }
+  static Constexpr std::size_t serial_size(type) { return fixed_size; }
   static uint_type to_uint(type t) { return t; }
   static type from_uint(uint_type u) {
     return xdr_reinterpret<type>(u);
@@ -378,7 +378,7 @@ template<typename T, uint32_t N> struct xarray
   xarray &operator=(const xarray &) = default;
 
   static Constexpr const std::size_t container_fixed_nelem = N;
-  static Constexpr const std::size_t size() { return N; }
+  static Constexpr std::size_t size() { return N; }
   static void validate() {}
   static void check_size(uint32_t i) {
     if (i != N)
@@ -765,15 +765,15 @@ template<typename...T> struct tuple_base<0, std::tuple<T...>>
   static Constexpr const std::size_t fixed_size = 0;
   static Constexpr std::size_t serial_size(const type &) { return fixed_size; }
 
-  template<typename Archive> static void save(Archive &ar, const type &obj) {}
-  template<typename Archive> static void load(Archive &ar, type &obj) {}
+  template<typename Archive> static void save(Archive &, const type &) {}
+  template<typename Archive> static void load(Archive &, type &) {}
 };
 
 template<std::size_t N, typename...T> struct tuple_suffix_fixed_size {
   using type = std::tuple<T...>;
   using elem_type = typename std::tuple_element<N-1, type>::type;
   static Constexpr const bool value =
-    xdr_traits<elem_type>::has_fixed_size 
+    xdr_traits<elem_type>::has_fixed_size
     && tuple_suffix_fixed_size<N-1, T...>::value;
 };
 template<typename...T> struct tuple_suffix_fixed_size<0, T...> {
@@ -1053,4 +1053,3 @@ template<typename T> struct struct_lt_helper<T, xdr_struct_base<>> {
 } // namespace xdr
 
 #endif // !_XDRC_TYPES_H_HEADER_INCLUDED_
-

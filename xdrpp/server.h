@@ -180,7 +180,7 @@ template<typename S> struct session_allocator {
 };
 template<> struct session_allocator<void> {
   constexpr session_allocator() {}
-  void *allocate(rpc_sock *s) { return nullptr; }
+  void *allocate(rpc_sock *) { return nullptr; }
   void deallocate(void *) {}
 };
 
