@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 #include <xdrpp/endian.h>
 #include <xdrpp/socket.h>
 
@@ -21,14 +22,13 @@ using msg_ptr = std::unique_ptr<message_t>;
 
 //! Message buffer, with room at beginning for 4-byte length.  Note
 //! the constructor is private, so you must create one with \c
-//! message_t::alloc, which allocates more space than the size of the
-//! \c message_t structure.  Hence \c message_t is just a data
-//! structure at the beginning of the buffer.
+//! message_t::alloc.
 class message_t {
   std::unique_ptr<sockaddr> peer_;
   std::size_t size_;
-  alignas(std::uint32_t) char buf_[4];
-  message_t(std::size_t size) : size_(size) {}
+  std::vector<char> internalbuf_;
+  char *buf_;
+  message_t(std::size_t size);
 public:
   std::size_t size() const { return size_; }
   void shrink(std::size_t newsize);
@@ -56,9 +56,6 @@ public:
   //! Allocate a new buffer.
   static msg_ptr alloc(std::size_t size);
 };
-
-static_assert(std::is_standard_layout<message_t>::value,
-	      "message_t should be standard layout");
 
 }
 

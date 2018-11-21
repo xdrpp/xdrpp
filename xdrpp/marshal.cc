@@ -14,13 +14,21 @@ message_t::alloc(std::size_t size)
   // continuation fragments, and instead always set the last-record
   // bit to produce a single-fragment record.
   assert(size < 0x80000000);
-  void *raw = operator new(offsetof(message_t, buf_[size + 4]));
-  if (!raw)
-    throw std::bad_alloc();
-  message_t *m = new (raw) message_t (size);
+  message_t *m = new message_t(size);
   *reinterpret_cast<std::uint32_t *>(m->raw_data()) =
     swap32le(size32(size) | 0x80000000);
   return msg_ptr(m);
+}
+
+message_t::message_t(std::size_t size) : size_(size), internalbuf_(size+16) {
+    void* d = internalbuf_.data();
+    size_t s = internalbuf_.size();
+    d = std::align(4, size_ + 4, d, s);
+    if (d == nullptr)
+    {
+        throw std::runtime_error("could not align buffer");
+    }
+    buf_ = static_cast<char *>(d);
 }
 
 void
