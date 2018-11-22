@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <memory>
 #include <xdrpp/endian.h>
 #include <xdrpp/socket.h>
@@ -17,7 +18,12 @@ struct sockaddr;
 namespace xdr {
 
 class message_t;
-using msg_ptr = std::unique_ptr<message_t>;
+namespace detail {
+struct free_message_t {
+  void operator()(message_t *p);
+};
+} // namespace detail
+using msg_ptr = std::unique_ptr<message_t, detail::free_message_t>;
 
 //! Message buffer, with room at beginning for 4-byte length.  Note
 //! the constructor is private, so you must create one with \c

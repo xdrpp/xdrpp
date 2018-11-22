@@ -5,6 +5,13 @@ namespace xdr {
 
 std::uint32_t marshaling_stack_limit = 0xffffffff;
 
+namespace detail {
+void free_message_t::operator()(message_t *p) {
+  p->~message_t();
+  free(p);
+}
+} // namespace detail
+
 msg_ptr
 message_t::alloc(std::size_t size)
 {
@@ -14,7 +21,7 @@ message_t::alloc(std::size_t size)
   // continuation fragments, and instead always set the last-record
   // bit to produce a single-fragment record.
   assert(size < 0x80000000);
-  void *raw = operator new(offsetof(message_t, buf_[size + 4]));
+  void *raw = std::malloc(offsetof(message_t, buf_[size + 4]));
   if (!raw)
     throw std::bad_alloc();
   message_t *m = new (raw) message_t (size);
