@@ -492,13 +492,11 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   //! string if it is too long.
   void validate() const { check_size(size()); }
 
-#if !MSVC
   xstring() = default;
   xstring(const xstring &) = default;
   xstring(xstring &&) = default;
   xstring &operator=(const xstring &) = default;
   xstring &operator=(xstring &&) = default;
-#endif // !MSVC
 
   template<typename...Args> xstring(Args&&...args)
     : string(std::forward<Args>(args)...) { validate(); }
@@ -786,14 +784,11 @@ template<std::size_t N, typename...T> struct tuple_base<N, std::tuple<T...>>
 		     tuple_base_vs<N, std::tuple<T...>>>::type {
   using type = std::tuple<T...>;
 
-#if MSVC
-  static const char *name() { return "<size unavailable on broken compiler>"; }
-#else // !MSVC
   static const char *name() {
     static std::string n = "<" + std::to_string(N-1) + ">";
     return n.c_str();
   }
-#endif // !MSVC
+
   template<typename Archive> static void save(Archive &ar, const type &obj) {
     tuple_base<N-1, type>::save(ar, obj);
     archive(ar, std::get<N-1>(obj), name());

@@ -79,9 +79,7 @@ strip_suffix(string in, string suffix)
   return in;
 }
 
-#if !MSVC
 [[noreturn]]
-#endif // !MSVC
 static void
 usage(int err = 1)
 {
