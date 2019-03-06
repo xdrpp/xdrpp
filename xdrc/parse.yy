@@ -6,10 +6,10 @@
 string xdr_unbounded = "";
 static string getnewid(string, bool repeats_bad);
 
-template<typename T> inline int
+template<typename T> inline bool
 compare_val(const T &a, const T &b)
 {
-  return a.val < b.val ? -1 : a.val != b.val;
+  return a.val < b.val;
 }
 %}
 
