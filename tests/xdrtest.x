@@ -158,4 +158,9 @@ program other_prog {
   } = 1;
 }= 0x20000001;
 
+union voidu switch (bool b) {
+  case FALSE:
+    void;
+};
+
 }
