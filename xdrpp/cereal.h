@@ -127,7 +127,7 @@ template<typename Archive> struct nvp_adapter {
   template<typename T, typename = typename bytes_superclass<const T>::super>
   static void
   apply(Archive &ar, T &s, const char *field) {
-    apply(ar, field, bytes_superclass<const T>::upcast(s));
+    ar(ar, field, bytes_superclass<const T>::upcast(s));
   }
 };
 }
