@@ -51,13 +51,48 @@ load(Archive &ar, T &t)
   xdr_traits<T>::load(ar, t);
 }
 
+template<typename T> struct bytes_superclass;
+template<uint32_t N> struct bytes_superclass<const opaque_array<N>> {
+  using super = std::array<std::uint8_t, size_t(N)>;
+  static super &upcast(opaque_array<N> &a) { return a; }
+  static const super &upcast(const opaque_array<N> &a) { return a; }
+};
+template<uint32_t N> struct bytes_superclass<const opaque_vec<N>> {
+  using super = std::vector<std::uint8_t>;
+  static super &upcast(opaque_vec<N> &a) { return a; }
+  static const super &upcast(const opaque_vec<N> &a) { return a; }
+};
+template<uint32_t N> struct bytes_superclass<const xstring<N>> {
+  using super = std::string;
+  static super &upcast(xstring<N> &s) { return s; }
+  static const super &upcast(const xstring<N> &s) { return s; }
+};
+
+template<typename Archive, typename T,
+	 typename = typename bytes_superclass<const T>::super>
+typename std::enable_if<!cereal::traits::is_output_serializable<
+			  cereal::BinaryData<char *>,Archive>::value>::type
+save(Archive &ar, const T &t)
+{
+  ar(bytes_superclass<const T>::upcast(t));
+}
+
+template<typename Archive, typename T,
+	 typename = typename bytes_superclass<const T>::super>
+typename std::enable_if<!cereal::traits::is_input_serializable<
+			  cereal::BinaryData<char *>,Archive>::value>::type
+load(Archive &ar, const T &t)
+{
+  ar(bytes_superclass<const T>::upcast(t));
+}
+
 template<typename Archive, typename T> typename
 std::enable_if<cereal::traits::is_output_serializable<
 		 cereal::BinaryData<char *>,Archive>::value
                && xdr_traits<T>::is_bytes>::type
 save(Archive &ar, const T &t)
 {
-  if (xdr_traits<T>::variable_length)
+  if (xdr_traits<T>::variable_nelem)
     ar(cereal::make_size_tag(static_cast<cereal::size_type>(t.size())));
   ar(cereal::binary_data(const_cast<char *>(
          reinterpret_cast<const char *>(t.data())), t.size()));
@@ -70,7 +105,7 @@ std::enable_if<cereal::traits::is_input_serializable<
 load(Archive &ar, T &t)
 {
   cereal::size_type size;
-  if (xdr_traits<T>::variable_length)
+  if (xdr_traits<T>::variable_nelem)
     ar(cereal::make_size_tag(size));
   else
     size = t.size();
@@ -89,13 +124,10 @@ template<typename Archive> struct nvp_adapter {
       ar(std::forward<T>(t));
   }
 
-  template<uint32_t N> static void
-  apply(Archive &ar, xstring<N> &s, const char *field) {
-    apply(ar, field, static_cast<std::string &>(s));
-  }
-  template<uint32_t N> static void
-  apply(Archive &ar, const xstring<N> &s, const char *field) {
-    apply(ar, field, static_cast<const std::string &>(s));
+  template<typename T, typename = typename bytes_superclass<const T>::super>
+  static void
+  apply(Archive &ar, T &s, const char *field) {
+    apply(ar, field, bytes_superclass<const T>::upcast(s));
   }
 };
 }
