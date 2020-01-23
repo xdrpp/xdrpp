@@ -57,7 +57,7 @@ std::enable_if<cereal::traits::is_output_serializable<
                && xdr_traits<T>::is_bytes>::type
 save(Archive &ar, const T &t)
 {
-  if (xdr_traits<T>::variable_length)
+  if (xdr_traits<T>::variable_nelem)
     ar(cereal::make_size_tag(static_cast<cereal::size_type>(t.size())));
   ar(cereal::binary_data(const_cast<char *>(
          reinterpret_cast<const char *>(t.data())), t.size()));
@@ -70,7 +70,7 @@ std::enable_if<cereal::traits::is_input_serializable<
 load(Archive &ar, T &t)
 {
   cereal::size_type size;
-  if (xdr_traits<T>::variable_length)
+  if (xdr_traits<T>::variable_nelem)
     ar(cereal::make_size_tag(size));
   else
     size = t.size();
