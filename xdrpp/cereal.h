@@ -88,14 +88,55 @@ template<typename Archive> struct nvp_adapter {
     else
       ar(std::forward<T>(t));
   }
-
   template<uint32_t N> static void
-  apply(Archive &ar, xstring<N> &s, const char *field) {
-    apply(ar, field, static_cast<std::string &>(s));
+  apply(Archive &ar, const xdr::xstring<N> &s, const char *field) {
+    xdr::archive(ar, static_cast<const std::string &>(s), field);
   }
   template<uint32_t N> static void
-  apply(Archive &ar, const xstring<N> &s, const char *field) {
-    apply(ar, field, static_cast<const std::string &>(s));
+  apply(Archive &ar, xdr::xstring<N> &s, const char *field) {
+    xdr::archive(ar, static_cast<std::string &>(s), field);
+  }
+  // We need to provide further overloads on the _compositions_ of xstring and
+  // the various xdrpp container/pointer types (xdr::pointer, xdr::xvector,
+  // xdr::xarray). There's some kind of bug in the way the cereal deals with
+  // such compositions: that without these composite-overrides, cereal winds up
+  // pushing an un-adapted xdr::xstring to JSONOutputArchive which winds up
+  // writing both a string and an object to RapidJSON, which either causes a
+  // runtime fault (in the xdr::pointer or xdr::xarray cases) or a spurious
+  // empty object output (in the xdr::xvector case).
+  template<uint32_t N> static void
+  apply(Archive &ar, const xdr::pointer<xdr::xstring<N>> &t, const char *field) {
+    std::unique_ptr<std::string> s(t.get());
+    xdr::archive(ar, s, field);
+    s.release();
+  }
+  template<uint32_t N> static void
+  apply(Archive &ar, xdr::pointer<xdr::xstring<N>> &t, const char *field) {
+    std::unique_ptr<std::string> s(t.get());
+    xdr::archive(ar, s, field);
+    s.release();
+  }
+  template<uint32_t N, uint32_t M> static void
+  apply(Archive &ar, const xdr::xvector<xdr::xstring<N>, M> &t, const char *field) {
+    std::vector<std::string> tmp(t.begin(), t.end());
+    xdr::archive(ar, tmp, field);
+  }
+  template<uint32_t N, uint32_t M> static void
+  apply(Archive &ar, xdr::xvector<xdr::xstring<N>, M> &t, const char *field) {
+    std::vector<std::string> tmp(t.begin(), t.end());
+    xdr::archive(ar, tmp, field);
+  }
+  template<uint32_t N, uint32_t M> static void
+  apply(Archive &ar, const xdr::xarray<xdr::xstring<N>, M> &t, const char *field) {
+    std::array<std::string, M> tmp;
+    std::copy(t.begin(), t.end(), tmp.begin());
+    xdr::archive(ar, tmp, field);
+  }
+  template<uint32_t N, uint32_t M> static void
+  apply(Archive &ar, xdr::xarray<xdr::xstring<N>, M> &t, const char *field) {
+    std::array<std::string, M> tmp;
+    std::copy(t.begin(), t.end(), tmp.begin());
+    xdr::archive(ar, tmp, field);
   }
 };
 }

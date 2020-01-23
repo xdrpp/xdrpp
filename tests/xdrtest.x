@@ -163,4 +163,11 @@ union voidu switch (bool b) {
     void;
 };
 
+typedef string string32<32>;
+struct nested_cereal_adapter_calls {
+  string32* strptr;
+  string32  strvec<>;
+  string32  strarr[2];
+};
+
 }

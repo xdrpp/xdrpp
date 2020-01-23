@@ -45,5 +45,18 @@ main()
 
   cout << xdr::xdr_to_string(n2);
 
+  testns::nested_cereal_adapter_calls nc;
+  nc.strptr.activate() = "hello";
+  nc.strvec.push_back("goodbye");
+  nc.strarr[0] = "friends";
+  {
+    ostringstream obuf2;
+    {
+      cereal::JSONOutputArchive archive(obuf2);
+      archive(nc);
+    }
+    cout << obuf2.str();
+  }
+
   return 0;
 }
