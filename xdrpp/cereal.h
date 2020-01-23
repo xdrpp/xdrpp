@@ -67,9 +67,7 @@ template<uint32_t N> struct bytes_superclass<TYPE> {		\
   using super = __VA_ARGS__;					\
   static super &upcast(type &t) { return t; }			\
   static const super &upcast(const type &t) { return t; }	\
-};								\
-template<uint32_t N> struct bytes_superclass<const TYPE>	\
-  : bytes_superclass<TYPE> {};
+};
 DECLARE_BYTES(opaque_array<N>, std::array<std::uint8_t, size_t(N)>)
 DECLARE_BYTES(opaque_vec<N>, std::vector<std::uint8_t>)
 DECLARE_BYTES(xstring<N>, std::string)
