@@ -141,7 +141,7 @@ template<typename Archive> struct nvp_adapter {
   template<typename T> static
   std::enable_if_t<has_cereal_override<Archive, T>::value>
   apply(Archive &ar, T &&t, const char *field) {
-    cereal_override(ar, t, field);
+    cereal_override(ar, std::forward<T>(t), field);
   }
 };
 } // namespace detail
