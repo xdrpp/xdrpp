@@ -32,7 +32,7 @@ class JSONInputArchive;
 class JSONOutputArchive;
 class XMLOutputArchive;
 class XMLInputArchive;
-}
+} // namespace cereal
 
 namespace xdr {
 
@@ -111,17 +111,40 @@ load(Archive &ar, T &t)
   ar(cereal::binary_data(t.data(), size));
 }
 
+// value is true iff there exists a function
+//
+// cereal_override(Archive&, T, const char *)
+//
+// or at least callable with such arguments.
+template<typename Archive, typename T> class has_cereal_override {
+  template<typename U> static std::true_type
+  test(decltype(cereal_override(std::declval<Archive&>(),
+				std::declval<U>(),
+				"")) *);
+
+  template<typename U> static std::false_type test(...);
+
+public:
+  static constexpr bool value = decltype(test<T>(0))::value;
+};
 
 template<typename Archive> struct nvp_adapter {
-  template<typename T> static void
+  template<typename T> static
+  std::enable_if_t<!has_cereal_override<Archive, T>::value>
   apply(Archive &ar, T &&t, const char *field) {
     if (field)
       ar(cereal::make_nvp(field, std::forward<T>(t)));
     else
       ar(std::forward<T>(t));
   }
+
+  template<typename T> static
+  std::enable_if_t<has_cereal_override<Archive, T>::value>
+  apply(Archive &ar, T &&t, const char *field) {
+    cereal_override(ar, std::forward<T>(t), field);
+  }
 };
-}
+} // namespace detail
 
 //! \hideinitializer \cond
 #define CEREAL_ARCHIVE_TAKES_NAME(archive)		\
@@ -135,11 +158,11 @@ CEREAL_ARCHIVE_TAKES_NAME(XMLInputArchive);
 //! \endcond
 
 
-}
+} // namespace xdr
 
 namespace cereal {
 using xdr::detail::load;
 using xdr::detail::save;
-}
+} // namespace cereal
 
 #endif // !_XDRPP_CEREAL_H_HEADER_INCLUDED_
