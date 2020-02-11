@@ -170,4 +170,11 @@ struct nested_cereal_adapter_calls {
   string32  strarr[2];
 };
 
+struct inner {
+  int f;
+};
+struct outer {
+  inner in;
+};
+
 }

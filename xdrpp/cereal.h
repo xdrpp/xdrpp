@@ -113,12 +113,12 @@ load(Archive &ar, T &t)
 
 // value is true iff there exists a function
 //
-// cereal_override(Archive, T, const char *)
+// cereal_override(Archive&, T, const char *)
 //
 // or at least callable with such arguments.
 template<typename Archive, typename T> class has_cereal_override {
   template<typename U> static std::true_type
-  test(decltype(cereal_override(std::declval<Archive>(),
+  test(decltype(cereal_override(std::declval<Archive&>(),
 				std::declval<U>(),
 				"")) *);
 
