@@ -44,6 +44,12 @@ void
 marshal_base::get_bytes(const std::uint32_t *&pr, void *buf, std::size_t len)
 {
   const char *p = reinterpret_cast<const char *>(pr);
+  if (p == nullptr || buf == nullptr) {
+    if (len != 0) {
+      throw std::invalid_argument("nullptr buffer with nonzero length");
+    }
+    return;
+  }
   std::memcpy(buf, p, len);
   p += len;
   while (len & 3) {
@@ -58,6 +64,12 @@ void
 marshal_base::put_bytes(std::uint32_t *&pr, const void *buf, std::size_t len)
 {
   char *p = reinterpret_cast<char *>(pr);
+  if (p == nullptr || buf == nullptr) {
+    if (len != 0) {
+      throw std::invalid_argument("nullptr buffer with nonzero length");
+    }
+    return;
+  }
   std::memcpy(p, buf, len);
   p += len;
   while (len & 3) {
