@@ -367,14 +367,15 @@ port with rpcbind) as follows:
     #include "xdrpp/myprog.server.h"
 
     using namespace xdr;
+    pollset ps;
 
     int
     main(int argc, char **argv)
     {
       MyProg1_server s;
-      srpc_tcp_listener rl;
+      srpc_tcp_listener<> rl(ps);
       rl.register_service(s);
-      rl.run();
+      ps.run();
       return 1;
     }
 
