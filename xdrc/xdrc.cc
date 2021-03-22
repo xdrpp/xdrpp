@@ -19,6 +19,7 @@ string file_prefix;
 string server_session;
 bool server_ptr;
 bool server_async;
+bool opt_pedantic;
 
 string
 guard_token(const string &extra)
@@ -105,6 +106,7 @@ enum opttag {
   OPT_HH,
   OPT_SERVERHH,
   OPT_SERVERCC,
+  OPT_PEDANTIC,
 };
 
 static const struct option xdrc_options[] = {
@@ -116,6 +118,7 @@ static const struct option xdrc_options[] = {
   {"ptr", no_argument, nullptr, 'p'},
   {"session", required_argument, nullptr, 's'},
   {"async", no_argument, nullptr, 'a'},
+  {"pedantic", no_argument, nullptr, OPT_PEDANTIC},
   {nullptr, 0, nullptr, 0}
 };
 
@@ -171,6 +174,9 @@ main(int argc, char **argv)
       cpp_command += " -DXDRC_HH=1";
       suffix = ".hh";
       break;
+    case OPT_PEDANTIC:
+      opt_pedantic = true;
+      break;
     case 'p':
       server_ptr = true;
       break;
@@ -212,6 +218,11 @@ main(int argc, char **argv)
   if (pclose(yyin))
     exit(1);
 
+  if (opt_pedantic && had_warnings) {
+    cerr << "Warnings treated as errors because of -pedantic flag" << endl;
+    exit(1);
+  }
+
   if (output_file.empty()) {
     output_file = strip_suffix(input_file, ".x");
     if (output_file == input_file)
@@ -242,7 +253,7 @@ main(int argc, char **argv)
       perror(output_file.c_str());
       exit(1);
     }
-  }   
+  }
 
   return 0;
 }

@@ -284,3 +284,5 @@ struct indenter : omanip<indenter> {
   void operator++() { level_ += 2; }
   void operator--() { level_ -= 2; assert (level_ >= 0); }
 };
+
+extern bool had_warnings;

@@ -89,9 +89,12 @@ yyerror(string msg)
   // return 1;
 }
 
+bool had_warnings;
+
 int
 yywarn(string msg)
 {
   std::cerr << filename << ":" << lineno << ": Warning: " << msg << "\n";
+  had_warnings = true;
   return 0;
 }
