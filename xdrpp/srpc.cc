@@ -10,19 +10,33 @@ namespace xdr {
 
 bool xdr_trace_client = std::getenv("XDR_TRACE_CLIENT");
 
+static ssize_t
+fullread(sock_t s, void *buf, size_t n)
+{
+  char *p = static_cast<char *>(buf);
+  while (n > 0) {
+    ssize_t nread = read(s, p, n);
+    if (nread == -1)
+      return -1;
+    if (nread == 0)
+      break;
+    p += nread;
+    n -= nread;
+  }
+  return p - static_cast<char *>(buf);
+}
+
 msg_ptr
 read_message(sock_t s)
 {
   std::uint32_t len;
-  ssize_t n = read(s, &len, 4);
+  ssize_t n = fullread(s, &len, 4);
   if (n == -1)
     throw xdr_system_error("xdr::read_message");
   if (n < 4)
     throw xdr_bad_message_size("read_message: premature EOF");
-  if (n & 3)
+  if (len & 3)
     throw xdr_bad_message_size("read_message: received size not multiple of 4");
-  if (n >= 0x80000000)
-    throw xdr_bad_message_size("read_message: received size too big");
 
   len = swap32le(len);
   if (len & 0x80000000)
@@ -31,7 +45,7 @@ read_message(sock_t s)
     throw xdr_bad_message_size("read_message: message fragments unimplemented");
 
   msg_ptr m = message_t::alloc(len);
-  n = read(s, m->data(), len);
+  n = fullread(s, m->data(), len);
   if (n == -1)
     throw xdr_system_error("xdr::read_message");
   if (n != len)
