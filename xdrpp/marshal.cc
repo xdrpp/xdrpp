@@ -21,7 +21,7 @@ message_t::alloc(std::size_t size)
   // continuation fragments, and instead always set the last-record
   // bit to produce a single-fragment record.
   assert(size < 0x80000000);
-  void *raw = std::malloc(offsetof(message_t, buf_[size + 4]));
+  void *raw = std::malloc(offsetof(message_t, buf_[4]) + size);
   if (!raw)
     throw std::bad_alloc();
   message_t *m = new (raw) message_t (size);
