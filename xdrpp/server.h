@@ -176,7 +176,7 @@ dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest) ->
 template<typename S> struct session_allocator {
   constexpr session_allocator() {}
   S *allocate(rpc_sock *s) { return new S{s}; }
-  void deallocate(S *session) { delete session; }
+  void deallocate(void *session) { delete static_cast<S*>(session); }
 };
 template<> struct session_allocator<void> {
   constexpr session_allocator() {}
