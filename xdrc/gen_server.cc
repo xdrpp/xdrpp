@@ -56,9 +56,7 @@ gen_def(std::ostream &os, const rpc_program &u, const rpc_vers &v)
   string name = v.id + "_server";
 
   for (const rpc_proc &p : v.procs) {
-    //string arg = p.arg == "void" ? ""
-    //  : (string("std::unique_ptr<") + p.arg + "> arg");
-    string res = p.res == "void" ? "void"
+    string res = (p.res == "void" || server_async) ? "void"
       : (string("std::unique_ptr<") + p.res + ">");
     os << endl
        << nl << res
@@ -105,7 +103,7 @@ gen_server_internal(std::ostream &os, bool cc)
        << nl << "#define " << guard << " 1"
        << nl;
     if (server_async)
-      os << nl << "#include <xdrc/arpc.h>";
+      os << nl << "#include <xdrpp/arpc.h>";
     os << nl << "#include \"" << file_prefix << ".hh\"";
   }
 
