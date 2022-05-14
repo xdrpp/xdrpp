@@ -207,6 +207,12 @@ gen(std::ostream &os, const rpc_struct &s)
     os << d.id << "(std::forward<_" << d.id << "_T>(_" << d.id << "))";
   }
   os << " {}"
+     << nl << "friend bool operator==(const " << s.id
+     << "&, const " << s.id << "&)"
+     << " = default;"
+     << nl << "friend auto operator<=>(const " << s.id
+     << "&, const " << s.id << "&)"
+     << " = default;"
      << nl.close << "}";
 
   top_material
@@ -270,8 +276,8 @@ gen(std::ostream &os, const rpc_enum &e)
     << "template<> struct xdr_traits<" << qt << ">" << endl
     << "  : xdr_integral_base<" << qt << ", std::uint32_t> {" << endl
     << "  using case_type = std::int32_t;" << endl
-    << "  static Constexpr const bool is_enum = true;" << endl
-    << "  static Constexpr const bool is_numeric = false;" << endl
+    << "  static constexpr const bool is_enum = true;" << endl
+    << "  static constexpr const bool is_numeric = false;" << endl
     << "  static const char *enum_name("
     << qt << " val) {" << endl
     << "    switch (val) {" << endl;
@@ -396,6 +402,18 @@ gen(std::ostream &os, const rpc_union &u)
     }
   }
 
+  os << nl << "template<typename...Args>"
+     << nl << "void _xdr_construct_body(Args &&...args) {"
+     << nl.open << "_xdr_with_body_accessor([this, &args...](auto body) {"
+     << nl.open << "std::construct_at(&body(*this), "
+     << "body(std::forward<Args>(args))...);"
+     << nl.close << "});"
+     << nl.close << "}";
+  os << nl << "void _xdr_destroy_body() {"
+     << nl.open << "_xdr_with_body_accessor([this](auto body) {"
+     << nl.open << "std::destroy_at(&body(*this));"
+     << nl.close << "});"
+     << nl.close << "}";
   os << nl.outdent << "public:";
 #if 0
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
@@ -403,7 +421,7 @@ gen(std::ostream &os, const rpc_union &u)
 #endif
 
   // _xdr_has_default_case
-  os << nl << "static Constexpr const bool _xdr_has_default_case = "
+  os << nl << "static constexpr const bool _xdr_has_default_case = "
      << (u.hasdefault ? "true;" : "false;");
 
   // _xdr_case_values
@@ -433,7 +451,7 @@ gen(std::ostream &os, const rpc_union &u)
 
   // _xdr_field_number
   os << nl
-     << "static Constexpr int _xdr_field_number(_xdr_case_type which) {";
+     << "static constexpr int _xdr_field_number(_xdr_case_type which) {";
   union_function(os, u, "which", [](const rpc_ufield *uf) {
       using std::to_string;
       if (uf)
@@ -443,6 +461,27 @@ gen(std::ostream &os, const rpc_union &u)
     });
   os << nl << "}";
 
+  // _xdr_with_body_accessor
+  os << nl << "template<typename _F> bool"
+     << nl << "_xdr_with_body_accessor(_F &&_f) const {"
+     << nl.open << pswitch(u, u.tagid + "_");
+  for (const rpc_ufield &f : u.fields) {
+    for (string c : f.cases)
+      os << nl << map_case(c);
+    if (f.decl.type == "void")
+      os << nl << "  return true;";
+    else
+      os << nl << "  _f(xdr::field_accessor<&" << u.id << "::" << f.decl.id
+	 << "_>);"
+	 << nl << "  return true;";
+  }
+  os << nl << "}";
+  if (!u.hasdefault)
+    os << nl << "return false;";
+  os << nl.close << "}";
+  os << endl;
+
+#if 0
   // _xdr_with_mem_ptr
   os << nl << "template<typename _F, typename..._A> static bool"
      << nl << "_xdr_with_mem_ptr(_F &_f, _xdr_case_type _which, _A&&..._a) {"
@@ -462,6 +501,7 @@ gen(std::ostream &os, const rpc_union &u)
     os << nl << "return false;";
   os << nl.close << "}"
      << endl;
+#endif
 
   // _xdr_discriminant
   //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
@@ -474,10 +514,9 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "  throw xdr::xdr_bad_discriminant(\"bad value of "
      << u.tagid << " in " << u.id << "\");"
      << nl << "if (fnum != _xdr_field_number(" << u.tagid << "_)) {"
-     << nl.open << "this->~" << u.id << "();"
+     << nl.open << "_xdr_destroy_body();"
      << nl << u.tagid << "_ = which;"
-     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this);"
+     << nl << "_xdr_construct_body();"
      << nl.close << "}"
      << nl << "else"
      << nl << "  " << u.tagid << "_ = which;"
@@ -486,59 +525,51 @@ gen(std::ostream &os, const rpc_union &u)
   // Default constructor
   os << nl << "explicit " << u.id << "(" << map_type(u.tagtype) << " which = "
      << map_type(u.tagtype) << "{}) : " << u.tagid << "_(which) {"
-     << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this);"
+     << nl.open << "_xdr_construct_body();"
      << nl.close << "}";
 
   // Copy/move constructor
   os << nl << u.id << "(const " << u.id << " &source) : "
      << u.tagid << "_(source." << u.tagid << "_) {"
-     << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this, source);"
+     << nl.open << "_xdr_construct_body(source);"
      << nl.close << "}";
   os << nl << u.id << "(" << u.id << " &&source) : "
      << u.tagid << "_(source." << u.tagid << "_) {"
-     << nl.open << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << u.tagid << "_, *this,"
-     << nl << "                  std::move(source));"
+     << nl.open << "_xdr_construct_body(std::move(source));"
      << nl.close << "}";
 
   // Destructor
-  os << nl << "~" << u.id
-     << "() { _xdr_with_mem_ptr(xdr::field_destructor, "
-     << u.tagid << "_, *this); }";
+  os << nl << "~" << u.id << "() { _xdr_destroy_body(); }";
 
   // Assignment
   os << nl << u.id << " &operator=(const " << u.id << " &source) {"
+     << nl.open << "source._xdr_with_body_accessor([this, &source](auto body) {"
      << nl.open << "if (_xdr_field_number(" << u.tagid << "_)"
-     << nl << "    == _xdr_field_number(source." << u.tagid << "_))"
-     << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
-     << u.tagid << "_, *this, source);"
-     << nl << "else {"
-     << nl.open << "this->~" << u.id << "();"
+     << " == _xdr_field_number(source." << u.tagid << "_))"
+     << nl.open << "body(*this) = body(source);"
+     << nl.outdent << "else {"
+     << nl << "_xdr_destroy_body();"
      // The next line might help with exceptions
      << nl << u.tagid << "_ = std::numeric_limits<_xdr_case_type>::max();"
-     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << "source." << u.tagid << "_, *this, source);"
-     << nl.close << "}"
+     << nl << "std::construct_at(&body(*this), body(source));"
      << nl << u.tagid << "_ = source." << u.tagid << "_;"
+     << nl.close << "}"
+     << nl.close << "});"
      << nl << "return *this;"
      << nl.close << "}";
-  os << nl << u.id << " &operator=(" << u.id << " &&source) {"
+  os << nl << u.id << " &operator=(const " << u.id << " &&source) {"
+     << nl.open << "source._xdr_with_body_accessor([this, &source](auto body) {"
      << nl.open << "if (_xdr_field_number(" << u.tagid << "_)"
-     << nl << "     == _xdr_field_number(source." << u.tagid << "_))"
-     << nl << "  _xdr_with_mem_ptr(xdr::field_assigner, "
-     << u.tagid << "_, *this,"
-     << nl << "                    std::move(source));"
-     << nl << "else {"
-     << nl.open << "this->~" << u.id << "();"
+     << " == _xdr_field_number(source." << u.tagid << "_))"
+     << nl.open << "body(*this) = std::move(body(source));"
+     << nl.outdent << "else {"
+     << nl << "_xdr_destroy_body();"
      // The next line might help with exceptions
      << nl << u.tagid << "_ = std::numeric_limits<_xdr_case_type>::max();"
-     << nl << "_xdr_with_mem_ptr(xdr::field_constructor, "
-     << "source." << u.tagid << "_, *this,"
-     << nl << "                  std::move(source));"
-     << nl.close << "}"
+     << nl << "std::construct_at(&body(*this), std::move(body(source)));"
      << nl << u.tagid << "_ = source." << u.tagid << "_;"
+     << nl.close << "}"
+     << nl.close << "});"
      << nl << "return *this;"
      << nl.close << "}";
   os << endl;
@@ -570,9 +601,9 @@ gen(std::ostream &os, const rpc_union &u)
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
     << "> : xdr_traits_base {" << endl
-    << "  static Constexpr const bool is_class = true;" << endl
-    << "  static Constexpr const bool is_union = true;" << endl
-    << "  static Constexpr const bool has_fixed_size = false;" << endl
+    << "  static constexpr const bool is_class = true;" << endl
+    << "  static constexpr const bool is_union = true;" << endl
+    << "  static constexpr const bool has_fixed_size = false;" << endl
     << endl;
 
   top_material
@@ -635,8 +666,10 @@ gen(std::ostream &os, const rpc_union &u)
     << "  static std::size_t serial_size(const " << cur_scope()
     << " &obj) {" << endl
     << "    std::size_t size = 0;" << endl
-    << "    if (!obj._xdr_with_mem_ptr(field_size, obj._xdr_discriminant(),"
-    << " obj, size))" << endl
+    << "    if (!obj._xdr_with_body_accessor([&obj, &size](auto body) {" << endl
+    << "          size = XDR_GET_TRAITS(body(obj))::serial_size(body(obj));"
+    << endl
+    << "        }))" << endl
     << "      throw xdr_bad_discriminant(\"bad value of " << u.tagid
     << " in " << u.id << "\");" << endl
     << "    return size + 4;" << endl
@@ -647,9 +680,9 @@ gen(std::ostream &os, const rpc_union &u)
     << cur_scope() << " &obj) {" << endl
     << "    xdr::archive(ar, obj." << u.tagid << "(), \""
     << u.tagid << "\");" << endl
-    << "    if (!obj._xdr_with_mem_ptr(field_archiver, obj."
-    << u.tagid << "(), ar, obj," << endl
-    << "                               union_field_name(obj)))" << endl
+    << "    if (!obj._xdr_with_body_accessor([&obj, &ar](auto body) {" << endl
+    << "          archive(ar, body(obj), union_field_name(obj));" << endl
+    << "        }))" << endl
     << "      throw xdr_bad_discriminant(\"bad value of "
     << u.tagid << " in " << u.id << "\");" << endl
     << "  }" << endl;
@@ -660,13 +693,34 @@ gen(std::ostream &os, const rpc_union &u)
     << "    discriminant_type which;" << endl
     << "    xdr::archive(ar, which, \"" << u.tagid << "\");" << endl
     << "    obj." << u.tagid << "(which);" << endl
-    << "    obj._xdr_with_mem_ptr(field_archiver, obj."
-    << u.tagid << "(), ar, obj," << endl
-    << "                          union_field_name(which));" << endl
+    << "    obj._xdr_with_body_accessor([&obj, &ar](auto body) {" << endl
+    << "      archive(ar, body(obj), union_field_name(obj));" << endl
+    << "    });" << endl
     << "    xdr::validate(obj);" << endl
     << "  }" << endl;
   top_material
     << "};" << endl;
+
+  os << nl << "bool operator==(const " << u.id << "&b) const {"
+     << nl.open << "if (!(this->" << u.tagid << "_ == b." << u.tagid << "_))"
+     << nl << "  return false;"
+     << nl << "bool r = true;"
+     << nl << "_xdr_with_body_accessor([&r, this, &b](auto body) {"
+     << nl.open << "r = body(*this) == body(b);"
+     << nl.close << "});"
+     << nl << "return r;"
+     << nl.close << "}";
+  os << nl << "std::partial_ordering operator<=>(const "
+     << u.id << "&b) const {"
+     << nl.open << "if (auto o = this->" << u.tagid << "_ <=> b."
+     << u.tagid << "_; o != 0)"
+     << nl << "  return o;"
+     << nl << "auto r = std::partial_ordering::equivalent;"
+     << nl << "_xdr_with_body_accessor([&r, this, &b](auto body) {"
+     << nl.open << "r = body(*this) <=> body(b);"
+     << nl.close << "});"
+     << nl << "return r;"
+     << nl.close << "}";
 
   os << nl.close << "}";
 
@@ -677,12 +731,12 @@ void
 gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
 {
   os << "struct " << v.id << " {"
-     << nl.open << "static Constexpr const std::uint32_t program = "
+     << nl.open << "static constexpr const std::uint32_t program = "
      << u.val << ";"
-     << nl << "static Constexpr const char *program_name() { return \""
+     << nl << "static constexpr const char *program_name() { return \""
      << u.id << "\"; }"
-     << nl << "static Constexpr const std::uint32_t version = " << v.val << ";"
-     << nl << "static Constexpr const char *version_name() { return \""
+     << nl << "static constexpr const std::uint32_t version = " << v.val << ";"
+     << nl << "static constexpr const char *version_name() { return \""
      << v.id << "\"; }";
 
   for (const rpc_proc &p : v.procs) {
@@ -690,8 +744,8 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     os << endl
        << nl << "struct " << p.id << "_t {"
        << nl.open << "using interface_type = " << v.id << ";"
-       << nl << "static Constexpr const std::uint32_t proc = " << p.val << ";"
-       << nl << "static Constexpr const char *proc_name() { return \""
+       << nl << "static constexpr const std::uint32_t proc = " << p.val << ";"
+       << nl << "static constexpr const char *proc_name() { return \""
        << p.id << "\"; }";
     if (p.arg.size() == 0)
       os << nl << "using arg_type = void;";
@@ -837,7 +891,7 @@ gen_hh(std::ostream &os)
     }
     switch(s.type) {
     case rpc_sym::CONST:
-      os << "Constexpr const std::uint32_t " << s.sconst->id << " = "
+      os << "constexpr const std::uint32_t " << s.sconst->id << " = "
 	 << s.sconst->val << ';';
       break;
     case rpc_sym::STRUCT:

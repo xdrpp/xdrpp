@@ -21,12 +21,12 @@ else
 fi
 AC_DEFINE_UNQUOTED([CPP_COMMAND], "$CPP", [Shell command for C preprocessor])
 
-AM_PROG_LEX
+AM_PROG_LEX(noyywrap)
 AC_CHECK_PROGS(YACC, 'bison -y', bison -y)
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_CXX([clang++ eg++ g++ c++ gpp aCC CC cxx cc++ cl.exe FCC KCC RCC xlC_r xlC])
-AX_CXX_COMPILE_STDCXX(14,,mandatory)
+AX_CXX_COMPILE_STDCXX(20,,mandatory)
 test -z "$WFLAGS" || CXXFLAGS="$CXXFLAGS $WFLAGS"
 AC_LANG(C++)
 # -pthread Seems to be required by g++ -stc=c++1[14]

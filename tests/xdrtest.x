@@ -1,5 +1,5 @@
-%using xdr::operator==;
-%using xdr::operator<;
+//%using xdr::operator==;
+//%using xdr::operator<;
 
 enum senum {
   SE_NEGATIVE = -1,
@@ -15,7 +15,7 @@ union sunion switch (senum d) {
     void;
 };
 
-union uunion switch (unsigned d) {
+union uunion switch (unsigned int d) {
   case 1:
     bool one;
   case 2:
@@ -41,6 +41,13 @@ struct fix_12 {
   double d;
 };
 
+struct fix_16 {
+  struct {
+    fix_4 f4;
+    fix_12 f12;
+  } x;
+};
+
 union u_4_12 switch (int which) {
  case 4:
    fix_4 f4;
@@ -51,9 +58,9 @@ union u_4_12 switch (int which) {
 typedef fix_12 v12<>;
 
 enum color {
-  RED,
-  REDDER,
-  REDDEST
+  RED = 1,
+  REDDER = 2,
+  REDDEST = 3
 };
 
 union uptr switch (bool b) {
@@ -64,13 +71,13 @@ union uptr switch (bool b) {
 };
 
 namespace testns {
-%using xdr::operator==;
-%using xdr::operator<;
+//%using xdr::operator==;
+//%using xdr::operator<;
 
 enum other_color {
-  RED,
-  REDDER,
-  REDDEST
+  RED = 1,
+  REDDER = 2,
+  REDDEST = 3
 };
 
 union other_union switch (other_color oc) {
@@ -93,7 +100,7 @@ struct hasbytes {
 struct numerics {
   bool b;
   int i1;
-  unsigned i2;
+  unsigned int i2;
   hyper i3;
   unsigned hyper i4;
   float f1;
@@ -135,7 +142,7 @@ union ContainsEnum switch (color c) {
  case color::RED:
    string foo<>;
  case color::REDDER:
-   enum { ONE, TWO } num;
+   enum { ONE = 1, TWO = 2 } num;
 };
 
 program xdrtest_prog {

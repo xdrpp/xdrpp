@@ -34,30 +34,10 @@ namespace xdr {
 
 namespace detail {
 
-//! Convert an int to a uint8_t or char, extracting the low byte.
-//! This is harder than it sounds when char is signed, because
-//! converting to a smaller signed type yields an
-//! implementation-defined value.  Worse, MSVC with certain options
-//! goes even further and crashes the program when you simply cast an
-//! int to a char.  Since there's no equivalent of reinterpret_cast
-//! between signed and unsigned values, and since even the standard
-//! union trick may be unsafe according to:
-//!
-//!     http://stackoverflow.com/questions/11373203/accessing-inactive-union-member-undefined
-//!
-//! we just gave up and did the brute force arithmetic thing, taking
-//! advantage of the fact that all these one-byte values get promoted
-//! to int for arithmetic.
 template<typename T> constexpr T
 to_int8(uint8_t u)
 {
-  return u <= std::numeric_limits<T>::max() ? u :
-    u + (std::numeric_limits<T>::min() - std::numeric_limits<T>::max());
-}
-template<> constexpr uint8_t
-to_int8<uint8_t>(uint8_t u)
-{
-  return u;
+  return std::bit_cast<T>(u);
 }
 
 }
@@ -65,7 +45,7 @@ to_int8<uint8_t>(uint8_t u)
 struct generator_t {
   std::size_t size_;
   std::size_t levels_;  // Only decrease size after this many levels
-  Constexpr explicit generator_t(std::size_t size, std::size_t levels = 2)
+  constexpr explicit generator_t(std::size_t size, std::size_t levels = 2)
     : size_(size), levels_(levels) {}
 
   // Handle char and uint8_t (which can legally be the same type for
@@ -131,7 +111,9 @@ struct generator_t {
       }
     }
     t._xdr_discriminant(v, false);
-    t._xdr_with_mem_ptr(field_archiver, v, *this, t, nullptr);
+    t._xdr_with_body_accessor([this, &t](auto body) {
+      archive(*this, body(t), nullptr);
+    });
   }
 
   // Generator with shrunken size for elements of a container

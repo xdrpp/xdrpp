@@ -31,8 +31,6 @@ errstr(int no)
 #define xdr_strerror std::strerror
 #endif // !MSVC
 
-#define Constexpr constexpr
-
 #ifndef XDRPP_WORDS_BIGENDIAN
 #if MSVC
 #define XDRPP_WORDS_BIGENDIAN 0
@@ -43,9 +41,9 @@ errstr(int no)
 
 //! True on big endian machines, false on little endian machines.
 #if XDRPP_WORDS_BIGENDIAN
-Constexpr const bool is_big_endian = true;
+constexpr const bool is_big_endian = true;
 #else // !XDRPP_WORDS_BIGENDIAN
-Constexpr const bool is_big_endian = false;
+constexpr const bool is_big_endian = false;
 #endif // !XDRPP_WORDS_BIGENDIAN
 
 // Needed on OpenBSD
@@ -53,14 +51,14 @@ Constexpr const bool is_big_endian = false;
 #undef swap64
 
 //! Byteswap 32-bit number.
-Constexpr inline std::uint32_t
+constexpr inline std::uint32_t
 swap32(std::uint32_t v)
 {
   return v << 24 | (v & 0xff00) << 8 | (v >> 8 & 0xff00) | v >> 24;
 }
 
 //! Byteswap 64-bit number.
-Constexpr inline std::uint64_t
+constexpr inline std::uint64_t
 swap64(std::uint64_t v)
 {
   return std::uint64_t(swap32(std::uint32_t(v)))<<32 |
@@ -69,28 +67,28 @@ swap64(std::uint64_t v)
 
 //! Byteswap 32-bit value only on little-endian machines, identity
 //! function on big-endian machines.
-Constexpr inline std::uint32_t
+constexpr inline std::uint32_t
 swap32le(std::uint32_t v)
 {
   return xdr::is_big_endian ? v : swap32(v);
 }
 
 //! Byteswap 32-bit value only on big-endian machines.
-Constexpr inline std::uint32_t
+constexpr inline std::uint32_t
 swap32be(std::uint32_t v)
 {
   return xdr::is_big_endian ? swap32(v) : v;
 }
 
 //! Byteswap 64-bit value only on little-endian machines.
-Constexpr inline std::uint64_t
+constexpr inline std::uint64_t
 swap64le(std::uint64_t v)
 {
   return xdr::is_big_endian ? v : swap64(v);
 }
 
 //! Byteswap 64-bit value only on big-endian machines.
-Constexpr inline std::uint64_t
+constexpr inline std::uint64_t
 swap64be(std::uint64_t v)
 {
   return xdr::is_big_endian ? swap64(v) : v;
