@@ -390,23 +390,36 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.outdent << "private:"
      << nl << "_xdr_case_type " << u.tagid << "_;";
 
-  for (const rpc_ufield &f0 : u.fields) {
-    if (f0.decl.type != "void") {
-      os << nl << "union {";
-      ++nl;
-      for (const rpc_ufield &f : u.fields)
-	if (f.decl.type != "void")
-	  os << nl << decl_type(f.decl) << ' ' << f.decl.id << "_;";
-      os << nl.close << "};" << endl;
-      break;
+  if (opt_uptr)
+    os << nl << "void *u_ = nullptr;"
+       << endl;
+  else
+    for (const rpc_ufield &f0 : u.fields) {
+      if (f0.decl.type != "void") {
+	os << nl << "union {";
+	++nl;
+	for (const rpc_ufield &f : u.fields)
+	  if (f.decl.type != "void")
+	    os << nl << decl_type(f.decl) << ' ' << f.decl.id << "_;";
+	os << nl.close << "};" << endl;
+	break;
+      }
     }
-  }
 
   os << nl << "template<typename...Args>"
      << nl << "void _xdr_construct_body(Args &&...args) {"
-     << nl.open << "_xdr_with_body_accessor([this, &args...](auto body) {"
-     << nl.open << "std::construct_at(&body(*this), "
-     << "body(std::forward<Args>(args))...);"
+     << nl.open << "_xdr_with_body_accessor([this, &args...]<typename B>(B body) {"
+    // If the constructor throws, we leave the tag as max int.
+     << nl.open << "auto saved_tag = this->" << u.tagid << "_;"
+     << nl << "this->" << u.tagid
+     << "_ = std::numeric_limits<_xdr_case_type>::max();";
+  if (opt_uptr)
+    os << nl << "this->u_ = new typename B::field_type("
+       << "body(std::forward<Args>(args))...);";
+  else
+    os << nl << "std::construct_at(&body(*this), "
+       << "body(std::forward<Args>(args))...);";
+  os << nl << "this->" << u.tagid << "_ = saved_tag;"
      << nl.close << "});"
      << nl.close << "}";
   os << nl << "void _xdr_destroy_body() {"
@@ -470,6 +483,10 @@ gen(std::ostream &os, const rpc_union &u)
       os << nl << map_case(c);
     if (f.decl.type == "void")
       os << nl << "  return true;";
+    else if (opt_uptr)
+      os << nl << "  _f(xdr::uptr_accessor<"
+	 << decl_type(f.decl) << ", &" << u.id << "::u_>);"
+	 << nl << "  return true;";
     else
       os << nl << "  _f(xdr::field_accessor<&" << u.id << "::" << f.decl.id
 	 << "_>);"
@@ -480,28 +497,6 @@ gen(std::ostream &os, const rpc_union &u)
     os << nl << "return false;";
   os << nl.close << "}";
   os << endl;
-
-#if 0
-  // _xdr_with_mem_ptr
-  os << nl << "template<typename _F, typename..._A> static bool"
-     << nl << "_xdr_with_mem_ptr(_F &_f, _xdr_case_type _which, _A&&..._a) {"
-     << nl.open << pswitch(u, "_which");
-  for (const rpc_ufield &f : u.fields) {
-    for (string c : f.cases)
-      os << nl << map_case(c);
-    if (f.decl.type == "void")
-      os << nl << "  return true;";
-    else
-      os << nl << "  _f(&" << u.id << "::" << f.decl.id
-	 << "_, std::forward<_A>(_a)...);"
-	 << nl << "  return true;";
-  }
-  os << nl << "}";
-  if (!u.hasdefault)
-    os << nl << "return false;";
-  os << nl.close << "}"
-     << endl;
-#endif
 
   // _xdr_discriminant
   //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
@@ -549,10 +544,8 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.open << "body(*this) = body(source);"
      << nl.outdent << "else {"
      << nl << "_xdr_destroy_body();"
-     // The next line might help with exceptions
-     << nl << u.tagid << "_ = std::numeric_limits<_xdr_case_type>::max();"
-     << nl << "std::construct_at(&body(*this), body(source));"
      << nl << u.tagid << "_ = source." << u.tagid << "_;"
+     << nl << "_xdr_construct_body(source);"
      << nl.close << "}"
      << nl.close << "});"
      << nl << "return *this;"
@@ -564,10 +557,8 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.open << "body(*this) = std::move(body(source));"
      << nl.outdent << "else {"
      << nl << "_xdr_destroy_body();"
-     // The next line might help with exceptions
-     << nl << u.tagid << "_ = std::numeric_limits<_xdr_case_type>::max();"
-     << nl << "std::construct_at(&body(*this), std::move(body(source)));"
      << nl << u.tagid << "_ = source." << u.tagid << "_;"
+     << nl << "_xdr_construct_body(std::move(source));"
      << nl.close << "}"
      << nl.close << "});"
      << nl << "return *this;"
@@ -587,15 +578,20 @@ gen(std::ostream &os, const rpc_union &u)
   for (const auto &f : u.fields) {
     if (f.decl.type == "void")
       continue;
-    for (string cnst : {"", "const "})
+    for (string cnst : {"", "const "}) {
       os << nl << cnst << decl_type(f.decl) << " &" << f.decl.id
 	 << "() " << cnst << "{"
 	 << nl.open << "if (_xdr_field_number(" << u.tagid << "_) == "
-	 << f.fieldno << ")"
-	 << nl << "  return " << f.decl.id << "_;"
-	 << nl << "throw xdr::xdr_wrong_union(\""
+	 << f.fieldno << ")";
+      if (opt_uptr)
+	os << nl << "  return *static_cast<" << cnst << decl_type(f.decl)
+	   << "*>(u_);";
+      else
+	os << nl << "  return " << f.decl.id << "_;";
+      os << nl << "throw xdr::xdr_wrong_union(\""
 	 << u.id << ": " << f.decl.id << " accessed when not selected\");"
 	 << nl.close << "}";
+    }
   }
 
   top_material

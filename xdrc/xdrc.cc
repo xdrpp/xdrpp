@@ -97,6 +97,8 @@ and OPTIONAL arguments for -server{hh,cc} can contain:
       -s[ession] T  Use type T to track client sessions
       -p[tr]        To accept arguments by std::unique_ptr
       -a[sync]      To generate arpc server scaffolding (with callbacks)
+while OPTIONAL arguments for -hh can contain:
+      -uptr         To store pointers instead of object in unions
 )";
   exit(err);
 }

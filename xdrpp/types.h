@@ -824,25 +824,6 @@ using xdr_void = std::tuple<>;
 ////////////////////////////////////////////////////////////////
 
 namespace detail {
-//! Dereference a pointer to a member of type \c F of a class of type
-//! \c T, preserving reference types.  Hence applying to an lvalue
-//! reference \c T returns an lvalue reference \c F, while an rvalue
-//! reference \c T produces an rvalue reference \c F.
-template<typename T, typename F> inline F &
-member(T &t, F T::*mp)
-{
-  return t.*mp;
-}
-template<typename T, typename F> inline const F &
-member(const T &t, F T::*mp)
-{
-  return t.*mp;
-}
-template<typename T, typename F> inline F &&
-member(T &&t, F T::*mp)
-{
-  return std::move(t.*mp);
-}
 
 template<typename S, auto Field>
 concept accepts_field_ptr = requires(S s) { s.*Field; };
@@ -860,6 +841,26 @@ struct field_accessor_t<Field> {
   }
 };
 template<auto Field> constexpr field_accessor_t<Field> field_accessor{};
+
+template<typename F, auto Field> struct uptr_accessor_t;
+template<typename F, typename S, void *S::*Field>
+struct uptr_accessor_t<F, Field> {
+  constexpr uptr_accessor_t() {}
+
+  using field_type = F;
+
+  const F &operator()(const S &s) const {
+    return *static_cast<const F*>(s.*Field);
+  }
+  F &operator()(S &s) const {
+    return *static_cast<F*>(s.*Field);
+  }
+  F &&operator()(S &&s) const {
+    return std::move(*static_cast<F*>(s.*Field));
+  }
+};
+template<typename F, auto Field>
+constexpr uptr_accessor_t<F, Field> uptr_accessor{};
 
 } // namespace xdr
 

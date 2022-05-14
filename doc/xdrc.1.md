@@ -332,6 +332,14 @@ contains the following fields:
 	warnings rather than errors.  With the `-pedantic` flag, all
 	warnings become errors.
 
+\-uptr
+:	By default, unions embed their body in the active branch in the
+	structure, meaning the in-memory size of a union depends on the
+	largest possible case.  The `-uptr` flag changes this behavior to
+	store only a pointer in the union, which will require more calls
+	to malloc, but potentially consume less memory.  This option does
+	not change the public interface, but may affect performance.
+
 # EXAMPLES
 
 Consider the following XDR program definition in a file myprog.x:
