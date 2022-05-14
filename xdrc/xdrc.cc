@@ -19,6 +19,7 @@ string file_prefix;
 string server_session;
 bool server_ptr;
 bool server_async;
+bool opt_uptr;
 bool opt_pedantic;
 
 string
@@ -107,6 +108,7 @@ enum opttag {
   OPT_SERVERHH,
   OPT_SERVERCC,
   OPT_PEDANTIC,
+  OPT_UPTR,
 };
 
 static const struct option xdrc_options[] = {
@@ -119,6 +121,7 @@ static const struct option xdrc_options[] = {
   {"session", required_argument, nullptr, 's'},
   {"async", no_argument, nullptr, 'a'},
   {"pedantic", no_argument, nullptr, OPT_PEDANTIC},
+  {"uptr", no_argument, nullptr, OPT_UPTR},
   {nullptr, 0, nullptr, 0}
 };
 
@@ -176,6 +179,9 @@ main(int argc, char **argv)
       break;
     case OPT_PEDANTIC:
       opt_pedantic = true;
+      break;
+    case OPT_UPTR:
+      opt_uptr = true;
       break;
     case 'p':
       server_ptr = true;

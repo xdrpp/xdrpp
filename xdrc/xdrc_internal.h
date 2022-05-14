@@ -254,6 +254,7 @@ extern string file_prefix;
 extern string server_session;
 extern bool server_ptr;
 extern bool server_async;
+extern bool opt_uptr;
 
 template <typename T>
 struct omanip {

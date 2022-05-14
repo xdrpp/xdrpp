@@ -21,7 +21,7 @@ else
 fi
 AC_DEFINE_UNQUOTED([CPP_COMMAND], "$CPP", [Shell command for C preprocessor])
 
-AM_PROG_LEX
+AM_PROG_LEX(noyywrap)
 AC_CHECK_PROGS(YACC, 'bison -y', bison -y)
 AC_PROG_CC
 AM_PROG_CC_C_O
