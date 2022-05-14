@@ -18,10 +18,6 @@
 
 namespace xdr {
 
-//! Poor man's version of C++14 enable_if_t.
-#undef ENABLE_IF
-#define ENABLE_IF(expr) typename std::enable_if<expr>::type
-
 //! Use hex escapes for non-printable characters, and prefix
 //! backslashes and quotes with backslash.
 std::string escape_string(const std::string &s);
@@ -58,16 +54,17 @@ struct Printer {
     p(field, hexdump(v.data(), v.size()));
   }
 
-  template<typename T> ENABLE_IF(xdr_traits<T>::is_enum)
-  operator()(const char *field, T t) {
+  template<xdr_enum T>
+  void operator()(const char *field, T t) {
     if (const char *n = xdr_traits<T>::enum_name(t))
       p(field, n);
     else
       p(field, std::to_string(t));
   }
 
-  template<typename T> ENABLE_IF(xdr_traits<T>::is_numeric)
-  operator()(const char *field, T t) { p(field, std::to_string(t)); }
+  void operator()(const char *field, xdr_numeric auto t) {
+    p(field, std::to_string(t));
+  }
 
   // Don't print 1-tuple as tuple (even Haskell doesn't have 1-tuples).
   template<typename T> void
@@ -82,8 +79,8 @@ struct Printer {
       bol(field) << "NULL";
   }
 
-  template<typename T> ENABLE_IF(xdr_traits<T>::is_class)
-  operator()(const char *field, const T &t) {
+  template<xdr_class T>
+  void operator()(const char *field, const T &t) {
     bool skipnl = !field;
     bol(field) << "{";
     if (skipnl)
@@ -103,8 +100,8 @@ struct Printer {
     }
   }
 
-  template<typename T> ENABLE_IF(xdr_traits<T>::is_container)
-  operator()(const char *field, const T &t) {
+  template<xdr_container T>
+  void operator()(const char *field, const T &t) {
     bool skipnl = !field;
     bol(field) << '[';
     if (skipnl)
@@ -126,29 +123,21 @@ struct Printer {
   }
 };
 
-template<typename T> class has_xdr_printer {
-  template<typename U> static std::true_type
-  test(decltype(xdr_printer(*(U*)0)) *);
-
-  template<typename U> static std::false_type test(...);
-public:
-  static constexpr bool value = decltype(test<T>(0))::value;
-};
+template<typename T> concept has_xdr_printer =
+  requires(const T t) { xdr_printer(t); };
 
 } // namespace detail
 
 template<> struct archive_adapter<detail::Printer> {
   using Printer = detail::Printer;
 
-  template<typename T> static
-  typename std::enable_if<!detail::has_xdr_printer<T>::value>::type
-  apply(Printer &p, const T &obj, const char *field) {
+  template<typename T> requires (!detail::has_xdr_printer<T>)
+  static void apply(Printer &p, const T &obj, const char *field) {
     p(field, obj);
   }
 
-  template<typename T> static
-  typename std::enable_if<detail::has_xdr_printer<T>::value>::type
-  apply(Printer &p, const T &obj, const char *field) {
+  template<detail::has_xdr_printer T>
+  static void apply(Printer &p, const T &obj, const char *field) {
     p.p(field, xdr_printer(obj));
   }
 };
@@ -172,8 +161,7 @@ xdr_to_string(const T &t, const char *name = nullptr, int indent = 0)
 //! within the namespace of your XDR file.  As per the C++ standard, a
 //! using \e directive (i.e., <tt>using namespace xdr</tt>) will not
 //! allow argument-dependent lookup.
-template<typename T>
-inline typename std::enable_if<xdr_traits<T>::valid, std::ostream &>::type
+template<xdr_type T> inline std::ostream &
 operator<<(std::ostream &os, const T &t)
 {
   return os << xdr_to_string(t);

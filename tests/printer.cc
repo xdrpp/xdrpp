@@ -21,7 +21,7 @@ withshow()
   using xdr::operator<<;
 
   bool b = true;
-  
+
   u_4_12 u(12);
   u.f12().i = 99;
   u.f12().d = 99.99;

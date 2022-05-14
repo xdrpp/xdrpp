@@ -16,34 +16,23 @@ namespace detail{
 struct xdr_clear_t {
   constexpr xdr_clear_t() {}
 
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::variable_nelem>::type
-  operator()(T &t) const { t.resize(0); }
-
-  template<std::uint32_t N> void operator()(opaque_array<N> &t) const {
-    std::memset(t.data(), 0, t.size());
-  }
-
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::is_struct>::type
-  operator()(T &t) const { xdr_traits<T>::load(*this, t); }
-
-  template<typename T> typename
-  std::enable_if<!xdr_traits<T>::variable_nelem>::type
-  operator()(T &t) const { xdr_traits<T>::load(*this, t); }
-
-  template<typename T> typename std::enable_if<xdr_traits<T>::is_union>::type
-  operator()(T &t) const {
-    auto dt = typename xdr_traits<T>::discriminant_type{};
-    if (t._xdr_field_number(dt) > 0)
-      xdr_traits<T>::load(*this, t);
+  template<xdr_type T> void operator()(T &t) const {
+    if constexpr (xdr_numlike<T>)
+      t = T{};
+    else if constexpr (xdr_union<T>) {
+      auto dt = typename xdr_traits<T>::discriminant_type{};
+      if (t._xdr_field_number(dt) > 0)
+	xdr_traits<T>::load(*this, t);
+      else // 0 isn't a valid discriminant, but set it anyway
+	t._xdr_discriminant(dt, false);
+    }
+    else if constexpr (requires { t.resize(0); })
+      t.resize(0);
+    else if constexpr (xdr_bytes<T>)
+      memset(t.data(), 0, t.size());
     else
-      t._xdr_discriminant(dt, false);
+      xdr_traits<T>::load(*this, t);
   }
-
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::is_numeric || xdr_traits<T>::is_enum>::type
-  operator()(T &t) const { t = T{}; }
 };
 }
 
