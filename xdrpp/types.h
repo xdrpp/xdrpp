@@ -177,7 +177,19 @@ template<typename T> using xdr_get_traits =
   xdr_traits<std::remove_cv_t<std::remove_reference_t<T>>>;
 #define XDR_GET_TRAITS(obj) xdr::xdr_get_traits<decltype(obj)>
 
-template<typename T> concept xdr_union = xdr_get_traits<T>::is_union;
+#define XDR_CONCEPT(c) \
+    template<typename T> concept xdr_##c = xdr_get_traits<T>::is_##c
+XDR_CONCEPT(struct);
+XDR_CONCEPT(union);
+XDR_CONCEPT(class);
+XDR_CONCEPT(enum);
+XDR_CONCEPT(numeric);
+XDR_CONCEPT(container);
+XDR_CONCEPT(bytes);
+#undef XDR_CONCEPT
+// Any valid XDR type
+template<typename T> concept xdr_type = xdr_get_traits<T>::valid;
+template<typename T> concept xdr_numlike = xdr_numeric<T> || xdr_enum<T>;
 
 namespace detail {
 // When a type T includes itself recursively (for instance because it

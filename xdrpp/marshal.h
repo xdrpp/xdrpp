@@ -107,17 +107,23 @@ template<typename Base> struct xdr_generic_put : Base {
       throw xdr_overflow("insufficient buffer space in xdr_generic_put");
   }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint32_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T t) { check(4); put32(p_, xdr_traits<T>::to_uint(t)); }
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint32_t>
+  void operator()(T t) {
+    check(4);
+    put32(p_, t);
+  }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint64_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T t) { check(8); put64(p_, xdr_traits<T>::to_uint(t)); }
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint64_t>
+  void operator()(T t) {
+    check(8);
+    put64(p_, t);
+  }
 
-  template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
-  operator()(const T &t) {
-    if (xdr_traits<T>::variable_nelem) {
+  template<xdr_bytes T>
+  void operator()(const T &t) {
+    if constexpr (xdr_traits<T>::variable_nelem) {
       check(4 + t.size());
       put32(p_, size32(t.size()));
     }
@@ -126,9 +132,8 @@ template<typename Base> struct xdr_generic_put : Base {
     put_bytes(p_, t.data(), t.size());
   }
 
-  template<typename T> typename std::enable_if<
-    xdr_traits<T>::is_class || xdr_traits<T>::is_container>::type
-  operator()(const T &t) {
+  template<xdr_type T> requires xdr_class<T> || xdr_container<T>
+  void operator()(const T &t) {
     if (!marshal_base::stack_limit--)
       throw xdr_stack_overflow("stack overflow in xdr_generic_put");
     xdr_traits<T>::save(*this, t);
@@ -169,16 +174,22 @@ template<typename Base> struct xdr_generic_get : Base {
       throw xdr_overflow("insufficient buffer space in xdr_generic_get");
   }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint32_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T &t) { check(4); t = xdr_traits<T>::from_uint(get32(p_)); }
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint32_t>
+  void operator()(T &t) {
+    check(4);
+    t = xdr_traits<T>::from_uint(get32(p_));
+  }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint64_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T &t) { check(8); t = xdr_traits<T>::from_uint(get64(p_)); }
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint64_t>
+  void operator()(T &t) {
+    check(8);
+    t = xdr_traits<T>::from_uint(get64(p_));
+  }
 
-  template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
-  operator()(T &t) {
+  template<xdr_bytes T>
+  void operator()(T &t) {
     if (xdr_traits<T>::variable_nelem) {
       check(4);
       std::uint32_t size = get32(p_);
@@ -190,9 +201,8 @@ template<typename Base> struct xdr_generic_get : Base {
     get_bytes(p_, t.data(), t.size());
   }
 
-  template<typename T> typename std::enable_if<
-    xdr_traits<T>::is_class || xdr_traits<T>::is_container>::type
-  operator()(T &t) {
+  template<xdr_type T> requires xdr_class<T> || xdr_container<T>
+  void operator()(T &t) {
     if (!marshal_base::stack_limit--)
       throw xdr_stack_overflow("stack overflow in xdr_generic_get");
     xdr_traits<T>::load(*this, t);

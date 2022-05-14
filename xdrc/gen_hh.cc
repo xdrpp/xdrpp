@@ -408,25 +408,32 @@ gen(std::ostream &os, const rpc_union &u)
 
   os << nl << "template<typename...Args>"
      << nl << "void _xdr_construct_body(Args &&...args) {"
-     << nl.open << "_xdr_with_body_accessor([this, &args...]<typename B>(B body) {"
+     << nl.open << "_xdr_with_body_accessor([this, &args...]<typename B>(B body) {";
+  if (opt_uptr) {
+    os << nl.open << "this->u_ = nullptr;"
+       << nl << "this->u_ = new typename B::field_type("
+       << "body(std::forward<Args>(args))...);";
+  }
+  else {
     // If the constructor throws, we leave the tag as max int.
-     << nl.open << "auto saved_tag = this->" << u.tagid << "_;"
-     << nl << "this->" << u.tagid
-     << "_ = std::numeric_limits<_xdr_case_type>::max();";
+    os << nl.open << "auto saved_tag = this->" << u.tagid << "_;"
+       << nl << "this->" << u.tagid
+       << "_ = std::numeric_limits<_xdr_case_type>::max();"
+       << nl << "std::construct_at(&body(*this), "
+       << "body(std::forward<Args>(args))...);"
+       << nl << "this->" << u.tagid << "_ = saved_tag;";
+  }
+  os << nl.close << "});"
+     << nl.close << "}";
+  os << nl << "void _xdr_destroy_body() {";
   if (opt_uptr)
-    os << nl << "this->u_ = new typename B::field_type("
-       << "body(std::forward<Args>(args))...);";
-  else
-    os << nl << "std::construct_at(&body(*this), "
-       << "body(std::forward<Args>(args))...);";
-  os << nl << "this->" << u.tagid << "_ = saved_tag;"
-     << nl.close << "});"
-     << nl.close << "}";
-  os << nl << "void _xdr_destroy_body() {"
-     << nl.open << "_xdr_with_body_accessor([this](auto body) {"
+    os << nl.open << "if (u_)";
+  os << nl.open << "_xdr_with_body_accessor([this](auto body) {"
      << nl.open << "std::destroy_at(&body(*this));"
-     << nl.close << "});"
-     << nl.close << "}";
+     << nl.close << "});";
+  if (opt_uptr)
+    --nl;
+  os << nl.close << "}";
   os << nl.outdent << "public:";
 #if 0
   os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
