@@ -118,37 +118,6 @@ template<typename T> using wrap_transparent_ptr =
   typename detail::wrap_transparent_ptr_helper<T>::type;
 
 
-namespace detail {
-template<typename P, typename C, typename T, typename I = all_indices_of<T>>
-struct dispatch_session_helper;
-
-template<typename P, typename C, typename T, std::size_t...I>
-struct dispatch_session_helper<P, C, T, indices<I...>> {
-  template<typename S, typename...Rest> static auto
-    dispatch(C &&c, S *s, T &&t, Rest &&...rest) ->
-    typename std::enable_if<!std::is_same<S, void>::value,
-      decltype(P::dispatch(std::forward<C>(c), s,
-			   std::get<I>(std::forward<T>(t))...,
-			   std::forward<Rest>(rest)...))>::type
-  {
-    return P::dispatch(std::forward<C>(c), s,
-		       std::get<I>(std::forward<T>(t))...,
-		       std::forward<Rest>(rest)...);
-  }
-
-  // If the previous one fails SFINAE, try omitting the session
-  // argument for methods that don't need it.
-  template<typename...Rest> static auto
-    dispatch(C &&c, void *, T &&t, Rest &&...rest) ->
-    decltype(P::dispatch(std::forward<C>(c), std::get<I>(std::forward<T>(t))...,
-			 std::forward<Rest>(rest)...))
-  {
-    return P::dispatch(std::forward<C>(c), std::get<I>(std::forward<T>(t))...,
-		       std::forward<Rest>(rest)...);
-  }
-};
-}
-
 //! Call \c P::dispatch with a session pointer (unless the session
 //! type \c S is void, in which case the argument is omitted) and with
 //! a tuple that should be unpacked into multiple arguments.  For
@@ -160,15 +129,20 @@ struct dispatch_session_helper<P, C, T, indices<I...>> {
 //! \code
 //!   P::dispatch(c, 1, 2, 3, 4);
 //! \endcode
-template<typename P, typename C, typename S, typename T,
-	 typename...Rest> inline auto
-dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest) ->
-  decltype(detail::dispatch_session_helper<P, C, T>::dispatch(
-               c, s, std::forward<T>(t), std::forward<Rest>(rest)...))
+template<typename P, typename C, typename S, typename T, typename...Rest>
+inline decltype(auto)
+dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest)
 {
-  return detail::dispatch_session_helper<P, C, T>::dispatch(
-             std::forward<C>(c), s, std::forward<T>(t),
-	     std::forward<Rest>(rest)...);
+  return [&]<size_t...Is>(indices<Is...>) -> decltype(auto) {
+    if constexpr (std::same_as<S, void>)
+      return P::dispatch(std::forward<C>(c),
+			 std::get<Is>(std::forward<T>(t))...,
+			 std::forward<Rest>(rest)...);
+    else
+      return P::dispatch(std::forward<C>(c), s,
+			 std::get<Is>(std::forward<T>(t))...,
+			 std::forward<Rest>(rest)...);
+  }(all_indices_of(t));
 }
 
 
