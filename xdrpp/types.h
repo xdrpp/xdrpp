@@ -25,9 +25,10 @@
 namespace xdr {
 
 using std::uint32_t;
+using std::size_t;
 
 inline uint32_t
-size32(std::size_t s)
+size32(size_t s)
 {
   uint32_t r {uint32_t(s)};
   assert(s == r);
@@ -205,7 +206,7 @@ template<typename T> struct has_fixed_size_t
 }
 
 //! Return the marshaled size of an XDR data type.
-template<typename T> std::size_t
+template<typename T> size_t
 xdr_size(const T&t)
 {
   return xdr_traits<T>::serial_size(t);
@@ -257,8 +258,8 @@ template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
   static constexpr const bool xdr_defined = false;
   static constexpr const bool is_numeric = true;
   static constexpr const bool has_fixed_size = true;
-  static constexpr const std::size_t fixed_size = sizeof(uint_type);
-  static constexpr std::size_t serial_size(type) { return fixed_size; }
+  static constexpr const size_t fixed_size = sizeof(uint_type);
+  static constexpr size_t serial_size(type) { return fixed_size; }
   static uint_type to_uint(type t) { return t; }
   static type from_uint(uint_type u) {
     return xdr_reinterpret<type>(u);
@@ -288,8 +289,8 @@ template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
   static constexpr const bool xdr_defined = false;
   static constexpr const bool is_numeric = true;
   static constexpr const bool has_fixed_size = true;
-  static constexpr const std::size_t fixed_size = sizeof(uint_type);
-  static constexpr std::size_t serial_size(type) { return fixed_size; }
+  static constexpr const size_t fixed_size = sizeof(uint_type);
+  static constexpr size_t serial_size(type) { return fixed_size; }
 
   static uint_type to_uint(type t) { return xdr_reinterpret<uint_type>(t); }
   static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
@@ -358,8 +359,8 @@ struct xdr_container_base : xdr_traits_base {
     for (uint32_t i = 0; i < n; ++i)
       archive(a, t.extend_at(i));
   }
-  static std::size_t serial_size(const T &t) {
-    std::size_t s = variable ? 4 : 0;
+  static size_t serial_size(const T &t) {
+    size_t s = variable ? 4 : 0;
     for (const value_type &v : t)
       s += xdr_traits<value_type>::serial_size(v);
     return s;
@@ -368,7 +369,7 @@ struct xdr_container_base : xdr_traits_base {
 
 template<typename T> struct xdr_container_base<T, true, true>
   : xdr_container_base<T, true, false> {
-  static std::size_t serial_size(const T &t) {
+  static size_t serial_size(const T &t) {
     return 4 + t.size() * xdr_traits<typename T::value_type>::fixed_size;
   }
 };
@@ -376,9 +377,9 @@ template<typename T> struct xdr_container_base<T, true, true>
 template<typename T> struct xdr_container_base<T, false, true>
   : xdr_container_base<T, false, false> {
   static constexpr const bool has_fixed_size = true;
-  static constexpr const std::size_t fixed_size =
+  static constexpr const size_t fixed_size =
     T::container_fixed_nelem * xdr_traits<typename T::value_type>::fixed_size;
-  static std::size_t serial_size(const T &) { return fixed_size; }
+  static size_t serial_size(const T &) { return fixed_size; }
 };
 
 //! Placeholder type to avoid clearing array
@@ -397,8 +398,8 @@ template<typename T, uint32_t N> struct xarray
   xarray(const xarray &) = default;
   xarray &operator=(const xarray &) = default;
 
-  static constexpr const std::size_t container_fixed_nelem = N;
-  static constexpr std::size_t size() { return N; }
+  static constexpr const size_t container_fixed_nelem = N;
+  static constexpr size_t size() { return N; }
   static void validate() {}
   static void check_size(uint32_t i) {
     if (i != N)
@@ -430,10 +431,10 @@ template<uint32_t N = XDR_MAX_LEN> struct opaque_array
 };
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static constexpr const bool is_bytes = true;
-  static constexpr const std::size_t has_fixed_size = true;
-  static constexpr const std::size_t fixed_size =
-    (std::size_t(N) + std::size_t(3)) & ~std::size_t(3);
-  static std::size_t serial_size(const opaque_array<N> &) { return fixed_size; }
+  static constexpr const size_t has_fixed_size = true;
+  static constexpr const size_t fixed_size =
+    (size_t(N) + size_t(3)) & ~size_t(3);
+  static size_t serial_size(const opaque_array<N> &) { return fixed_size; }
   static constexpr const bool variable_nelem = false;
 };
 
@@ -455,7 +456,7 @@ struct xvector : std::vector<T> {
       throw xdr_overflow("xvector overflow");
   }
 
-  void append(const T *elems, std::size_t n) {
+  void append(const T *elems, size_t n) {
     check_size(this->size() + n);
     this->insert(this->end(), elems, elems + n);
   }
@@ -492,8 +493,8 @@ template<uint32_t N>
 struct xdr_traits<xvector<std::uint8_t, N>> : xdr_traits_base {
   static constexpr const bool is_bytes = true;
   static constexpr const bool has_fixed_size = false;;
-  static constexpr std::size_t serial_size(const opaque_vec<N> &a) {
-    return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
+  static constexpr size_t serial_size(const opaque_vec<N> &a) {
+    return (size_t(a.size()) + size_t(7)) & ~size_t(3);
   }
   static constexpr const bool variable_nelem = true;
 };
@@ -555,8 +556,8 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
 template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
   static constexpr const bool is_bytes = true;
   static constexpr const bool has_fixed_size = false;;
-  static constexpr std::size_t serial_size(const xstring<N> &a) {
-    return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
+  static constexpr size_t serial_size(const xstring<N> &a) {
+    return (size_t(a.size()) + size_t(7)) & ~size_t(3);
   }
   static constexpr const bool variable_nelem = true;
 };
@@ -666,10 +667,10 @@ namespace detail {
 template<typename FP, typename ...Fields>
   struct xdr_struct_base_fs : xdr_struct_base<Fields...> {
   static constexpr const bool has_fixed_size = true;
-  static constexpr const std::size_t fixed_size =
+  static constexpr const size_t fixed_size =
     (xdr_traits<typename FP::field_type>::fixed_size
      + xdr_struct_base<Fields...>::fixed_size);
-  static constexpr std::size_t serial_size(const typename FP::class_type &) {
+  static constexpr size_t serial_size(const typename FP::class_type &) {
     return fixed_size;
   }
 };
@@ -677,7 +678,7 @@ template<typename FP, typename ...Fields>
 template<typename FP, typename ...Fields>
   struct xdr_struct_base_vs : xdr_struct_base<Fields...> {
   static constexpr const bool has_fixed_size = false;
-  static std::size_t serial_size(const typename FP::class_type &t) {
+  static size_t serial_size(const typename FP::class_type &t) {
     return (xdr_size(t.*(FP::value()))
 	    + xdr_struct_base<Fields...>::serial_size(t));
   }
@@ -690,8 +691,8 @@ template<> struct xdr_struct_base<> : xdr_traits_base {
   static constexpr const bool is_class = true;
   static constexpr const bool is_struct = true;
   static constexpr const bool has_fixed_size = true;
-  static constexpr const std::size_t fixed_size = 0;
-  template<typename T> static constexpr std::size_t serial_size(const T&) {
+  static constexpr const size_t fixed_size = 0;
+  template<typename T> static constexpr size_t serial_size(const T&) {
     return fixed_size;
   }
 };
@@ -709,26 +710,41 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 // XDR-compatible representations of std::tuple and xdr_void
 ////////////////////////////////////////////////////////////////
 
+//! Placehoder type representing void values marshaled as 0 bytes.
+using xdr_void = std::tuple<>;
+
+//! Placeholder type used to contain a parameter pack of tuple
+//! indices, so as to unpack a tuple in function call arguments.
+template<size_t... Is> using indices = std::index_sequence<Is...>;
+
+//! Returns a type representing all indices of a tuple.
+template<typename T> constexpr
+std::make_index_sequence<std::tuple_size<std::remove_reference_t<T>>::value>
+all_indices_of(const T&)
+{
+  return {};
+}
+
 namespace detail {
 
 template<char...Cs> constexpr char bracketed_string[] = {'<', Cs..., '>', '\0'};
 
-template<std::size_t N, char...Cs>
+template<size_t N, char...Cs>
 constexpr const char *
-index_string(std::integral_constant<std::size_t, N>)
+index_string(std::integral_constant<size_t, N> = {})
 {
   if constexpr (N < 10)
     return bracketed_string<N+'0', Cs...>;
   else
-    return index_string<N/10, (N%10)+'0', Cs...>({});
+    return index_string<N/10, (N%10)+'0', Cs...>();
 }
 
 template<typename Tuple, typename F> constexpr void
-for_each_index(const Tuple &, F &&f)
+for_each_index(const Tuple &t, F &&f)
 {
-  [&f]<std::size_t...Is>(std::index_sequence<Is...>) {
-    (f(std::integral_constant<std::size_t, Is>{}), ...);
-  }(std::make_index_sequence<std::tuple_size<Tuple>::value>{});
+  [&f]<size_t...Is>(indices<Is...>) {
+    (f(std::integral_constant<size_t, Is>{}), ...);
+  }(all_indices_of(t));
 }
 
 template<typename...Ts>
@@ -746,7 +762,7 @@ struct xdr_tuple_base_traits<true, Ts...>
   static constexpr bool has_fixed_size = true;
   static constexpr std::uint32_t fixed_size =
     (xdr_traits<Ts>::fixed_size + ... + 0);
-  static constexpr std::size_t serial_size(const type &) {
+  static constexpr size_t serial_size(const type &) {
     return fixed_size;
   }
 };
@@ -759,13 +775,10 @@ struct xdr_tuple_base_traits<false, Ts...>
   static constexpr const bool is_class = true;
   static constexpr const bool is_struct = true;
   static constexpr bool has_fixed_size = false;
-  static std::size_t serial_size(const type &t) {
-    std::size_t r;
-    for_each_index(t, [&t, &r](auto i) {
-      const auto &e = std::get<i>(t);
-      r += XDR_GET_TRAITS(e)::serial_size(e);
-    });
-    return r;
+  static size_t serial_size(const type &t) {
+    return [&t]<size_t...Is>(indices<Is...>){
+      return (0 + ... + xdr_get_traits<Ts>::serial_size(std::get<Is>(t)));
+    }(all_indices_of(t));
   }
 };
 
@@ -791,18 +804,6 @@ struct xdr_traits<std::tuple<Ts...>>
     });
   }
 };
-
-//! Placeholder type used to contain a parameter pack of tuple
-//! indices, so as to unpack a tuple in function call arguments.
-using std::index_sequence;
-template<std::size_t... Ints> using indices = index_sequence<Ints...>;
-
-//! A type representing all the indices of a particuar tuple.
-template<typename T> using all_indices_of =
-  std::make_index_sequence<std::tuple_size<std::remove_reference_t<T>>::value>;
-
-//! Placehoder type representing void values marshaled as 0 bytes.
-using xdr_void = std::tuple<>;
 
 
 ////////////////////////////////////////////////////////////////
