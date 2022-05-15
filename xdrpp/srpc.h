@@ -31,10 +31,9 @@ class synchronous_client_base {
   static void moveret(pointer<xdr_void> &) {}
   template<typename T> static T &&moveret(T &t) { return std::move(t); }
 
-  //static xdr_void arg_tuple() { return xdr_void{}; }
   template<typename T> const T &arg_tuple(const T &t) { return t; }
   template<typename...T> std::tuple<const T &...> arg_tuple(const T &...t) {
-    return std::make_tuple(std::cref(t)...);
+    return {std::cref(t)...};
   }
 
 public:
@@ -98,14 +97,14 @@ template<typename T> using srpc_client =
 template<typename T, typename Session, typename Interface>
 class srpc_service : public service_base {
   template<typename P, typename A>
-  requires std::same_as<void, typename P::res_type>
+  requires std::is_void_v<typename P::res_type>
   const xdr_void *dispatch1(Session *s, A &a) {
     static xdr_void v;
     dispatch_with_session<P>(server_, s, std::move(a));
     return &v;
   }
   template<typename P, typename A>
-  requires (!std::same_as<void, typename P::res_type>)
+  requires (!std::is_void_v<typename P::res_type>)
   std::unique_ptr<typename P::res_type> dispatch1(Session *s, A &a) {
     return dispatch_with_session<P>(server_, s, std::move(a));
   }
@@ -130,7 +129,7 @@ public:
     wrap_transparent_ptr<typename P::arg_tuple_type> arg;
     if (!decode_arg(g, arg))
       return reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
-    
+
     if (xdr_trace_server) {
       std::string s = "CALL ";
       s += P::proc_name();
