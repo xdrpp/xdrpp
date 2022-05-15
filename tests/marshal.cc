@@ -107,7 +107,7 @@ test_tuple()
   decltype(foo) bar;
   xdr::xdr_from_msg(xdr_to_msg(foo), bar);
   apply_indices(udsb, foo, indices<0,1,2,3>{}, nullptr);
-  apply_indices(udsb, foo, all_indices<4>{}, nullptr);
+  apply_indices(udsb, foo, std::make_index_sequence<4>{}, nullptr);
   assert (foo == bar);
 }
 

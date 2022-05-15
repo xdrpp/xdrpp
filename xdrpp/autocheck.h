@@ -51,10 +51,8 @@ struct generator_t {
   // Handle char and uint8_t (which can legally be the same type for
   // some compilers), allowing variable_nelem cases to handle both
   // containers and bytes (string/opaque).
-  template<typename T> typename
-  std::enable_if<(std::is_same<T, char>::value
-		  || std::is_same<T, std::uint8_t>::value)>::type
-  operator()(T &t) const {
+  template<typename T> requires (sizeof(T) == 1)
+  void operator()(T &t) const {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
     t = detail::to_int8<T>(uint8_t(autocheck::generator<int>{}(0x10000)));
 #else // !XDR_AUTOCHECK_FUZZY_STRINGS
@@ -62,15 +60,14 @@ struct generator_t {
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
   }
 
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::is_numeric>::type
-  operator()(T &t) const {
+  template<xdr_numeric T>
+  void operator()(T &t) const {
     t = autocheck::generator<T>{}(std::numeric_limits<T>::max());
   }
 
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::is_enum>::type
-  operator()(T &t) const {
+  template<xdr_enum T> requires (!std::same_as<T, bool>)
+  void operator()(T &t) const {
+    static_assert(!std::same_as<T, bool>);
     if(autocheck::generator<bool>{}(size_)) {
       typename xdr_traits<T>::case_type v;
       (*this)(v);
@@ -84,13 +81,11 @@ struct generator_t {
     }
   }
 
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::is_struct>::type
-  operator()(T &t) const { xdr_traits<T>::load(*this, t); }
+  template<xdr_struct T>
+  void operator()(T &t) const { xdr_traits<T>::load(*this, t); }
 
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::is_union>::type
-  operator()(T &t) const {
+  template<xdr_union T>
+  void operator()(T &t) const {
     const auto &vals = T::_xdr_case_values();
     typename xdr_traits<T>::discriminant_type v;
     if (!T::_xdr_has_default_case) {
@@ -121,9 +116,8 @@ struct generator_t {
     return levels_ ? generator_t(size_, levels_-1) : generator_t(size_>>1, 0);
   }
 
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::variable_nelem == true>::type
-  operator()(T &t) const {
+  template<typename T> requires xdr_traits<T>::variable_nelem
+  void operator()(T &t) const {
     uint32_t n = autocheck::generator<uint32_t>{}(size_);
     if (n > t.max_size())
       n %= t.max_size() + 1;
@@ -133,9 +127,8 @@ struct generator_t {
       archive(g, e);
   }
 
-  template<typename T> typename
-  std::enable_if<xdr_traits<T>::variable_nelem == false>::type
-  operator()(T &t) const {
+  template<typename T> requires (!xdr_traits<T>::variable_nelem)
+  void operator()(T &t) const {
     generator_t g(elt_gen());
     for (auto &e : t)
       archive(g, e);
@@ -156,9 +149,8 @@ struct generator_t {
 
 namespace autocheck {
 
-template<typename T> class generator<
-  T, typename std::enable_if<xdr::xdr_traits<T>::valid
-			     && !xdr::xdr_traits<T>::is_numeric>::type> {
+template<xdr::xdr_type T> requires (!xdr::xdr_numeric<T>)
+class generator<T> {
 public:
   using result_type = T;
   result_type operator()(size_t size) const {

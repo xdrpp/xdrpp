@@ -97,18 +97,16 @@ template<typename T> using srpc_client =
 
 template<typename T, typename Session, typename Interface>
 class srpc_service : public service_base {
-  template<typename P, typename A> typename
-  std::enable_if<std::is_same<void, typename P::res_type>::value,
-		 const xdr_void *>::type
-  dispatch1(Session *s, A &a) {
+  template<typename P, typename A>
+  requires std::same_as<void, typename P::res_type>
+  const xdr_void *dispatch1(Session *s, A &a) {
     static xdr_void v;
     dispatch_with_session<P>(server_, s, std::move(a));
     return &v;
   }
-  template<typename P, typename A> typename
-  std::enable_if<!std::is_same<void, typename P::res_type>::value,
-		 std::unique_ptr<typename P::res_type>>::type
-  dispatch1(Session *s, A &a) {
+  template<typename P, typename A>
+  requires (!std::same_as<void, typename P::res_type>)
+  std::unique_ptr<typename P::res_type> dispatch1(Session *s, A &a) {
     return dispatch_with_session<P>(server_, s, std::move(a));
   }
 
