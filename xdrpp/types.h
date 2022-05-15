@@ -709,123 +709,97 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 // XDR-compatible representations of std::tuple and xdr_void
 ////////////////////////////////////////////////////////////////
 
-//! Placeholder type used to contain a parameter pack of tuple
-//! indices, so as to unpack a tuple in function call arguments.
-template<std::size_t...N> struct indices {
-  constexpr indices() {}
-};
-
 namespace detail {
 
-template<typename T, typename U> struct cat_indices;
-template<std::size_t...M, std::size_t...N>
-struct cat_indices<indices<M...>, indices<N...>> {
-  using type = indices<M..., N...>;
-};
+template<char...Cs> constexpr char bracketed_string[] = {'<', Cs..., '>', '\0'};
 
-template<std::size_t N> struct all_indices_helper {
-  using type = typename cat_indices<typename all_indices_helper<N-1>::type,
-				    indices<N-1>>::type;
-};
-template<> struct all_indices_helper<0> {
-  using type = indices<>;
-};
-
-//! A type representing all tuple indices from 0 to N-1.
-template<std::size_t N> using all_indices =
-  typename all_indices_helper<N>::type;
-
-template<std::size_t N, typename T> struct tuple_base;
-
-template<std::size_t N, typename T> struct tuple_base_fs;
-template<std::size_t N, typename...T>
-struct tuple_base_fs<N, std::tuple<T...>> : xdr_traits_base {
-  using type = std::tuple<T...>;
-  using elem_type = typename std::remove_cv<
-    typename std::remove_reference<
-      typename std::tuple_element<N-1, type>::type>::type>::type;
-  using next = tuple_base<N-1, type>;
-  static constexpr const bool xdr_defined = false;
-  static constexpr const bool is_class = true;
-  static constexpr const bool is_struct = true;
-  static constexpr const bool has_fixed_size = true;
-  static constexpr const std::uint32_t fixed_size =
-    xdr_traits<elem_type>::fixed_size + next::fixed_size;
-  static constexpr std::size_t serial_size(const type &) { return fixed_size; }
-};
-
-template<std::size_t N, typename T> struct tuple_base_vs;
-template<std::size_t N, typename...T>
-struct tuple_base_vs<N, std::tuple<T...>> : xdr_traits_base {
-  using type = std::tuple<T...>;
-  using elem_type = typename std::remove_cv<
-    typename std::remove_reference<
-      typename std::tuple_element<N-1, type>::type>::type>::type;
-  using next = tuple_base<N-1, type>;
-  static constexpr const bool xdr_defined = false;
-  static constexpr const bool is_class = true;
-  static constexpr const bool is_struct = true;
-  static constexpr const bool has_fixed_size = false;
-  static std::size_t serial_size(const type &t) {
-    return (xdr_traits<elem_type>::serial_size(std::get<N-1>(t))
-	    + next::serial_size(t));
-  }
-};
-
-template<typename...T> struct tuple_base<0, std::tuple<T...>>
-  : xdr_traits_base {
-  using type = std::tuple<T...>;
-  static constexpr const bool xdr_defined = false;
-  static constexpr const bool is_class = true;
-  static constexpr const bool is_struct = true;
-  static constexpr const bool has_fixed_size = true;
-  static constexpr const std::size_t fixed_size = 0;
-  static constexpr std::size_t serial_size(const type &) { return fixed_size; }
-
-  template<typename Archive> static void save(Archive &, const type &) {}
-  template<typename Archive> static void load(Archive &, type &) {}
-};
-
-template<std::size_t N, typename...T> struct tuple_suffix_fixed_size {
-  using type = std::tuple<T...>;
-  using elem_type = typename std::tuple_element<N-1, type>::type;
-  static constexpr const bool value =
-    xdr_traits<elem_type>::has_fixed_size
-    && tuple_suffix_fixed_size<N-1, T...>::value;
-};
-template<typename...T> struct tuple_suffix_fixed_size<0, T...> {
-  static constexpr const bool value = true;
-};
-
-template<std::size_t N, typename...T> struct tuple_base<N, std::tuple<T...>>
-  : std::conditional<tuple_suffix_fixed_size<N, T...>::value,
-		     tuple_base_fs<N, std::tuple<T...>>,
-		     tuple_base_vs<N, std::tuple<T...>>>::type {
-  using type = std::tuple<T...>;
-
-  static const char *name() {
-    static std::string n = "<" + std::to_string(N-1) + ">";
-    return n.c_str();
-  }
-
-  template<typename Archive> static void save(Archive &ar, const type &obj) {
-    tuple_base<N-1, type>::save(ar, obj);
-    archive(ar, std::get<N-1>(obj), name());
-  }
-  template<typename Archive> static void load(Archive &ar, type &obj) {
-    tuple_base<N-1, type>::load(ar, obj);
-    archive(ar, std::get<N-1>(obj), name());
-  }
-};
+template<std::size_t N, char...Cs>
+constexpr const char *
+index_string(std::integral_constant<std::size_t, N>)
+{
+  if constexpr (N < 10)
+    return bracketed_string<N+'0', Cs...>;
+  else
+    return index_string<N/10, (N%10)+'0', Cs...>({});
 }
+
+template<typename Tuple, typename F> constexpr void
+for_each_index(const Tuple &, F &&f)
+{
+  [&f]<std::size_t...Is>(std::index_sequence<Is...>) {
+    (f(std::integral_constant<std::size_t, Is>{}), ...);
+  }(std::make_index_sequence<std::tuple_size<Tuple>::value>{});
+}
+
+template<typename...Ts>
+constexpr bool all_fixed_size = (xdr_traits<Ts>::has_fixed_size && ...);
+
+template<bool Fixed, typename...Ts> struct xdr_tuple_base_traits;
+
+template<typename...Ts>
+struct xdr_tuple_base_traits<true, Ts...>
+  : xdr_traits_base {
+  using type = std::tuple<Ts...>;
+  static constexpr const bool xdr_defined = false;
+  static constexpr const bool is_class = true;
+  static constexpr const bool is_struct = true;
+  static constexpr bool has_fixed_size = true;
+  static constexpr std::uint32_t fixed_size =
+    (xdr_traits<Ts>::fixed_size + ... + 0);
+  static constexpr std::size_t serial_size(const type &) {
+    return fixed_size;
+  }
+};
+
+template<typename...Ts>
+struct xdr_tuple_base_traits<false, Ts...>
+  : xdr_traits_base {
+  using type = std::tuple<Ts...>;
+  static constexpr const bool xdr_defined = false;
+  static constexpr const bool is_class = true;
+  static constexpr const bool is_struct = true;
+  static constexpr bool has_fixed_size = false;
+  static std::size_t serial_size(const type &t) {
+    std::size_t r;
+    for_each_index(t, [&t, &r](auto i) {
+      const auto &e = std::get<i>(t);
+      r += XDR_GET_TRAITS(e)::serial_size(e);
+    });
+    return r;
+  }
+};
+
+} // namespace detail
+
+template<typename...Ts>
+struct xdr_traits<std::tuple<Ts...>>
+  : public detail::xdr_tuple_base_traits<detail::all_fixed_size<Ts...>, Ts...>
+{
+  using type = std::tuple<Ts...>;
+  static constexpr bool xdr_defined = false;
+  static constexpr bool is_class = true;
+  static constexpr bool is_struct = true;
+
+  template<typename Archive> static void save(Archive &a, const type &t) {
+    detail::for_each_index(t, [&a,&t](auto i) {
+      archive(a, std::get<i>(t), detail::index_string(i));
+    });
+  }
+  template<typename Archive> static void load(Archive &a, type &t) {
+    detail::for_each_index(t, [&a,&t](auto i) {
+      archive(a, std::get<i>(t), detail::index_string(i));
+    });
+  }
+};
+
+//! Placeholder type used to contain a parameter pack of tuple
+//! indices, so as to unpack a tuple in function call arguments.
+using std::index_sequence;
+template<std::size_t... Ints> using indices = index_sequence<Ints...>;
 
 //! A type representing all the indices of a particuar tuple.
 template<typename T> using all_indices_of =
-  typename detail::all_indices<std::tuple_size<
-                              typename std::remove_reference<T>::type>::value>;
-
-template<typename...T> struct xdr_traits<std::tuple<T...>>
-  : detail::tuple_base<sizeof...(T), std::tuple<T...>> {};
+  std::make_index_sequence<std::tuple_size<std::remove_reference_t<T>>::value>;
 
 //! Placehoder type representing void values marshaled as 0 bytes.
 using xdr_void = std::tuple<>;
