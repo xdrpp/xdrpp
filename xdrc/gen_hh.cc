@@ -764,41 +764,11 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     os << nl << "using res_type = " << p.res << ";"
        << nl << "using res_wire_type = "
        << (p.res == "void" ? "xdr::xdr_void" : p.res) << ";"
-       << nl
-       << nl << "template<typename C, typename...A> static auto"
-       << nl << "dispatch(C &&c, A &&...a) ->"
-       << nl << "decltype(" << call << ") {"
+       << endl
+       << nl << "template<typename C, typename...A>"
+       << nl << "static decltype(auto) dispatch(C &&c, A &&...a) {"
        << nl << "  return " << call << ";"
        << nl << "}";
-
-#if 0
-    os << endl;
-    os << nl << "template<typename C, typename T, std::size_t...I> static auto"
-       << nl << "dispatch_tuple(C &&c, T &&t,"
-       << nl << "               xdr::indices<I...> = xdr::all_indices_of<T>{})"
-       << " ->";
-    call = "c." + p.id + "(std::get<I>(std::forward<T>(t))...)";
-    os << nl << "decltype(" << call << ") {"
-       << nl << "  return " << call << ";"
-       << nl << "}"
-       << nl;
-
-    call = "c." + p.id + "(";
-    for (size_t i = 0; i < p.arg.size(); ++i) {
-      if (i)
-	call += ",\n" + string(12 + p.id.size() + nl.level_, ' ');
-      call += "std::get<" + std::to_string(i) + ">(std::forward<T>(t))";
-    }
-    if (p.arg.size())
-      call += ",\n" + string(12 + p.id.size() + nl.level_, ' ');
-    call += "std::forward<A>(a)...)";
-    os << nl << "template<typename C, typename T, typename...A>"
-       << " static auto"
-       << nl << "unpack_dispatch(C &&c, T &&t, A &&...a) ->"
-       << nl << "decltype(" << call << ") {"
-       << nl << "  return " << call << ";"
-       << nl << "}";
-#endif
 
     os << nl.close << "};";
   }
@@ -811,12 +781,6 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
     os << nl << "case " << p.val << ":"
        << nl << "  t.template dispatch<" << p.id
        << "_t";
-#if 0
-    for (size_t i = 0; i < p.arg.size(); ++i)
-      os << ", " << i;
-    for (size_t i = 0; i < p.arg.size(); ++i)
-      os << ',' << nl << "                      " << p.arg[i];
-#endif
     os << ">(std::forward<A>(a)...);"
        << nl << "  return true;";
   }
@@ -839,9 +803,8 @@ gen_vers(std::ostream &os, const rpc_program &u, const rpc_vers &v)
       invoke += a;
     }
     invoke += ">(\n             std::forward<_XDR_ARGS>(_xdr_args)...)";
-    os << endl << nl << "template<typename..._XDR_ARGS> auto"
-       << nl << p.id << "(_XDR_ARGS &&..._xdr_args) ->"
-       << nl << "decltype(" << invoke << ") {"
+    os << endl << nl << "template<typename..._XDR_ARGS>"
+       << nl << "decltype(auto) " << p.id << "(_XDR_ARGS &&..._xdr_args) {"
        << nl << "  return " << invoke << ";"
        << nl << "}";
   }

@@ -134,7 +134,7 @@ inline decltype(auto)
 dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest)
 {
   return [&]<size_t...Is>(indices<Is...>) -> decltype(auto) {
-    if constexpr (std::same_as<S, void>)
+    if constexpr (std::is_void_v<S>)
       return P::dispatch(std::forward<C>(c),
 			 std::get<Is>(std::forward<T>(t))...,
 			 std::forward<Rest>(rest)...);
