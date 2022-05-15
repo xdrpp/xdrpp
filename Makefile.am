@@ -89,8 +89,8 @@ tests/stacklim.$(OBJEXT): tests/xdrtest.hh
 tests/types.$(OBJEXT): tests/xdrtest.hh
 tests/validate.$(OBJEXT): tests/xdrtest.hh
 
-tests/xdrtest.hh: tests/xdrtest.x $(XDRC)
-	$(XDRC) -hh -uptr -o $@ $<
+#tests/xdrtest.hh: tests/xdrtest.x $(XDRC)
+#	$(XDRC) -hh -uptr -o $@ $<
 
 SUFFIXES = .x .hh
 .x.hh:

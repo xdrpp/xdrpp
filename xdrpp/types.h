@@ -742,8 +742,8 @@ index_string(std::integral_constant<size_t, N> = {})
 template<typename Tuple, typename F> constexpr void
 for_each_index(const Tuple &t, F &&f)
 {
-  [&f]<size_t...Is>(indices<Is...>) {
-    (f(std::integral_constant<size_t, Is>{}), ...);
+  [&f]<size_t...Is>(indices<Is...>) constexpr {
+    (void(f(std::integral_constant<size_t, Is>{})), ...);
   }(all_indices_of(t));
 }
 
