@@ -75,22 +75,10 @@ udsb(uint32_t, double, xdr::xstring<> &, bool, std::nullptr_t)
 {
 }
 
-void
-dump_indices(xdr::indices<>)
-{
-  cout << endl;
-}
-template<std::size_t N, std::size_t...Ns> void
-dump_indices(xdr::indices<N, Ns...>)
-{
-  cout << " " << N;
-  dump_indices(xdr::indices<Ns...>{});
-}
-
 //! Apply a function [object] to elements at a set of tuple indices,
 //! with arbitrary arguments appended.
 template<typename F, typename T, std::size_t...I, typename...A> inline auto
-apply_indices(F &&f, T &&t, xdr::indices<I...>, A &&...a) ->
+apply_indices(F &&f, T &&t, std::index_sequence<I...>, A &&...a) ->
   decltype(f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...))
 {
   return f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...);
@@ -106,7 +94,7 @@ test_tuple()
 			xdr::xstring<>("Hello world"), true);
   decltype(foo) bar;
   xdr::xdr_from_msg(xdr_to_msg(foo), bar);
-  apply_indices(udsb, foo, indices<0,1,2,3>{}, nullptr);
+  apply_indices(udsb, foo, std::index_sequence<0,1,2,3>{}, nullptr);
   apply_indices(udsb, foo, std::make_index_sequence<4>{}, nullptr);
   assert (foo == bar);
 }

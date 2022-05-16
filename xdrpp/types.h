@@ -713,16 +713,58 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 //! Placehoder type representing void values marshaled as 0 bytes.
 using xdr_void = std::tuple<>;
 
-//! Placeholder type used to contain a parameter pack of tuple
-//! indices, so as to unpack a tuple in function call arguments.
-template<size_t... Is> using indices = std::index_sequence<Is...>;
+namespace detail {
 
-//! Returns a type representing all indices of a tuple.
-template<typename T> constexpr
-std::make_index_sequence<std::tuple_size<std::remove_reference_t<T>>::value>
+template<typename> struct num_template_arguments;
+template<template<typename...> typename Tmpl, typename...Args>
+struct num_template_arguments<Tmpl<Args...>>
+  : std::integral_constant<size_t, sizeof...(Args)> {};
+
+template<typename T> constexpr auto
 all_indices_of(const T&)
 {
-  return {};
+  if constexpr(requires { std::tuple_size_v<T>; })
+    return std::make_index_sequence<std::tuple_size_v<T>>{};
+  else
+    return std::make_index_sequence<num_template_arguments<T>::value>{};
+}
+
+} // namespace detail
+
+//! Invoke a function object \c f with a series of \c
+//! std::integral_constant<size_t> values from 0 to one less than the
+//! number of type arguments to the template type that is the first
+//! argument.  For example, if the first argument is a \c std::tuple,
+//! then the arguments can be taken as a parameter pack \c auto...i
+//! and passed to \c std::get, as in the following example:
+//!
+//! \code
+//!    std::tuple t("hello", " world ", 5, "\n");
+//!    with_indices(t, [&t](auto...i) {
+//!      (std::cout << ... << std::get<i>(t));
+//!    });
+//! \endcode
+template<typename F, typename T> constexpr decltype(auto)
+with_indices(const T &t, F &&f)
+{
+  return [&f]<std::size_t...Is>(std::index_sequence<Is...>) constexpr
+    -> decltype(auto) {
+    return std::forward<F>(f)(std::integral_constant<std::size_t, Is>{}...);
+  }(detail::all_indices_of(t));
+}
+
+//! Invoce function object \c f once per index of a tuple or similar
+//! type, passing it a \c std::integral_constant representing each
+//! index.  Example:
+//!
+//! \code
+//!    std::tuple t("hello", " world ", 5, "\n");
+//!    for_each_index(t, [&t](auto i) { std::cout << std::get<i>(t); });
+//! \endcode
+constexpr void
+for_each_index(const auto &t, auto &&f)
+{
+  with_indices(t, [&f](auto...i) constexpr { (void(f(i)), ...); });
 }
 
 namespace detail {
@@ -737,14 +779,6 @@ index_string(std::integral_constant<size_t, N> = {})
     return bracketed_string<N+'0', Cs...>;
   else
     return index_string<N/10, (N%10)+'0', Cs...>();
-}
-
-template<typename Tuple, typename F> constexpr void
-for_each_index(const Tuple &t, F &&f)
-{
-  [&f]<size_t...Is>(indices<Is...>) constexpr {
-    (void(f(std::integral_constant<size_t, Is>{})), ...);
-  }(all_indices_of(t));
 }
 
 template<typename...Ts>
@@ -776,9 +810,9 @@ struct xdr_tuple_base_traits<false, Ts...>
   static constexpr const bool is_struct = true;
   static constexpr bool has_fixed_size = false;
   static size_t serial_size(const type &t) {
-    return [&t]<size_t...Is>(indices<Is...>){
-      return (0 + ... + xdr_get_traits<Ts>::serial_size(std::get<Is>(t)));
-    }(all_indices_of(t));
+    return with_indices(t, [&t](auto...i) {
+      return (0 + ... + xdr_traits<Ts>::serial_size(std::get<i>(t)));
+    });
   }
 };
 
@@ -794,12 +828,12 @@ struct xdr_traits<std::tuple<Ts...>>
   static constexpr bool is_struct = true;
 
   template<typename Archive> static void save(Archive &a, const type &t) {
-    detail::for_each_index(t, [&a,&t](auto i) {
+    for_each_index(t, [&a,&t](auto i) {
       archive(a, std::get<i>(t), detail::index_string(i));
     });
   }
   template<typename Archive> static void load(Archive &a, type &t) {
-    detail::for_each_index(t, [&a,&t](auto i) {
+    for_each_index(t, [&a,&t](auto i) {
       archive(a, std::get<i>(t), detail::index_string(i));
     });
   }

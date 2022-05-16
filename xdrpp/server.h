@@ -133,16 +133,16 @@ template<typename P, typename C, typename S, typename T, typename...Rest>
 inline decltype(auto)
 dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest)
 {
-  return [&]<size_t...Is>(indices<Is...>) -> decltype(auto) {
+  return with_indices(t, [&c, s, &t, &rest...](auto...i) -> decltype(auto) {
     if constexpr (std::is_void_v<S>)
       return P::dispatch(std::forward<C>(c),
-			 std::get<Is>(std::forward<T>(t))...,
+			 std::get<i>(std::forward<T>(t))...,
 			 std::forward<Rest>(rest)...);
     else
       return P::dispatch(std::forward<C>(c), s,
-			 std::get<Is>(std::forward<T>(t))...,
+			 std::get<i>(std::forward<T>(t))...,
 			 std::forward<Rest>(rest)...);
-  }(all_indices_of(t));
+  });
 }
 
 
