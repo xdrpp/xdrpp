@@ -206,14 +206,16 @@ gen(std::ostream &os, const rpc_struct &s)
       os << "," << nl << "    ";
     os << d.id << "(std::forward<_" << d.id << "_T>(_" << d.id << "))";
   }
-  os << " {}"
-     << nl << "friend bool operator==(const " << s.id
+  os << " {}";
+#if 0
+  os << nl << "friend bool operator==(const " << s.id
      << "&, const " << s.id << "&)"
      << " = default;"
      << nl << "friend auto operator<=>(const " << s.id
      << "&, const " << s.id << "&)"
      << " = default;"
-     << nl.close << "}";
+#endif
+    os << nl.close << "}";
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
@@ -240,8 +242,8 @@ gen(std::ostream &os, const rpc_struct &s)
   for (auto &d : s.decls)
     top_material
       << "," << endl << "                    "
-      // << "xdr::xdr_struct_field(&" << cur_scope() << "::" << d.id
-      << "{&" << cur_scope() << "::" << d.id
+      //<< "xdr::xdr_struct_field(&" << cur_scope() << "::" << d.id
+      << "xdr_struct_field{&" << cur_scope() << "::" << d.id
       << ", \"" << d.id << "\"}";
 #endif
 
@@ -719,9 +721,11 @@ gen(std::ostream &os, const rpc_union &u)
     << "    xdr::validate(obj);" << endl
     << "  }" << endl;
   top_material
-    << "};" << endl;
+    << "};";
 
-  os << nl << "bool operator==(const " << u.id << "&b) const {"
+#if 0
+  os << endl
+     << nl << "bool operator==(const " << u.id << "&b) const {"
      << nl.open << "if (!(this->" << u.tagid << "_ == b." << u.tagid << "_))"
      << nl << "  return false;"
      << nl << "bool r = true;"
@@ -741,6 +745,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl.close << "});"
      << nl << "return r;"
      << nl.close << "}";
+#endif
 
   os << nl.close << "}";
 
