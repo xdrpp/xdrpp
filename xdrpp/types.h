@@ -474,6 +474,7 @@ struct xvector : std::vector<T> {
     vector::resize(n);
   }
 
+  /*
   friend bool operator==(const xvector &a, const xvector &b) noexcept {
     return static_cast<const vector &>(a) == static_cast<const vector &>(b);
   }
@@ -481,6 +482,7 @@ struct xvector : std::vector<T> {
   operator<=>(const xvector &a, const xvector &b) noexcept {
     return static_cast<const vector &>(a) <=> static_cast<const vector &>(b);
   }
+  */
 };
 
 namespace detail {
@@ -669,29 +671,6 @@ struct xdr_fixed_size_base_helper<false, Members...> : xdr_traits_base {
 template<typename...Members> using xdr_fixed_size_base =
   xdr_fixed_size_base_helper<all_have_fixed_size<Members...>, Members...>;
 
-//! Holds a pointer to field of type \c F in structure \c S, as well
-//! as a field name.  Can also be used applied to a value of type \S
-//! to return a reference to the field.
-template<typename S, typename F, size_t NameLen>
-struct xdr_struct_field {
-  using struct_type = S;
-  using field_type = F;
-  using value_type = F S::*;
-
-  value_type value;
-  char name[NameLen];
-
-  constexpr xdr_struct_field(value_type p, const char(&n)[NameLen] = "")
-    : value(p) { std::copy(n, n+NameLen, name); }
-  constexpr field_type &operator()(struct_type &t) const { return t.*value; }
-  constexpr const field_type &operator()(const struct_type &t) const {
-    return t.*value;
-  }
-  constexpr field_type &&operator()(struct_type &&t) const {
-    return std::move(t.*value);
-  }
-};
-
 template<typename S, auto...Fields>
 requires (std::same_as<S, typename decltype(Fields)::struct_type> && ...)
 struct xdr_struct_and_tuple_base
@@ -723,7 +702,32 @@ struct xdr_struct_and_tuple_base
 
 } // namespace detail
 
-template<typename S, detail::xdr_struct_field...Fields>
+//! Holds a pointer to field of type \c F in structure \c S, as well
+//! as a field name.  Can also be used applied to a value of type \S
+//! to return a reference to the field.
+template<typename S, typename F, size_t NameLen>
+struct xdr_struct_field {
+  using struct_type = S;
+  using field_type = F;
+  using value_type = F S::*;
+
+  value_type value;
+  char name[NameLen];
+
+  constexpr xdr_struct_field(value_type p, const char(&n)[NameLen] = "")
+    : value(p) { std::copy(n, n+NameLen, name); }
+  constexpr ~xdr_struct_field() {}
+  constexpr field_type &operator()(struct_type &t) const { return t.*value; }
+  constexpr const field_type &operator()(const struct_type &t) const {
+    return t.*value;
+  }
+  constexpr field_type &&operator()(struct_type &&t) const {
+    return std::move(t.*value);
+  }
+};
+
+
+template<typename S, xdr_struct_field...Fields>
 using xdr_struct_base = detail::xdr_struct_and_tuple_base<S, Fields...>;
 
 
@@ -758,6 +762,7 @@ struct xdr_tuple_field {
   const char *name;
 
   constexpr xdr_tuple_field() : name (index_string(index)) {}
+  constexpr ~xdr_tuple_field() {}
 
   constexpr field_type &operator()(struct_type &t) const {
     return std::get<I>(t);
@@ -776,12 +781,13 @@ struct num_template_arguments<Tmpl<Args...>>
   : std::integral_constant<size_t, sizeof...(Args)> {};
 
 template<typename T> constexpr auto
-all_indices_of(const T&)
+all_indices_of()
 {
-  if constexpr(requires { std::tuple_size_v<T>; })
-    return std::make_index_sequence<std::tuple_size_v<T>>{};
+  using baseT = std::remove_cvref_t<T>;
+  if constexpr(requires { std::tuple_size<baseT>::value; })
+    return std::make_index_sequence<std::tuple_size<baseT>::value>{};
   else
-    return std::make_index_sequence<num_template_arguments<T>::value>{};
+    return std::make_index_sequence<num_template_arguments<baseT>::value>{};
 }
 
 } // namespace detail
@@ -799,13 +805,18 @@ all_indices_of(const T&)
 //!      (std::cout << ... << std::get<i>(t));
 //!    });
 //! \endcode
-template<typename F, typename T> constexpr decltype(auto)
-with_indices(const T &t, F &&f)
+template<typename T, typename F> constexpr decltype(auto)
+with_indices(F &&f)
 {
   return [&f]<std::size_t...Is>(std::index_sequence<Is...>) constexpr
     -> decltype(auto) {
     return std::forward<F>(f)(std::integral_constant<std::size_t, Is>{}...);
-  }(detail::all_indices_of(t));
+  }(detail::all_indices_of<T>());
+}
+template<typename T, typename F> constexpr decltype(auto)
+with_indices(const T &t, F &&f)
+{
+  return with_indices<T>(std::forward<F>(f));
 }
 
 //! Invoce function object \c f once per index of a tuple or similar
@@ -901,14 +912,11 @@ inline std::partial_ordering
 operator<=>(const T &a, const T &b)
 {
   using cmpfn_t = std::function<std::partial_ordering(const T&, const T&)>;
-  constexpr auto make_cmpfn = [](auto i) -> cmpfn_t {
-    return [i](const T &a, const T &b) {
-      constexpr auto field = std::get<i>(xdr_traits<T>::fields);
-      return field(a) <=> (b);
+  static const auto cmpfns = std::apply([](auto...f){
+    return std::array<cmpfn_t, sizeof...(f)>{
+      [f](const T &a, const T &b){ return f(a) <=> f(b); }...
     };
-  };
-  constexpr std::vector<cmpfn_t> cmpfns =
-    with_indices(a, [](auto...i) constexpr { return { make_cmpfn(i)... }; });
+  }, xdr_traits<T>::fields);
 
   for (auto fn : cmpfns)
     if (auto r = fn(a, b); r != 0)
@@ -932,7 +940,7 @@ template<xdr_union T>
 inline std::partial_ordering
 operator<=>(const T &a, const T &b)
 {
-  if (auto c = a._xdr_discriminant() != b._xdr_discriminant(); c != 0)
+  if (auto c = a._xdr_discriminant() <=> b._xdr_discriminant(); c != 0)
     return c;
   auto r = std::partial_ordering::equivalent;
   a._xdr_with_body_accessor([&](auto body){
