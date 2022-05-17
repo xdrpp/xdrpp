@@ -217,7 +217,9 @@ gen(std::ostream &os, const rpc_struct &s)
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
-    << ">" << endl
+    << ">" << endl;
+#if 0
+  top_material
     << "  : xdr_struct_base<";
   first = true;
   for (auto &d : s.decls) {
@@ -232,7 +234,18 @@ gen(std::ostream &os, const rpc_struct &s)
       << "                              &"
       << cur_scope() << "::" << d.id << ">";
   }
+#else
+  top_material
+    << "  : xdr_struct_base<" << cur_scope();
+  for (auto &d : s.decls)
+    top_material
+      << "," << endl << "                    "
+      // << "xdr::xdr_struct_field(&" << cur_scope() << "::" << d.id
+      << "{&" << cur_scope() << "::" << d.id
+      << ", \"" << d.id << "\"}";
+#endif
 
+#if 0
   top_material
     << "> {" << endl;
   int round = 0;
@@ -252,6 +265,10 @@ gen(std::ostream &os, const rpc_struct &s)
     top_material << "  }" << endl;
   }
   top_material << "};" << endl;
+#else
+  top_material
+    << "> {};" << endl;
+#endif
 
   scope.pop_back();
 }
