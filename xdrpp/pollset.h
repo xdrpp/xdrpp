@@ -26,7 +26,7 @@ protected:
   static constexpr int kWriteFlag = 0x2;
   static constexpr int kOnceFlag = 0x4;
   //! Number of registered file decriptor and timeout callbacks.
-  std::size_t num_cbs() const;
+  size_t num_cbs() const;
 
 public:
   enum op_t {

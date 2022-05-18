@@ -32,12 +32,12 @@ using msg_ptr = std::unique_ptr<message_t, detail::free_message_t>;
 //! structure at the beginning of the buffer.
 class message_t {
   std::unique_ptr<sockaddr> peer_;
-  std::size_t size_;
+  size_t size_;
   alignas(std::uint32_t) char buf_[4];
-  message_t(std::size_t size) : size_(size) {}
+  message_t(size_t size) : size_(size) {}
 public:
-  std::size_t size() const { return size_; }
-  void shrink(std::size_t newsize);
+  size_t size() const { return size_; }
+  void shrink(size_t newsize);
   char *data() { return buf_ + 4; }
   const char *data() const { return buf_ + 4; }
   uint32_t word(std::ptrdiff_t i) const {
@@ -52,7 +52,7 @@ public:
   char *raw_data() { return buf_; }
   const char *raw_data() const { return buf_; }
   //! Size of 4-byte length plus data.
-  std::size_t raw_size() const { return size_ + 4; }
+  size_t raw_size() const { return size_ + 4; }
 
   //! Return socket address of peer (or nullptr if none).
   const sockaddr *peer() const { return peer_.get(); }
@@ -60,7 +60,7 @@ public:
   std::unique_ptr<sockaddr> &&unique_peer() { return std::move(peer_); }
 
   //! Allocate a new buffer.
-  static msg_ptr alloc(std::size_t size);
+  static msg_ptr alloc(size_t size);
 };
 
 }

@@ -33,8 +33,8 @@ template<> struct xdr_traits<rpc_success_hdr> : xdr_traits_base {
   static constexpr bool is_class = true;
   static constexpr bool is_struct = true;
   static constexpr bool has_fixed_size = true;
-  static constexpr std::size_t fixed_size = 24;
-  static constexpr std::size_t serial_size(const rpc_success_hdr &) {
+  static constexpr size_t fixed_size = 24;
+  static constexpr size_t serial_size(const rpc_success_hdr &) {
     return fixed_size;
   }
   template<typename Archive> static void save(Archive &a,
@@ -74,7 +74,7 @@ struct transparent_ptr_base : xdr_traits_base {
 };
 template<typename T> struct transparent_ptr_base<T, true> : xdr_traits_base {
   static constexpr bool has_fixed_size = true;
-  static constexpr std::size_t fixed_size = xdr_traits<T>::fixed_size;
+  static constexpr size_t fixed_size = xdr_traits<T>::fixed_size;
 };
 }
 
@@ -136,11 +136,11 @@ dispatch_with_session(C &&c, S *s, T &&t, Rest &&...rest)
   return with_indices(t, [&c, s, &t, &rest...](auto...i) -> decltype(auto) {
     if constexpr (std::is_void_v<S>)
       return P::dispatch(std::forward<C>(c),
-			 std::get<i>(std::forward<T>(t))...,
+			 get<i>(std::forward<T>(t))...,
 			 std::forward<Rest>(rest)...);
     else
       return P::dispatch(std::forward<C>(c), s,
-			 std::get<i>(std::forward<T>(t))...,
+			 get<i>(std::forward<T>(t))...,
 			 std::forward<Rest>(rest)...);
   });
 }
