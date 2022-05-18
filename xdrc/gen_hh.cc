@@ -293,7 +293,7 @@ gen(std::ostream &os, const rpc_enum &e)
   string qt = myscope + e.id;
   top_material
     << "template<> struct xdr_traits<" << qt << ">" << endl
-    << "  : xdr_integral_base<" << qt << ", std::uint32_t> {" << endl
+    << "  : xdr_numeric_base<" << qt << ", std::uint32_t> {" << endl
     << "  using case_type = std::int32_t;" << endl
     << "  static constexpr const bool is_enum = true;" << endl
     << "  static constexpr const bool is_numeric = false;" << endl

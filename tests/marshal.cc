@@ -136,7 +136,7 @@ main()
 
   {
     unique_ptr<double> dp1 (new double (3.141592653));
-    uint64_t x = xdr::xdr_reinterpret<uint64_t>(*dp1);
+    uint64_t x = std::bit_cast<uint64_t>(*dp1);
     assert (!memcmp(&x, dp1.get(), sizeof(x)));
     x = xdr::xdr_traits<double>::to_uint(*dp1);
     assert (memcmp(&x, dp1.get(), sizeof(x)) == 0);

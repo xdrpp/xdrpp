@@ -6,6 +6,7 @@
 #define _XDRC_TYPES_H_HEADER_INCLUDED_ 1
 
 #include <array>
+#include <bit>
 #include <cassert>
 #include <compare>
 #include <concepts>
@@ -31,9 +32,8 @@ using std::size_t;
 inline uint32_t
 size32(size_t s)
 {
-  uint32_t r {uint32_t(s)};
-  assert(s == r);
-  return r;
+  assert(std::cmp_less_equal(s, 0xffffffff));
+  return s;
 }
 
 
@@ -90,26 +90,6 @@ struct xdr_wrong_union : std::logic_error {
 // Templates for XDR traversal and processing
 ////////////////////////////////////////////////////////////////
 
-namespace detail {
-// If a class actually contains a method called validate, then the
-// validate function might as well call it.  So we use the standard
-// gross overload resolution hack that argument 0 will match a
-// pointer-to-method argument before it will match a ... argument.
-template<typename T> inline void
-call_validate(const T &t, decltype(&T::validate))
-{
-  t.validate();
-}
-
-// Conventional wisdom holds that varargs don't inline, but, perhpas
-// because we don't actually call va_start, both gcc and clang seem
-// able to make this compile to nothing (with optimization).
-template<typename T> inline void
-call_validate(const T &, ...)
-{
-}
-}
-
 //! If this function template is specialized, it provides a means of
 //! placing extra restrictions on XDR data structures (beyond those of
 //! the XDR specification).  When a specialized \c xdr::validate
@@ -121,7 +101,8 @@ call_validate(const T &, ...)
 template<typename T> inline void
 validate(const T &t)
 {
-  detail::call_validate(t, 0);
+  if constexpr (requires { t.validate(); })
+    t.validate();
 }
 
 //! This is used to apply an archive to a field.  It is designed as a
@@ -207,8 +188,8 @@ template<typename T> struct has_fixed_size_t
 }
 
 //! Return the marshaled size of an XDR data type.
-template<typename T> size_t
-xdr_size(const T&t)
+template<xdr_type T> inline size_t
+xdr_size(const T &t)
 {
   return xdr_traits<T>::serial_size(t);
 }
@@ -233,81 +214,52 @@ struct xdr_traits_base {
 // Support for numeric types and bool
 ////////////////////////////////////////////////////////////////
 
-//! A reinterpret-cast like function that works between types such as
-//! floating-point and integers of the same size.  Used in marshaling,
-//! so that a single set of byteswap routines can be used on all
-//! numeric types including floating point.  Uses a union to avoid
-//! strict pointer aliasing problems.
-template<typename To, typename From> inline To
-xdr_reinterpret(From f)
-{
-  static_assert(sizeof(To) == sizeof(From),
-		"xdr_reinterpret with different sized objects");
-  union {
-    From from;
-    To to;
-  };
-  from = f;
-  return to;
-}
-
-//! Default traits for use as supertype of specializations of \c
-//! xdr_traits for integral types.
-template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
+template<typename T, typename U> struct xdr_numeric_base : xdr_traits_base {
   using type = T;
   using uint_type = U;
+  static_assert(sizeof(type) == sizeof(uint_type),
+		"xdr_numeric_base size mismatch");
   static constexpr const bool xdr_defined = false;
   static constexpr const bool is_numeric = true;
   static constexpr const bool has_fixed_size = true;
   static constexpr const size_t fixed_size = sizeof(uint_type);
   static constexpr size_t serial_size(type) { return fixed_size; }
-  static uint_type to_uint(type t) { return t; }
-  static type from_uint(uint_type u) {
-    return xdr_reinterpret<type>(u);
-  }
+  static uint_type to_uint(type t) { return std::bit_cast<uint_type>(t); }
+  static type from_uint(uint_type u) { return std::bit_cast<type>(u); }
 };
+
 template<> struct xdr_traits<std::int32_t>
-  : xdr_integral_base<std::int32_t, std::uint32_t> {
+  : xdr_numeric_base<std::int32_t, std::uint32_t> {
   // Numeric type for case labels in switch statements
   using case_type = std::int32_t;
 };
 template<> struct xdr_traits<std::uint32_t>
-  : xdr_integral_base<std::uint32_t, std::uint32_t> {
+  : xdr_numeric_base<std::uint32_t, std::uint32_t> {
   using case_type = std::uint32_t;
 };
 template<> struct xdr_traits<std::int64_t>
-  : xdr_integral_base<std::int64_t, std::uint64_t> {};
+  : xdr_numeric_base<std::int64_t, std::uint64_t> {};
 template<> struct xdr_traits<std::uint64_t>
-  : xdr_integral_base<std::uint64_t, std::uint64_t> {};
+  : xdr_numeric_base<std::uint64_t, std::uint64_t> {};
 
-//! Default traits for use as supertype of specializations of \c
-//! xdr_traits for floating-point types.
-template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
-  using type = T;
-  using uint_type = U;
-  static_assert(sizeof(type) == sizeof(uint_type),
-		"Cannot reinterpret between float and int of different size");
-  static constexpr const bool xdr_defined = false;
-  static constexpr const bool is_numeric = true;
-  static constexpr const bool has_fixed_size = true;
-  static constexpr const size_t fixed_size = sizeof(uint_type);
-  static constexpr size_t serial_size(type) { return fixed_size; }
-
-  static uint_type to_uint(type t) { return xdr_reinterpret<uint_type>(t); }
-  static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
-};
 template<> struct xdr_traits<float>
-  : xdr_fp_base<float, std::uint32_t> {};
+  : xdr_numeric_base<float, std::uint32_t> {};
 template<> struct xdr_traits<double>
-  : xdr_fp_base<double, std::uint64_t> {};
+  : xdr_numeric_base<double, std::uint64_t> {};
 
 
-template<> struct xdr_traits<bool>
-  : xdr_integral_base<bool, std::uint32_t> {
+template<> struct xdr_traits<bool> : xdr_traits_base {
+  using type = bool;
+  using uint_type = uint32_t;
   using case_type = std::int32_t;
   static constexpr const bool xdr_defined = false;
   static constexpr const bool is_enum = true;
   static constexpr const bool is_numeric = false;
+  static constexpr const bool has_fixed_size = true;
+  static constexpr const size_t fixed_size = sizeof(uint_type);
+  static constexpr size_t serial_size(type) { return fixed_size; }
+  static uint_type to_uint(bool b) { return b; }
+  // Note - could throw for u > 1, but would be slower
   static type from_uint(uint_type u) { return u != 0; }
   static constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
