@@ -757,7 +757,7 @@ struct xdr_tuple_field {
   using struct_type = T;
   using field_type = std::tuple_element_t<I, T>;
 
-  static constexpr std::size_t index_value = I;
+  static constexpr size_t index_value = I;
   [[no_unique_address]] std::integral_constant<size_t, index_value> index;
   const char *name;
 
@@ -765,13 +765,13 @@ struct xdr_tuple_field {
   constexpr ~xdr_tuple_field() {}
 
   constexpr field_type &operator()(struct_type &t) const {
-    return std::get<I>(t);
+    return get<I>(t);
   }
   constexpr const field_type &operator()(const struct_type &t) const {
-    return std::get<I>(t);
+    return get<I>(t);
   }
   constexpr field_type &&operator()(struct_type &&t) const {
-    return std::move(std::get<I>(t));
+    return std::move(get<I>(t));
   }
 };
 
@@ -797,20 +797,20 @@ all_indices_of()
 //! number of type arguments to the template type that is the first
 //! argument.  For example, if the first argument is a \c std::tuple,
 //! then the arguments can be taken as a parameter pack \c auto...i
-//! and passed to \c std::get, as in the following example:
+//! and passed to \c get, as in the following example:
 //!
 //! \code
 //!    std::tuple t("hello", " world ", 5, "\n");
 //!    with_indices(t, [&t](auto...i) {
-//!      (std::cout << ... << std::get<i>(t));
+//!      (std::cout << ... << get<i>(t));
 //!    });
 //! \endcode
 template<typename T, typename F> constexpr decltype(auto)
 with_indices(F &&f)
 {
-  return [&f]<std::size_t...Is>(std::index_sequence<Is...>) constexpr
+  return [&f]<size_t...Is>(std::index_sequence<Is...>) constexpr
     -> decltype(auto) {
-    return std::forward<F>(f)(std::integral_constant<std::size_t, Is>{}...);
+    return std::forward<F>(f)(std::integral_constant<size_t, Is>{}...);
   }(detail::all_indices_of<T>());
 }
 template<typename T, typename F> constexpr decltype(auto)
@@ -825,7 +825,7 @@ with_indices(const T &t, F &&f)
 //!
 //! \code
 //!    std::tuple t("hello", " world ", 5, "\n");
-//!    for_each_index(t, [&t](auto i) { std::cout << std::get<i>(t); });
+//!    for_each_index(t, [&t](auto i) { std::cout << get<i>(t); });
 //! \endcode
 constexpr void
 for_each_index(const auto &t, auto &&f)
@@ -902,7 +902,7 @@ template<xdr_struct T> requires xdr_traits<T>::xdr_defined
 inline bool
 operator==(const T &a, const T &b) noexcept
 {
-  return std::apply([&](auto...fields) {
+  return apply([&](auto...fields) {
     return ((fields(a) == fields(b)) && ...);
   }, xdr_traits<T>::fields);
 }
@@ -912,7 +912,7 @@ inline std::partial_ordering
 operator<=>(const T &a, const T &b)
 {
   using cmpfn_t = std::function<std::partial_ordering(const T&, const T&)>;
-  static const auto cmpfns = std::apply([](auto...f){
+  static const auto cmpfns = apply([](auto...f){
     return std::array<cmpfn_t, sizeof...(f)>{
       [f](const T &a, const T &b){ return f(a) <=> f(b); }...
     };

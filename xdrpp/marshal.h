@@ -36,10 +36,10 @@ struct marshal_base {
   //! Copy \c len bytes to buf, then consume 0-3 bytes of padding to
   //! make the total number of bytes consumed divisible by 4.  \throws
   //! xdr_should_be_zero if the padding bytes are not zero.
-  static void get_bytes(const std::uint32_t *&pr, void *buf, std::size_t len);
+  static void get_bytes(const std::uint32_t *&pr, void *buf, size_t len);
   //! Copy \c len bytes from buf, then add 0-3 zero-valued padding
   //! bytes to make the overall marshaled length a multiple of 4.
-  static void put_bytes(std::uint32_t *&pr, const void *buf, std::size_t len);
+  static void put_bytes(std::uint32_t *&pr, const void *buf, size_t len);
 };
 
 //! Numeric marshaling mixin that does not byteswap any numeric values
@@ -101,9 +101,9 @@ template<typename Base> struct xdr_generic_put : Base {
   xdr_generic_put(msg_ptr &m)
     : xdr_generic_put(m->data(), m->end()) {}
 
-  void check(std::size_t n) const {
-    if (n > std::size_t(reinterpret_cast<char *>(e_)
-			- reinterpret_cast<char *>(p_)))
+  void check(size_t n) const {
+    if (n > size_t(reinterpret_cast<char *>(e_)
+		   - reinterpret_cast<char *>(p_)))
       throw xdr_overflow("insufficient buffer space in xdr_generic_put");
   }
 
@@ -168,9 +168,9 @@ template<typename Base> struct xdr_generic_get : Base {
   xdr_generic_get(const msg_ptr &m)
     : xdr_generic_get(m->data(), m->end()) {}
 
-  void check(std::size_t n) const {
-    if (n > std::size_t(reinterpret_cast<const char *>(e_)
-			- reinterpret_cast<const char *>(p_)))
+  void check(size_t n) const {
+    if (n > size_t(reinterpret_cast<const char *>(e_)
+		   - reinterpret_cast<const char *>(p_)))
       throw xdr_overflow("insufficient buffer space in xdr_generic_get");
   }
 
@@ -225,14 +225,14 @@ using xdr_put = xdr_generic_put<marshal_swap>;
 using xdr_get = xdr_generic_get<marshal_swap>;
 #endif // !XDRPP_WORDS_BIGENDIAN
 
-inline std::size_t
+inline size_t
 xdr_argpack_size()
 {
   return 0;
 }
 //! Returns the sum of bytes required to marshal all of the argument
 //! values.
-template<typename T, typename...Args> inline std::size_t
+template<typename T, typename...Args> inline size_t
 xdr_argpack_size(const T &t, const Args &...a)
 {
   return xdr_size(t) + xdr_argpack_size(a...);

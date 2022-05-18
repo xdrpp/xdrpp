@@ -72,8 +72,8 @@ const char *sock_errmsg();
 //! Throw a \c system_error exception for the last socket error.
 [[noreturn]] void throw_sockerr(const char *);
 
-ssize_t read(sock_t s, void *buf, std::size_t count);
-ssize_t write(sock_t s, const void *buf, std::size_t count);
+ssize_t read(sock_t s, void *buf, size_t count);
+ssize_t write(sock_t s, const void *buf, size_t count);
 ssize_t readv(sock_t s, const struct iovec *iov, int iovcnt);
 ssize_t writev(sock_t s, const struct iovec *iov, int iovcnt);
 void close(sock_t s);
