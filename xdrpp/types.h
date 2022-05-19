@@ -425,16 +425,6 @@ struct xvector : std::vector<T> {
     check_size(n);
     vector::resize(n);
   }
-
-  /*
-  friend bool operator==(const xvector &a, const xvector &b) noexcept {
-    return static_cast<const vector &>(a) == static_cast<const vector &>(b);
-  }
-  friend std::partial_ordering
-  operator<=>(const xvector &a, const xvector &b) noexcept {
-    return static_cast<const vector &>(a) <=> static_cast<const vector &>(b);
-  }
-  */
 };
 
 namespace detail {
@@ -806,29 +796,20 @@ operator==(const T &a, const T &b) noexcept
 
 namespace detail {
 
-template<typename F> constexpr std::partial_ordering
-field_comparator(const typename F::struct_type &a,
-		 const typename F::struct_type &b)
-{
-  return F{}(a) <=> F{}(b);
-}
+template<typename...T> using field_cmp_res_t =
+  std::common_comparison_category_t<std::compare_three_way_result_t<T>...>;
 
 } // namespace detail
 
 template<xdr_struct T> requires xdr_traits<T>::xdr_defined
-constexpr std::partial_ordering
-operator<=>(const T &a, const T &b)
+constexpr auto
+operator<=>(const T &a, const T &b) noexcept
 {
-  if constexpr (xdr_traits<T>::num_fields) {
-    constexpr auto cmpfns = []<typename...F>(std::tuple<F...>) {
-      return std::array{ detail::field_comparator<F>... };
-    }(xdr_traits<T>::fields);
-
-    for (auto fn : cmpfns)
-      if (auto r = fn(a, b); r != 0)
-	return r;
-  }
-  return std::strong_ordering::equal;
+  return std::apply([&a,&b]<typename...F>(F...f){
+      detail::field_cmp_res_t<typename F::field_type...> r =
+	std::strong_ordering::equal;
+      return void(((r = f(a) <=> f(b), r == 0) && ...)), r;
+    }, xdr_traits<T>::fields);
 }
 
 template<xdr_union T> inline bool
@@ -845,7 +826,7 @@ operator==(const T &a, const T &b) noexcept
 
 template<xdr_union T>
 inline std::partial_ordering
-operator<=>(const T &a, const T &b)
+operator<=>(const T &a, const T &b) noexcept
 {
   if (auto c = a._xdr_discriminant() <=> b._xdr_discriminant(); c != 0)
     return c;
