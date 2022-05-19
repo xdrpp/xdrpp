@@ -734,9 +734,8 @@ struct tuple_access {
 template<typename...Ts>
 struct xdr_traits<std::tuple<Ts...>>
 // This is kind of gross, but we want to create a supertype that is
-// detail::xdr_struct_and_tuple_base with a sequence of
-// xdr_tuple_field template parameters from 0 to the size of the
-// tuple.
+// detail::xdr_struct_base with a sequence of tuple_access template
+// parameters from 0 to the size of the tuple.
   : decltype([]<size_t...Is>(std::index_sequence<Is...>){
       return xdr_struct_base<
 	std::tuple<Ts...>,
