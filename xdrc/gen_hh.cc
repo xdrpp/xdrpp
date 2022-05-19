@@ -220,32 +220,13 @@ gen(std::ostream &os, const rpc_struct &s)
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
     << ">" << endl;
-#if 0
-  top_material
-    << "  : xdr_struct_base<";
-  first = true;
-  for (auto &d : s.decls) {
-    if (first)
-      first = false;
-    else
-      top_material << "," << endl << "                    ";
-    top_material
-      << "field_ptr<" << cur_scope() << "," << endl
-      << "                              decltype("
-      << cur_scope() << "::" << d.id << ")," << endl
-      << "                              &"
-      << cur_scope() << "::" << d.id << ">";
-  }
-#else
   top_material
     << "  : xdr_struct_base<" << cur_scope();
   for (auto &d : s.decls)
     top_material
       << "," << endl << "                    "
-      //<< "xdr::xdr_struct_field(&" << cur_scope() << "::" << d.id
-      << "xdr_struct_field{&" << cur_scope() << "::" << d.id
-      << ", \"" << d.id << "\"}";
-#endif
+      << "field_access<&" << cur_scope() << "::" << d.id
+      << ", \"" << d.id << "\">";
 
 #if 0
   top_material
