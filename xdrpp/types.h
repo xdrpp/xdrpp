@@ -727,63 +727,7 @@ struct xdr_tuple_field {
   }
 };
 
-template<typename> struct num_template_arguments;
-template<template<typename...> typename Tmpl, typename...Args>
-struct num_template_arguments<Tmpl<Args...>>
-  : std::integral_constant<size_t, sizeof...(Args)> {};
-
-template<typename T> constexpr auto
-all_indices_of()
-{
-  using baseT = std::remove_cvref_t<T>;
-  if constexpr(requires { std::tuple_size<baseT>::value; })
-    return std::make_index_sequence<std::tuple_size<baseT>::value>{};
-  else
-    return std::make_index_sequence<num_template_arguments<baseT>::value>{};
-}
-
 } // namespace detail
-
-//! Invoke a function object \c f with a series of \c
-//! std::integral_constant<size_t> values from 0 to one less than the
-//! number of type arguments to the template type that is the first
-//! argument.  For example, if the first argument is a \c std::tuple,
-//! then the arguments can be taken as a parameter pack \c auto...i
-//! and passed to \c get, as in the following example:
-//!
-//! \code
-//!    std::tuple t("hello", " world ", 5, "\n");
-//!    with_indices(t, [&t](auto...i) {
-//!      (std::cout << ... << get<i>(t));
-//!    });
-//! \endcode
-template<typename T, typename F> constexpr decltype(auto)
-with_indices(F &&f)
-{
-  return [&f]<size_t...Is>(std::index_sequence<Is...>) constexpr
-    -> decltype(auto) {
-    return std::forward<F>(f)(std::integral_constant<size_t, Is>{}...);
-  }(detail::all_indices_of<T>());
-}
-template<typename T, typename F> constexpr decltype(auto)
-with_indices(const T &t, F &&f)
-{
-  return with_indices<T>(std::forward<F>(f));
-}
-
-//! Invoce function object \c f once per index of a tuple or similar
-//! type, passing it a \c std::integral_constant representing each
-//! index.  Example:
-//!
-//! \code
-//!    std::tuple t("hello", " world ", 5, "\n");
-//!    for_each_index(t, [&t](auto i) { std::cout << get<i>(t); });
-//! \endcode
-constexpr void
-for_each_index(const auto &t, auto &&f)
-{
-  with_indices(t, [&f](auto...i) constexpr { (void(f(i)), ...); });
-}
 
 template<typename...Ts>
 struct xdr_traits<std::tuple<Ts...>>
