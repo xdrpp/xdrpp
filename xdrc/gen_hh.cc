@@ -362,6 +362,63 @@ union_function(std::ostream &os, const rpc_union &u, string tagcmp,
 }
 
 void
+print_cases(std::ostream &os, const rpc_ufield &f)
+{
+  if (f.hasdefault)
+    os << nl.outdent << "default:";
+  else
+    for (const string &c : f.cases)
+      os << nl.outdent << "case " << map_tag(c) << ":";
+}
+
+void
+gen_union_helper(std::ostream &os, const rpc_union &u)
+{
+  os << nl << "struct _xdr_union_traits {"
+     << nl.open << "using union_type = " << u.id << ";"
+     << nl << "using tag_type = " << map_type(u.tagtype) << ";"
+     << nl << "static constexpr bool has_default_case = "
+     << (u.hasdefault ? "true" : "false") << ";" << endl;
+
+  os << nl << "static constexpr int fieldno(tag_type _which) {"
+     << nl.open << "switch (_which) {";
+  ++nl;
+  for (const auto &f : u.fields) {
+    print_cases(os, f);
+    os << nl << "return " << f.fieldno << ";";
+  }
+  os << nl.close << "}";
+  if (!u.hasdefault)
+    os << nl << "return -1;";
+  os << nl.close << "}" << endl;
+
+  os << nl << "template<typename _F>"
+     << nl << "static constexpr void with_access(tag_type _which, _F &&_f) {"
+     << nl.open << "switch (_which) {";
+  ++nl;
+  for (const auto &f : u.fields) {
+    print_cases(os, f);
+    if (f.decl.type == "void")
+      os << nl << "_f(void_access{});";
+    else
+      if (opt_uptr)
+	os << nl << "_f(xdr::uptr_access<"
+	   << decl_type(f.decl) << ", &" << u.id << "::u_, \""
+	   << f.decl.id << "\">{});";
+      else
+	os << nl << "_f(field_access(&" << cur_scope() << "::" << f.decl.id
+	   << ", \"" << f.decl.id << "\"));";
+  }
+  os << nl.close << "}";
+  if (!u.hasdefault)
+    os << nl << "throw xdr::xdr_bad_discriminant(\"bad value of "
+       << u.tagid << " in " << u.id << "\");";
+  os << nl.close << "}";
+
+  os << nl.close << "};";
+}
+
+void
 gen(std::ostream &os, const rpc_union &u)
 {
   if(scope.empty())
@@ -371,6 +428,7 @@ gen(std::ostream &os, const rpc_union &u)
 
   os << "struct " << u.id << " {";
   ++nl;
+
   bool blank{false};
   for (const rpc_ufield &f : u.fields)
     if (gen_embedded(os, f.decl))
@@ -432,6 +490,8 @@ gen(std::ostream &os, const rpc_union &u)
     " \"union discriminant must be 4 bytes\");" << endl;
 #endif
 
+  gen_union_helper(os, u);
+
   // _xdr_has_default_case
   os << nl << "static constexpr const bool _xdr_has_default_case = "
      << (u.hasdefault ? "true;" : "false;");
@@ -486,8 +546,9 @@ gen(std::ostream &os, const rpc_union &u)
     if (f.decl.type == "void")
       os << nl << "  return true;";
     else if (opt_uptr)
-      os << nl << "  _f(xdr::uptr_accessor<"
-	 << decl_type(f.decl) << ", &" << u.id << "::u_>);"
+      os << nl << "  _f(xdr::uptr_access<"
+	 << decl_type(f.decl) << ", &" << u.id << "::u_, \""
+	 << f.decl.id << "\">{});"
 	 << nl << "  return true;";
     else
       os << nl << "  _f(xdr::field_accessor<&" << u.id << "::" << f.decl.id
