@@ -634,6 +634,7 @@ struct field_access<F, Name> {
   using field_type = T;
   using value_type = decltype(F);
   static constexpr value_type value = F;
+  static constexpr bool has_field = true;
 
   static constexpr const char *name() { return Name.value; }
 
@@ -741,6 +742,15 @@ struct xdr_traits<std::tuple<Ts...>>
 // XDR union types
 ////////////////////////////////////////////////////////////////
 
+// Placeholder dummy type for void union branches (where non-void
+// branches take a field_access).
+struct void_access {
+  using field_type = void;
+  static constexpr bool has_field = false;
+  static inline xdr_void dummy_void{};
+  constexpr xdr_void &operator()(void_access) const { return dummy_void; }
+};
+
 namespace detail {
 
 template<typename S, auto Field>
@@ -760,25 +770,31 @@ struct field_accessor_t<Field> {
 };
 template<auto Field> constexpr field_accessor_t<Field> field_accessor{};
 
-template<typename F, auto Field> struct uptr_accessor_t;
-template<typename F, typename S, void *S::*Field>
-struct uptr_accessor_t<F, Field> {
-  constexpr uptr_accessor_t() {}
+template<typename T, auto Field, detail::fixed_string Name>
+struct uptr_access;
+template<typename T, typename S, void *S::*Field, detail::fixed_string Name>
+struct uptr_access<T, Field, Name> {
+  using struct_type = S;
+  using field_type = T;
+  using value_type = decltype(Field);
+  static constexpr value_type value = Field;
 
-  using field_type = F;
+  static constexpr const char *name() { return Name.value; }
 
-  const F &operator()(const S &s) const {
-    return *static_cast<const F*>(s.*Field);
+  decltype(auto) operator()(const struct_type &s) const {
+    return *static_cast<const field_type*>(s.*Field);
   }
-  F &operator()(S &s) const {
-    return *static_cast<F*>(s.*Field);
+  decltype(auto) operator()(struct_type &s) const {
+    return *static_cast<field_type*>(s.*Field);
   }
-  F &&operator()(S &&s) const {
-    return std::move(*static_cast<F*>(s.*Field));
+  decltype(auto) operator()(struct_type &&s) const {
+    return std::move(*static_cast<field_type*>(s.*Field));
   }
 };
+/*
 template<typename F, auto Field>
 constexpr uptr_accessor_t<F, Field> uptr_accessor{};
+*/
 
 
 ////////////////////////////////////////////////////////////////
