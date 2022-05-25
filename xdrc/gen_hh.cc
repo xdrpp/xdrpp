@@ -35,14 +35,6 @@ map_tag(const string &s)
   return s;
 }
 
-string
-map_case(const string &s)
-{
-  if (s.empty())
-    return "default:";
-  return "case " + map_tag(s) + ":";
-}
-
 namespace {
 
 indenter nl;
@@ -486,8 +478,11 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << "_xdr_with_body_accessor(_F &&_f) const {"
      << nl.open << pswitch(u, u.tagid + "_");
   for (const rpc_ufield &f : u.fields) {
-    for (string c : f.cases)
-      os << nl << map_case(c);
+    if (f.hasdefault)
+      os << nl << "default:";
+    else
+      for (const string &c : f.cases)
+	os << nl << "case " << map_tag(c) << ":";
     if (f.decl.type == "void")
       os << nl << "  return true;";
     else if (opt_uptr)

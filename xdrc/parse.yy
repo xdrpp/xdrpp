@@ -54,8 +54,8 @@ compare_val(const T &a, const T &b)
 %type <num> number
 %type <decl_list> struct_body declaration_list
 %type <const_list> enum_body enum_tag_list
-%type <ufield> union_case_list union_case_spec
-%type <ubody> union_case_spec_list union_body
+%type <ufield> union_case_list union_case_spec union_default
+%type <ubody> union_case_spec_list union_body union_spec_list
 %type <str_list> void_or_arg_list arg_list
 
 %%
@@ -155,7 +155,7 @@ def_struct: T_STRUCT newid struct_body ';'
 	;
 
 union_case: T_CASE value ':' { $$ = $2; }
-	| T_DEFAULT ':' { $$ = ""; }
+/*	| T_DEFAULT ':' { $$ = ""; } */
 	;
 
 union_case_list: union_case
@@ -219,8 +219,31 @@ union_case_spec_list: union_case_spec
 	    $$->hasdefault = true;
 	  $$->fields.push_back(std::move(*$2));
 	}
+	;
 
-union_body: T_SWITCH '(' type T_ID ')' '{' union_case_spec_list '}'
+union_default: T_DEFAULT ':' union_decl
+	{
+	  $$.select();
+	  $$->cases.clear();
+	  $$->decl = $3;
+	  $$->hasdefault = true;
+	}
+	;
+
+union_spec_list:
+	union_case_spec_list
+	{
+	    $$ = std::move($1);
+	}
+	|	union_case_spec_list union_default
+	{
+	    $$ = std::move($1);
+	    $$->hasdefault = true;
+	    $$->fields.push_back(std::move(*$2));
+	}
+	;
+
+union_body: T_SWITCH '(' type T_ID ')' '{' union_spec_list '}'
 	{
 	  $$ = std::move($7);
 	  $$->tagtype = $3;
