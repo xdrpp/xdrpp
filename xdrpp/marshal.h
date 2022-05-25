@@ -215,15 +215,12 @@ template<typename Base> struct xdr_generic_get : Base {
   }
 };
 
-#if XDRPP_WORDS_BIGENDIAN
-using xdr_put = xdr_generic_put<marshal_noswap>;
-using xdr_get = xdr_generic_get<marshal_noswap>;
-#else // !XDRPP_WORDS_BIGENDIAN
-//! Archive for marshaling in RFC4506 big-endian order.
-using xdr_put = xdr_generic_put<marshal_swap>;
-//! Archive for unmarshaling in RFC4506 big-endian order.
-using xdr_get = xdr_generic_get<marshal_swap>;
-#endif // !XDRPP_WORDS_BIGENDIAN
+// Marshal to network byte order (big endian)
+using marshal_network =
+  std::conditional_t<is_big_endian, marshal_noswap, marshal_swap>;
+
+using xdr_put = xdr_generic_put<marshal_network>;
+using xdr_get = xdr_generic_get<marshal_network>;
 
 inline size_t
 xdr_argpack_size()
