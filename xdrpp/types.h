@@ -135,25 +135,25 @@ archive(Archive &ar, T &&t, const char *name = nullptr)
 //! Metadata for all marshalable XDR types.
 template<typename T> struct xdr_traits {
   //! \c T is a valid XDR type that can be serialized.
-  static constexpr const bool valid = false;
+  static constexpr bool valid = false;
   //! \c T is defined by xdrpp/xdrc (as opposed to native or std types).
-  static constexpr const bool xdr_defined = false;
+  static constexpr bool xdr_defined = false;
   //! \c T is an \c xstring, \c opaque_array, or \c opaque_vec.
-  static constexpr const bool is_bytes = false;
+  static constexpr bool is_bytes = false;
   //! \c T is an XDR struct.
-  static constexpr const bool is_struct = false;
+  static constexpr bool is_struct = false;
   //! \c T is an XDR union.
-  static constexpr const bool is_union = false;
+  static constexpr bool is_union = false;
   //! \c T is an XDR struct or union.
-  static constexpr const bool is_class = false;
+  static constexpr bool is_class = false;
   //! \c T is an XDR enum or bool (traits have enum_name).
-  static constexpr const bool is_enum = false;
+  static constexpr bool is_enum = false;
   //! \c T is an xdr::pointer, xdr::xarray, or xdr::xvector (with load/save).
-  static constexpr const bool is_container = false;
+  static constexpr bool is_container = false;
   //! \c T is one of [u]int{32,64}_t, float, or double.
-  static constexpr const bool is_numeric = false;
+  static constexpr bool is_numeric = false;
   //! \c T has a fixed size.
-  static constexpr const bool has_fixed_size = false;
+  static constexpr bool has_fixed_size = false;
 };
 
 template<typename T> using xdr_get_traits =
@@ -626,10 +626,10 @@ struct fixed_string {
 
 template<auto F, detail::fixed_string>
 requires std::is_member_object_pointer_v<decltype(F)>
-struct field_access;
+struct field_access_t;
 
 template<typename S, typename T, T S::*F, detail::fixed_string Name>
-struct field_access<F, Name> {
+struct field_access_t<F, Name> {
   using struct_type = S;
   using field_type = T;
   using value_type = decltype(F);
@@ -743,12 +743,12 @@ struct xdr_traits<std::tuple<Ts...>>
 ////////////////////////////////////////////////////////////////
 
 // Placeholder dummy type for void union branches (where non-void
-// branches take a field_access).
-struct void_access {
+// branches take a field_access_t).
+struct void_access_t {
   using field_type = void;
   static constexpr bool has_field = false;
   static constexpr const char *name() { return ""; }
-  xdr_void &operator()(void_access) const {
+  xdr_void &operator()(void_access_t) const {
     static xdr_void dummy_void{};
     return dummy_void;
   }
@@ -779,6 +779,9 @@ struct tag_access<Get, Set, Name> {
     }
   };
   accessor operator()(struct type &s) const { return {&s}; }
+  void operator()(struct type &s, field_type v, bool validate = true) const {
+    s.*setter(v, validate);
+  }
 };
 
 namespace detail {
@@ -788,6 +791,7 @@ concept accepts_field_ptr = requires(S s) { s.*Field; };
 
 } // namespace detail
 
+#if 0
 template<auto Field> struct field_accessor_t;
 template<typename S, typename F, F S::*Field>
 struct field_accessor_t<Field> {
@@ -799,11 +803,12 @@ struct field_accessor_t<Field> {
   }
 };
 template<auto Field> constexpr field_accessor_t<Field> field_accessor{};
+#endif
 
 template<typename T, auto Field, detail::fixed_string Name>
-struct uptr_access;
+struct uptr_access_t;
 template<typename T, typename S, void *S::*Field, detail::fixed_string Name>
-struct uptr_access<T, Field, Name> {
+struct uptr_access_t<T, Field, Name> {
   using struct_type = S;
   using field_type = T;
   using value_type = decltype(Field);
@@ -821,10 +826,159 @@ struct uptr_access<T, Field, Name> {
     return std::move(*static_cast<field_type*>(s.*Field));
   }
 };
-/*
-template<typename F, auto Field>
-constexpr uptr_accessor_t<F, Field> uptr_accessor{};
-*/
+
+namespace detail {
+
+template<std::size_t I, typename R, typename F>
+inline constexpr R with_integral_constant(F f)
+{
+  return std::forward<F>(f)(std::integral_constant<std::size_t, I>{});
+}
+
+// Invoke an object with a compile-time constant corresponding to the
+// runtime value of n.  Template parameter N is the bound on n, which
+// must reside in the half-open range [0,N).
+template<std::size_t N, typename R = void, typename F>
+inline constexpr R
+with_n(int n, F &&f)
+{
+  constexpr auto invoke_array = []<std::size_t...I>(std::index_sequence<I...>) {
+      return std::array{ detail::with_integral_constant<I, R, F>... };
+    }(std::make_index_sequence<N>{});
+
+  return invoke_array.at(n)(std::forward<F>(f));
+}
+
+// Invoke an object with the nth element of a tuple.
+template<typename T, typename R = void, typename F>
+requires requires(T t) { std::tuple_size_v<T>; get<0>(t); }
+inline constexpr R
+with_nth(T &&t, int n, F &&f)
+{
+  return with_n<std::tuple_size_v<T>>(n, [&](auto i) {
+    return std::forward<F>(f)(get<i>(std::forward<T>(t)));
+  });
+}
+
+} // namespace detail
+
+template<typename U, bool HasDefault, detail::fixed_string Name,
+	 typename TagAccess, auto FieldNo, typename...Arm>
+struct xdr_union_common;
+
+template<typename U, bool HasDefault, detail::fixed_string UnionName,
+	 typename TagType, TagType U::*TagField,
+	 detail::fixed_string TagName, auto FieldNo, typename...Arm>
+struct xdr_union_common<U, HasDefault, UnionName,
+			field_access_t<TagField, TagName>, FieldNo, Arm...>
+  : xdr_traits_base {
+  using union_type = U;
+  friend union_type;
+  using tag_type = TagType;
+
+  static constexpr bool is_union = true;
+  static constexpr bool is_class = true;
+  static constexpr bool has_default_case = HasDefault;
+  static constexpr const char *union_name = UnionName.value;
+  static constexpr int fieldno(tag_type t) { return FieldNo(t); }
+
+  static tag_type get_tag(const union_type &u) {
+    return tag(u);
+  }
+  static bool set_tag(union_type &u, tag_type v) {
+    const int oldno = fieldno(tag(u)), newno = fieldno(v);
+    if (oldno != newno) {
+      if (oldno > 0)
+	detail::with_nth(oldno, arms, [&u](auto f) { destroy_field(f, u); });
+      if (newno > 0)
+	detail::with_nth(newno, arms, [&u](auto f) { construct_field(f, u); });
+    }
+    tag(u) = v;
+    return newno >= 0;
+  }
+
+  template<typename F, typename R = void>
+  static R with_arm(int n, F &&fn) {
+    return with_nth(arms, n, [&](auto f){ return std::forward<F>(fn)(f); });
+  }
+
+  template<typename S>
+  requires std::same_as<std::remove_cvref_t<S>, union_type>
+  static union_type &assign(union_type &u, S &&r) {
+    const int oldno = fieldno(tag(u)), newno = fieldno(tag(r));
+    tag(u) = tag(r);
+    if (newno == oldno) {
+      if (newno > 0)
+	with_nth(arms, newno, [&](auto f) { f(u) = f(std::forward<S>(r)); });
+    }
+    else {
+      if (oldno > 0)
+	detail::with_nth(oldno, arms, [&u](auto f) { destroy_field(f, u); });
+      if (newno > 0)
+	with_nth(arms, newno, [&u, &r](auto f) {
+	  construct_field(f, u, f(std::forward<S>(r)));
+	});
+    }
+  }
+
+#if 0
+  template<typename Archive> static void
+  save(Archive &ar, const union_type &u) {
+    xdr::archive(ar, tag(u), tag.name());
+  }
+#endif
+
+protected:
+  static constexpr field_access_t<TagField, TagName> tag{};
+  static constexpr std::tuple<void_access_t, Arm...> arms{};
+  static constexpr std::size_t num_arms = 1 + sizeof...(Arm);
+
+  static inline void check_tag(tag_type t) {
+    if constexpr (!has_default_case)
+      if (fieldno(t) == -1) [[unlikely]] {
+	static const std::string errmsg =
+	  std::string("bad value of ") + tag.name() + " in " + union_name;
+	throw xdr_bad_discriminant(errmsg);
+      }
+  }
+
+  template<size_t I>
+  static inline void check_field(tag_type t) {
+    if (I != fieldno(t)) [[unlikely]] {
+      std::string errmsg = std::string("accessed field ") +
+	get<I>(arms).name() + " in " + union_name +
+	" when " + tag.name() + " is " + std::to_string(t);
+      throw xdr_wrong_union(errmsg);
+    }
+  }
+
+  static void construct_field(void_access_t, auto&&, auto&&...) {}
+  static void destroy_field(void_access_t, auto&&) {}
+
+  template<typename T, auto Field, detail::fixed_string Name, typename...Args>
+  static void construct_field(uptr_access_t<T, Field, Name> f,
+			      T &s, Args&&...args) {
+    s.*f.value = new T(std::forward<Args>(args)...);
+  }
+  template<typename T, auto Field, detail::fixed_string Name>
+  static void destroy_field(uptr_access_t<T, Field, Name> f, T &s) {
+    delete static_cast<T*>(s.*f.value);
+    s.*f.value = nullptr;
+  }
+
+  template<auto F, detail::fixed_string Name, typename...Args>
+  static void construct_field(field_access_t<F, Name> f,
+			      typename decltype(f)::struct_type &s,
+			      Args&&...args) {
+    // XXX - could be awkward if constructor throws
+    std::construct_at(&f(s), std::forward<Args>(args)...);
+  }
+  template<auto F, detail::fixed_string Name>
+  static void destroy_field(field_access_t<F, Name> f,
+			    typename decltype(F)::struct_type &s) {
+    std::destroy_at(&f(s));
+  }
+};
 
 
 ////////////////////////////////////////////////////////////////

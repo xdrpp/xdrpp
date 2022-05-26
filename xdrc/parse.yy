@@ -255,6 +255,7 @@ union_body: T_SWITCH '(' type T_ID ')' '{' union_spec_list '}'
 	    else
 	      uf.fieldno = ++next;
 	  }
+	  $$->maxfield = next+1;
 	}
 	;
 
