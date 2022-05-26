@@ -217,7 +217,7 @@ gen(std::ostream &os, const rpc_struct &s)
   for (auto &d : s.decls)
     top_material
       << "," << endl << "                    "
-      << "field_access<&" << cur_scope() << "::" << d.id
+      << "xdr::field_access<&" << cur_scope() << "::" << d.id
       << ", \"" << d.id << "\">";
 
 #if 0
@@ -399,15 +399,15 @@ gen_union_helper(std::ostream &os, const rpc_union &u)
   for (const auto &f : u.fields) {
     print_cases(os, f);
     if (f.decl.type == "void")
-      os << nl << "_f(void_access{});";
+      os << nl << "_f(xdr::void_access{});";
     else
       if (opt_uptr)
 	os << nl << "_f(xdr::uptr_access<"
 	   << decl_type(f.decl) << ", &" << u.id << "::u_, \""
 	   << f.decl.id << "\">{});";
       else
-	os << nl << "_f(field_access(&" << cur_scope() << "::" << f.decl.id
-	   << ", \"" << f.decl.id << "\"));";
+	os << nl << "_f(xdr::field_access<&" << cur_scope() << "::" << f.decl.id
+	   << "_, \"" << f.decl.id << "\">{});";
   }
   os << nl.close << "}";
   if (!u.hasdefault)
@@ -551,8 +551,8 @@ gen(std::ostream &os, const rpc_union &u)
 	 << f.decl.id << "\">{});"
 	 << nl << "  return true;";
     else
-      os << nl << "  _f(xdr::field_accessor<&" << u.id << "::" << f.decl.id
-	 << "_>);"
+      os << nl << "  _f(xdr::field_access<&" << u.id << "::" << f.decl.id
+	 << "_, \"" << f.decl.id << "\">{});"
 	 << nl << "  return true;";
   }
   os << nl << "}";
