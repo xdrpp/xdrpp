@@ -251,7 +251,7 @@ template<> struct xdr_traits<double>
 template<> struct xdr_traits<bool> : xdr_traits_base {
   using type = bool;
   using uint_type = uint32_t;
-  using case_type = std::int32_t;
+  using case_type = std::int32_t; // So compilers don't warn about switch(bool)
   static constexpr const bool xdr_defined = false;
   static constexpr const bool is_enum = true;
   static constexpr const bool is_numeric = false;
@@ -747,8 +747,38 @@ struct xdr_traits<std::tuple<Ts...>>
 struct void_access {
   using field_type = void;
   static constexpr bool has_field = false;
-  static inline xdr_void dummy_void{};
-  constexpr xdr_void &operator()(void_access) const { return dummy_void; }
+  static constexpr const char *name() { return ""; }
+  xdr_void &operator()(void_access) const {
+    static xdr_void dummy_void{};
+    return dummy_void;
+  }
+};
+
+template<auto Get, auto Set, detail::fixed_string Name> struct tag_access;
+template<typename S, typename T, T (S::*Get)() const,
+	 S &(S::*Set)(T, bool), detail::fixed_string Name>
+struct tag_access<Get, Set, Name> {
+  using struct_type = S;
+  using field_type = T;
+  static constexpr bool has_field = true;
+  static constexpr auto getter = Get;
+  static constexpr auto setter = Set;
+
+  static constexpr const char *name() { return Name.value; }
+
+  constexpr field_type operator()(const struct type &s) const {
+    return s.*getter();
+  }
+
+  struct accessor {
+    struct_type *s_;
+    operator field_type() const { return s_->*getter(); }
+    accessor operator=(field_type v) const {
+      s_->*setter(v, true);
+      return *this;
+    }
+  };
+  accessor operator()(struct type &s) const { return {&s}; }
 };
 
 namespace detail {
