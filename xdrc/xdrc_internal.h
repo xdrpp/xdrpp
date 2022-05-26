@@ -118,6 +118,7 @@ struct rpc_union {
   string tagtype;
   string tagid;
   vec<rpc_ufield> fields;
+  int maxfield{};
   bool hasdefault{false};
 };
 

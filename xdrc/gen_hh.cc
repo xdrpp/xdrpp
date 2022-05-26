@@ -217,7 +217,7 @@ gen(std::ostream &os, const rpc_struct &s)
   for (auto &d : s.decls)
     top_material
       << "," << endl << "                    "
-      << "xdr::field_access<&" << cur_scope() << "::" << d.id
+      << "xdr::field_access_t<&" << cur_scope() << "::" << d.id
       << ", \"" << d.id << "\">";
 
 #if 0
@@ -371,14 +371,60 @@ print_cases(std::ostream &os, const rpc_ufield &f)
       os << nl.outdent << "case " << map_tag(c) << ":";
 }
 
+std::string
+union_field_access(const rpc_union &u, const rpc_ufield &f)
+{
+  std::ostringstream os;
+  if (f.decl.type == "void")
+    os << "xdr::void_access_t";
+  else if (opt_uptr)
+    os << "xdr::uptr_access_t<" << decl_type(f.decl) << ", &"
+       << u.id << "::u_, \"" << f.decl.id << "\">";
+  else
+    os << "xdr::field_access_t<&" << u.id << "::" << f.decl.id
+       << "_, \"" << f.decl.id << "\">";
+  return os.str();
+}
+
 void
 gen_union_traits(std::ostream &os, const rpc_union &u)
 {
-  os << nl << "struct _xdr_union_traits {"
-     << nl.open << "using union_type = " << u.id << ";"
+  // _xdr_union_fieldno
+  os << nl << "static constexpr int _xdr_union_fieldno("
+     << u.tagtype << " _which) {"
+     << nl.open << "switch (xdr::xdr_traits<" << u.tagtype
+     << ">::case_type{_which}) {";
+  ++nl;
+  for (const auto &f : u.fields) {
+    print_cases(os, f);
+    os << nl << "return " << f.fieldno << ";";
+  }
+  if (!u.hasdefault)
+    os << nl.outdent << "default:"
+       << nl << "return -1;";
+  os << nl.close << "}"
+     << nl.close << "}";
+
+
+  os << nl << "struct _xdr_union_traits"
+     << nl << ": xdr::xdr_union_common<" << u.id << ", "
+     << (u.hasdefault ? "true" : "false")
+     << ", \"" << u.id << "\","
+     << nl << "    xdr::field_access_t<&" << u.id << "::" << u.tagid << "_"
+     << ", \"" << u.tagid << "\">,"
+     << nl << "    _xdr_union_fieldno";
+  for (const auto &f : u.fields)
+    if (f.fieldno > 0)
+      os << "," << nl << "    " << union_field_access(u, f);
+  os << "> {";
+
+  //os << nl << "struct _xdr_union_traits : xdr::xdr_union_util {";
+
+  os << nl.open << "using union_type = " << u.id << ";"
      << nl << "using tag_type = " << map_type(u.tagtype) << ";"
      << nl << "using case_type = typename xdr::xdr_traits<"
      << map_type(u.tagtype) << ">::case_type;"
+     << nl << "static constexpr const char union_name[] = \"" << u.id << "\";"
      << nl << "static constexpr bool has_default_case = "
      << (u.hasdefault ? "true" : "false") << ";" << endl;
 
@@ -419,17 +465,7 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
   ++nl;
   for (const auto &f : u.fields) {
     print_cases(os, f);
-    if (f.decl.type == "void")
-      os << nl << "return _f(xdr::void_access{});";
-    else
-      if (opt_uptr)
-	os << nl << "return _f(xdr::uptr_access<"
-	   << decl_type(f.decl) << ", &" << u.id << "::u_, \""
-	   << f.decl.id << "\">{});";
-      else
-	os << nl << "return _f(xdr::field_access<&" << cur_scope()
-	   << "::" << f.decl.id
-	   << "_, \"" << f.decl.id << "\">{});";
+    os << nl << "return _f(" << union_field_access(u, f) << "{});";
   }
   if (!u.hasdefault)
     os << nl.outdent << "default:"
@@ -438,13 +474,17 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
   os << nl.close << "}";
   os << nl.close << "}" << endl;
 
-  os << nl << "template<typename _F>"
-     << nl << "decltype(auto) with_tag_access(_F &&_f) {"
-     << nl << "  return _f(xdr::tag_access<"
-     << nl << "    (tag_type (union_type::*)() const) &" << u.id << "::" << u.tagid << ", "
-     << nl << "    (union_type&(union_type::*)(tag_type, bool)) &" << u.id << "::" << u.tagid << ", "
-     << nl << "    \"" << u.tagid << "\">{});"
-     << nl << "}";
+  os << nl << "static " << u.tagtype << " get_tag(const "
+     << u.id << " &_u) {"
+     << " return _u." << u.tagid << "_; }";
+
+  os << nl << "static constexpr std::tuple<xdr::void_access_t";
+  for (const auto &f : u.fields)
+    if (f.fieldno > 0)
+      os << "," << nl << "    " << union_field_access(u, f);
+  os << "> arms{};";
+  os << nl << "static constexpr size_t arms_size = "
+     << u.maxfield << ";";
 
   os << nl.close << "};";
 }
@@ -582,7 +622,7 @@ gen(std::ostream &os, const rpc_union &u)
 	 << f.decl.id << "\">{});"
 	 << nl << "  return true;";
     else
-      os << nl << "  _f(xdr::field_access<&" << u.id << "::" << f.decl.id
+      os << nl << "  _f(xdr::field_access_t<&" << u.id << "::" << f.decl.id
 	 << "_, \"" << f.decl.id << "\">{});"
 	 << nl << "  return true;";
   }
