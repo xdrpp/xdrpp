@@ -20,11 +20,8 @@ struct xdr_clear_t {
     if constexpr (xdr_numlike<T>)
       t = T{};
     else if constexpr (xdr_union<T>) {
-      auto dt = typename xdr_traits<T>::discriminant_type{};
-      if (t._xdr_field_number(dt) > 0)
+      if (xdr_traits<T>::set_tag(t, typename xdr_traits<T>::tag_type{}))
 	xdr_traits<T>::load(*this, t);
-      else // 0 isn't a valid discriminant, but set it anyway
-	t._xdr_discriminant(dt, false);
     }
     else if constexpr (requires { t.resize(0); })
       t.resize(0);
