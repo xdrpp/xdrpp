@@ -45,22 +45,10 @@ std::ostringstream top_material;
 string
 cur_ns()
 {
-#if 0
-  if (namespaces.empty())
-    return "";
-  string out;
-  for (const auto &ns : namespaces) {
-    if (!out.empty())
-      out += "::";
-    out += ns;
-  }
-  return out;
-#else
   string out;
   for (const auto &ns : namespaces)
     out += string("::") + ns;
   return out.empty() ? "::" : out;
-#endif
 }
 
 string
@@ -199,15 +187,7 @@ gen(std::ostream &os, const rpc_struct &s)
     os << d.id << "(std::forward<_" << d.id << "_T>(_" << d.id << "))";
   }
   os << " {}";
-#if 0
-  os << nl << "friend bool operator==(const " << s.id
-     << "&, const " << s.id << "&)"
-     << " = default;"
-     << nl << "friend auto operator<=>(const " << s.id
-     << "&, const " << s.id << "&)"
-     << " = default;"
-#endif
-    os << nl.close << "}";
+  os << nl.close << "}";
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
@@ -219,31 +199,8 @@ gen(std::ostream &os, const rpc_struct &s)
       << "," << endl << "                    "
       << "xdr::field_access_t<&" << cur_scope() << "::" << d.id
       << ", \"" << d.id << "\">";
-
-#if 0
-  top_material
-    << "> {" << endl;
-  int round = 0;
-  for (string decl :
-    { string("  template<typename Archive> static void\n"
-	     "  save(Archive &ar, const ")
-	+ cur_scope() + " &obj) {",
-      string("  template<typename Archive> static void\n"
-	     "  load(Archive &ar, ")
-	+ cur_scope() + " &obj) {" } ) {
-    top_material << decl << endl;
-    for (size_t i = 0; i < s.decls.size(); ++i)
-      top_material << "    archive(ar, obj." << s.decls[i].id
-		   << ", \"" << s.decls[i].id << "\");" << endl;
-    if (round++)
-      top_material << "    xdr::validate(obj);" << endl;
-    top_material << "  }" << endl;
-  }
-  top_material << "};" << endl;
-#else
   top_material
     << "> {};" << endl;
-#endif
 
   scope.pop_back();
 }
@@ -301,67 +258,7 @@ gen(std::ostream &os, const rpc_enum &e)
     << "};" << endl;
 }
 
-string
-pswitch(const rpc_union &u, string id = string())
-{
-  if (id.empty())
-    id = u.tagid + '_';
-  string ret = "switch (";
-#if 0
-  if (u.tagtype == "bool")
-    ret += "std::int32_t{" + id + "}";
-  else
-    ret += id;
-#else
-  ret += "_xdr_union_traits::case_type{" + id + "}";
-#endif
-  ret += ") {";
-  return ret;
-}
-
-std::ostream &
-ufbol(bool *first, std::ostream &os)
-{
-  if (*first) {
-    os << nl << "return ";
-    *first = false;
-  }
-  else
-    os << nl << "  : ";
-  return os;
-}
-
-void
-union_function(std::ostream &os, const rpc_union &u, string tagcmp,
-	       const std::function<string(const rpc_ufield *)> &cb)
-{
-  const rpc_ufield *def = nullptr;
-  bool first = true;
-  if (tagcmp.empty())
-    tagcmp = u.tagid + "_ == ";
-  else
-    tagcmp += " == ";
-
-  ++nl;
-
-  for (auto fi = u.fields.cbegin(), e = u.fields.cend();
-       fi != e; ++fi) {
-    if (fi->hasdefault) {
-      def = &*fi;
-      continue;
-    }
-    ufbol(&first, os) << tagcmp << map_tag(fi->cases[0]);
-    for (size_t i = 1; i < fi->cases.size(); ++i)
-      os << " || " << tagcmp << map_tag(fi->cases[i]);
-    os << " ? " << cb(&*fi);
-  }
-  ufbol(&first, os) << cb(def);
-  os << ";";
-
-  --nl;
-}
-
-void
+static void
 print_cases(std::ostream &os, const rpc_ufield &f)
 {
   if (f.hasdefault)
