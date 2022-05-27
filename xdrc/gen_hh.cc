@@ -452,7 +452,7 @@ gen(std::ostream &os, const rpc_union &u)
      << nl << map_type(u.tagtype) << " " << u.tagid << "_;";
 
   // Union arm fields
-  if (u.maxfield > 0) {
+  if (u.maxfield > 1) {		// field 0 is for void
     if (opt_uptr)
       os << nl << "void *u_ = nullptr;"
 	 << endl;

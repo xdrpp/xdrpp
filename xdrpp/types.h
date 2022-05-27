@@ -903,7 +903,7 @@ struct xdr_union_common<U, HasDefault, UnionName,
   }
 
 protected:
-  using case_type = xdr_traits<tag_type>::case_type;
+  using case_type = typename xdr_traits<tag_type>::case_type;
 
   static constexpr field_access_t<TagField, TagName> tag{};
   static constexpr std::tuple<void_access_t, Arm...> arms{};
