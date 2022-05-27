@@ -990,8 +990,13 @@ template<typename...T> using field_cmp_res_t =
 
 } // namespace detail
 
-template<xdr_struct T> requires xdr_traits<T>::xdr_defined
-constexpr auto
+template<xdr_struct T> requires xdr_traits<T>::xdr_defined constexpr
+#if __clang__
+// work around compiler bug
+std::enable_if_t<xdr_traits<T>::is_struct, std::partial_ordering>
+#else // not clang
+auto
+#endif // not clang
 operator<=>(const T &a, const T &b) noexcept
 {
   return std::apply([&a,&b]<typename...F>(F...f){
@@ -1013,8 +1018,12 @@ operator==(const T &a, const T &b) noexcept
   return r;
 }
 
-template<xdr_union T>
-inline std::partial_ordering
+template<xdr_union T> inline
+#if __clang__
+std::enable_if_t<xdr_traits<T>::is_union, std::partial_ordering>
+#else // not clang
+std::partial_ordering
+#endif // not clang
 operator<=>(const T &a, const T &b) noexcept
 {
   if (auto c = xdr_traits<T>::get_tag(a) <=> xdr_traits<T>::get_tag(b); c != 0)
