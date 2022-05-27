@@ -32,16 +32,6 @@ namespace xdr {
 #define XDR_AUTOCHECK_FUZZY_STRINGS 1
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
 
-namespace detail {
-
-template<typename T> constexpr T
-to_int8(uint8_t u)
-{
-  return std::bit_cast<T>(u);
-}
-
-}
-
 struct generator_t {
   std::size_t size_;
   std::size_t levels_;  // Only decrease size after this many levels
@@ -51,12 +41,13 @@ struct generator_t {
   // Handle char and uint8_t (which can legally be the same type for
   // some compilers), allowing variable_nelem cases to handle both
   // containers and bytes (string/opaque).
-  template<typename T> requires (sizeof(T) == 1)
+  template<typename T>
+  requires requires { T{0}; std::bit_cast<char>(T{}); }
   void operator()(T &t) const {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
-    t = detail::to_int8<T>(uint8_t(autocheck::generator<int>{}(0x10000)));
+    t = std::bit_cast<T>(uint8_t(autocheck::generator<int>{}(0x10000)));
 #else // !XDR_AUTOCHECK_FUZZY_STRINGS
-    t = detail::to_int8<T>(autocheck::generator<T>{}(size_));
+    t = autocheck::generator<T>{}(size_);
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
   }
 
@@ -86,9 +77,9 @@ struct generator_t {
 
   template<xdr_union T>
   void operator()(T &t) const {
-    const auto &vals = T::_xdr_case_values();
+    const auto &vals = T::_xdr_case_values;
     typename xdr_traits<T>::tag_type v;
-    if (!T::_xdr_has_default_case) {
+    if (!xdr_traits<T>::has_default_case) {
       // Just pick a random case if there's no default
       uint32_t n;
       (*this)(n);
@@ -105,8 +96,8 @@ struct generator_t {
 	v = vals[n % vals.size()];
       }
     }
-    t._xdr_discriminant(v, false);
-    t._xdr_with_body_accessor([this, &t](auto body) {
+    xdr_traits<T>::set_tag(t, v);
+    xdr_traits<T>::with_current_arm(t, [this, &t](auto body) {
       archive(*this, body(t), nullptr);
     });
   }

@@ -389,9 +389,19 @@ union_field_access(const rpc_union &u, const rpc_ufield &f)
 void
 gen_union_traits(std::ostream &os, const rpc_union &u)
 {
+  // _xdr_case_values
+  std::vector<std::string> cases;
+  for (const auto &f : u.fields)
+    cases.insert(cases.end(), f.cases.begin(), f.cases.end());
+  os << nl << "static constexpr std::array<" << map_tag(u.tagtype)
+     << ", " << cases.size() << "> _xdr_case_values = {";
+  for (const auto &c : cases)
+    os << nl << "  " << map_tag(c) << ",";
+  os << nl << "};";
+
   // _xdr_union_fieldno
   os << nl << "static constexpr int _xdr_union_fieldno("
-     << u.tagtype << " _which) {"
+     << map_type(u.tagtype) << " _which) {"
      << nl.open << "switch (xdr::xdr_traits<" << u.tagtype
      << ">::case_type{_which}) {";
   ++nl;
@@ -436,227 +446,90 @@ gen(std::ostream &os, const rpc_union &u)
       blank = true;
   if (blank)
     os << endl;
-  os << nl << "using _xdr_case_type = " << "xdr::xdr_traits<" << u.tagtype
-     << ">::case_type;"
-     << nl.outdent << "private:"
-     << nl << "_xdr_case_type " << u.tagid << "_;";
 
-  if (opt_uptr)
-    os << nl << "void *u_ = nullptr;"
-       << endl;
-  else
-    for (const rpc_ufield &f0 : u.fields) {
-      if (f0.decl.type != "void") {
-	os << nl << "union {";
-	++nl;
-	for (const rpc_ufield &f : u.fields)
-	  if (f.decl.type != "void")
-	    os << nl << decl_type(f.decl) << ' ' << f.decl.id << "_;";
-	os << nl.close << "};" << endl;
-	break;
-      }
+  // Union tag field
+  os << nl.outdent << "private:"
+     << nl << map_type(u.tagtype) << " " << u.tagid << "_;";
+
+  // Union arm fields
+  if (u.maxfield > 0) {
+    if (opt_uptr)
+      os << nl << "void *u_ = nullptr;"
+	 << endl;
+    else {
+      os << nl << "union {";
+      ++nl;
+      for (const rpc_ufield &f : u.fields)
+	if (f.decl.type != "void")
+	  os << nl << decl_type(f.decl) << ' ' << f.decl.id << "_;";
+      os << nl.close << "};";
     }
+  }
 
-  os << nl << "template<typename...Args>"
-     << nl << "void _xdr_construct_body(Args &&...args) {"
-     << nl.open << "_xdr_with_body_accessor([this, &args...]<typename B>(B body) {";
-  if (opt_uptr) {
-    os << nl.open << "this->u_ = nullptr;"
-       << nl << "this->u_ = new typename B::field_type("
-       << "body(std::forward<Args>(args))...);";
-  }
-  else {
-    // If the constructor throws, we leave the tag as max int.
-    os << nl.open << "auto saved_tag = this->" << u.tagid << "_;"
-       << nl << "this->" << u.tagid
-       << "_ = std::numeric_limits<_xdr_case_type>::max();"
-       << nl << "std::construct_at(&body(*this), "
-       << "body(std::forward<Args>(args))...);"
-       << nl << "this->" << u.tagid << "_ = saved_tag;";
-  }
-  os << nl.close << "});"
-     << nl.close << "}";
-  os << nl << "void _xdr_destroy_body() {";
-  if (opt_uptr)
-    os << nl.open << "if (u_)";
-  os << nl.open << "_xdr_with_body_accessor([this](auto body) {"
-     << nl.open << "std::destroy_at(&body(*this));"
-     << nl.close << "});";
-  if (opt_uptr)
-    --nl;
-  os << nl.close << "}";
-  os << nl.outdent << "public:";
-#if 0
-  os << nl << "static_assert (sizeof (" << u.tagtype << ") <= 4,"
-    " \"union discriminant must be 4 bytes\");" << endl;
-#endif
+  os << endl
+     << nl.outdent << "public:";
 
   gen_union_traits(os, u);
 
-  // _xdr_has_default_case
-  os << nl << "static constexpr const bool _xdr_has_default_case = "
-     << (u.hasdefault ? "true;" : "false;");
-
-  // _xdr_case_values
-  // We put this here rather than in xdr_traits because we want the
-  // namespace lookup for the tags to be identical to what it is where
-  // the structure is defined.
-  os << nl << "static const std::vector<" << u.tagtype
-     << "> &_xdr_case_values() {" << nl
-     << "  static const std::vector<" << u.tagtype << "> _xdr_disc_vec {";
-  if (u.hasdefault)
-    os << "};" << nl;
-  else {
-    bool first {true};
-    for (const rpc_ufield &f : u.fields) {
-      for (const string &c : f.cases) {
-	if (first)
-	  first = false;
-	else
-	  os << ',';
-	os << nl << "    " << map_tag (c);
-      }
-    }
-    os << nl << "  };" << nl;
-  }
-  os << "  return _xdr_disc_vec;" << nl
-     << "}";
-
-  // _xdr_field_number
-  os << nl
-     << "static constexpr int _xdr_field_number(_xdr_case_type which) {";
-  union_function(os, u, "which", [](const rpc_ufield *uf) {
-      using std::to_string;
-      if (uf)
-	return to_string(uf->fieldno);
-      else
-	return to_string(-1);
-    });
-  os << nl << "}";
-
-  // _xdr_with_body_accessor
-  os << nl << "template<typename _F> bool"
-     << nl << "_xdr_with_body_accessor(_F &&_f) const {"
-     << nl.open << pswitch(u, u.tagid + "_");
-  for (const rpc_ufield &f : u.fields) {
-    if (f.hasdefault)
-      os << nl << "default:";
-    else
-      for (const string &c : f.cases)
-	os << nl << "case " << map_tag(c) << ":";
-    if (f.decl.type == "void")
-      os << nl << "  return true;";
-    else if (opt_uptr)
-      os << nl << "  _f(xdr::uptr_access<"
-	 << decl_type(f.decl) << ", &" << u.id << "::u_, \""
-	 << f.decl.id << "\">{});"
-	 << nl << "  return true;";
-    else
-      os << nl << "  _f(xdr::field_access_t<&" << u.id << "::" << f.decl.id
-	 << "_, \"" << f.decl.id << "\">{});"
-	 << nl << "  return true;";
-  }
-  if (!u.hasdefault)
-    os << nl << "default:"
-       << nl << "  return false;";
-  os << nl << "}";
-  os << nl.close << "}";
-  os << endl;
-
-  // _xdr_discriminant
-  //os << nl << "using _xdr_discriminant_t = " << u.tagtype << ";";
-  os << nl << "_xdr_case_type _xdr_discriminant() const { return "
-     << u.tagid << "_; }";
-  os << nl << "void _xdr_discriminant(_xdr_case_type which,"
-     << " bool validate = true) {"
-     << nl.open << "int fnum = _xdr_field_number(which);"
-     << nl << "if (fnum < 0 && validate)"
-     << nl << "  throw xdr::xdr_bad_discriminant(\"bad value of "
-     << u.tagid << " in " << u.id << "\");"
-     << nl << "if (fnum != _xdr_field_number(" << u.tagid << "_)) {"
-     << nl.open << "_xdr_destroy_body();"
-     << nl << u.tagid << "_ = which;"
-     << nl << "_xdr_construct_body();"
-     << nl.close << "}"
-     << nl << "else"
-     << nl << "  " << u.tagid << "_ = which;"
-     << nl.close << "}";
-
   // Default constructor
-  os << nl << "explicit " << u.id << "(" << map_type(u.tagtype) << " which = "
-     << map_type(u.tagtype) << "{}) : " << u.tagid << "_(which) {"
-     << nl.open << "_xdr_construct_body();"
+  os << nl << "explicit " << u.id << "(" << map_type(u.tagtype)
+     << " _which = {}) : " << u.tagid << "_(_which) {"
+     << nl.open << "_xdr_union_traits::with_current_arm(*this, [this](auto f) {"
+     << nl << "  _xdr_union_traits::construct_field(f, *this);"
+     << nl << "});"
      << nl.close << "}";
 
   // Copy/move constructor
   os << nl << u.id << "(const " << u.id << " &source) : "
      << u.tagid << "_(source." << u.tagid << "_) {"
-     << nl.open << "_xdr_construct_body(source);"
+     << nl.open << "_xdr_union_traits::with_current_arm(*this, [&](auto f) {"
+     << nl << "  _xdr_union_traits::construct_field(f, *this, f(source));"
+     << nl << "});"
      << nl.close << "}";
-  os << nl << u.id << "(" << u.id << " &&source) : "
+  os << nl << u.id << "(const " << u.id << " &&source) : "
      << u.tagid << "_(source." << u.tagid << "_) {"
-     << nl.open << "_xdr_construct_body(std::move(source));"
+     << nl.open << "_xdr_union_traits::with_current_arm(*this, [&](auto f) {"
+     << nl << "  _xdr_union_traits::construct_field(f, *this, "
+     << "f(std::move(source)));"
+     << nl << "});"
      << nl.close << "}";
 
   // Destructor
-  os << nl << "~" << u.id << "() { _xdr_destroy_body(); }";
+  os << nl << "~" << u.id << "() {"
+     << nl.open << "_xdr_union_traits::with_current_arm(*this, [this](auto f) {"
+     << nl << "  _xdr_union_traits::destroy_field(f, *this);"
+     << nl << "});"
+     << nl.close << "}" << endl;
 
   // Assignment
-  os << nl << u.id << " &operator=(const " << u.id << " &source) {"
-     << nl.open << "source._xdr_with_body_accessor([this, &source](auto body) {"
-     << nl.open << "if (_xdr_field_number(" << u.tagid << "_)"
-     << " == _xdr_field_number(source." << u.tagid << "_))"
-     << nl.open << "body(*this) = body(source);"
-     << nl.outdent << "else {"
-     << nl << "_xdr_destroy_body();"
-     << nl << u.tagid << "_ = source." << u.tagid << "_;"
-     << nl << "_xdr_construct_body(source);"
-     << nl.close << "}"
-     << nl.close << "});"
-     << nl << "return *this;"
+  os << nl << u.id << " &operator=(const " << u.id << "&s) {"
+     << nl.open << "return _xdr_union_traits::assign(*this, s);"
      << nl.close << "}";
-  os << nl << u.id << " &operator=(const " << u.id << " &&source) {"
-     << nl.open << "source._xdr_with_body_accessor([this, &source](auto body) {"
-     << nl.open << "if (_xdr_field_number(" << u.tagid << "_)"
-     << " == _xdr_field_number(source." << u.tagid << "_))"
-     << nl.open << "body(*this) = std::move(body(source));"
-     << nl.outdent << "else {"
-     << nl << "_xdr_destroy_body();"
-     << nl << u.tagid << "_ = source." << u.tagid << "_;"
-     << nl << "_xdr_construct_body(std::move(source));"
-     << nl.close << "}"
-     << nl.close << "});"
-     << nl << "return *this;"
+  os << nl << u.id << " &operator=(const " << u.id << "&&s) {"
+     << nl.open << "return _xdr_union_traits::assign(*this, std::move(s));"
      << nl.close << "}";
   os << endl;
 
-  // Tag getter/setter
-  os << nl << map_type(u.tagtype) << ' ' << u.tagid << "() const { return "
-     << map_type(u.tagtype) << "(" << u.tagid << "_); }";
-  os << nl << u.id << " &" << u.tagid << "(" << u.tagtype
-     << " _xdr_d, bool _xdr_validate = true) {"
-     << nl.open << "_xdr_discriminant(_xdr_d, _xdr_validate);"
+  // Get/set discriminant
+  os << nl << u.tagtype << " " << u.tagid << "() const { return "
+     << u.tagid << "_; }"
+     << nl << u.id << " &" << u.tagid << "(" << u.tagtype << " _v) {"
+     << nl.open << "_xdr_union_traits::check_tag(_v);"
+     << nl << "_xdr_union_traits::set_tag(*this, _v);"
      << nl << "return *this;"
-     << nl.close << "}" << endl;
+     << nl.close << "}";
 
-  // Union fields
+  // Access union arms
   for (const auto &f : u.fields) {
     if (f.decl.type == "void")
       continue;
-    for (string cnst : {"", "const "}) {
+    os << endl;
+    for (string cnst : {"", "const "})
       os << nl << cnst << decl_type(f.decl) << " &" << f.decl.id
 	 << "() " << cnst << "{"
-	 << nl.open << "if (_xdr_field_number(" << u.tagid << "_) == "
-	 << f.fieldno << ")";
-      if (opt_uptr)
-	os << nl << "  return *static_cast<" << cnst << decl_type(f.decl)
-	   << "*>(u_);";
-      else
-	os << nl << "  return " << f.decl.id << "_;";
-      os << nl << "throw xdr::xdr_wrong_union(\""
-	 << u.id << ": " << f.decl.id << " accessed when not selected\");"
+	 << nl.open << "return _xdr_union_traits::arm<"
+	 << f.fieldno << ">(*this);"
 	 << nl.close << "}";
-    }
   }
 
   top_material

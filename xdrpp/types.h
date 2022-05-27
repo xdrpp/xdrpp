@@ -752,38 +752,6 @@ struct void_access_t {
   }
 };
 
-#if 0
-template<auto Get, auto Set, detail::fixed_string Name> struct tag_access;
-template<typename S, typename T, T (S::*Get)() const,
-	 S &(S::*Set)(T, bool), detail::fixed_string Name>
-struct tag_access<Get, Set, Name> {
-  using struct_type = S;
-  using field_type = T;
-  static constexpr bool has_field = true;
-  static constexpr auto getter = Get;
-  static constexpr auto setter = Set;
-
-  static constexpr const char *name() { return Name.value; }
-
-  constexpr field_type operator()(const struct type &s) const {
-    return s.*getter();
-  }
-
-  struct accessor {
-    struct_type *s_;
-    operator field_type() const { return s_->*getter(); }
-    accessor operator=(field_type v) const {
-      s_->*setter(v, true);
-      return *this;
-    }
-  };
-  accessor operator()(struct type &s) const { return {&s}; }
-  void operator()(struct type &s, field_type v, bool validate = true) const {
-    s.*setter(v, validate);
-  }
-};
-#endif
-
 template<typename T, auto Field, detail::fixed_string Name>
 struct uptr_access_t;
 template<typename T, typename S, void *S::*Field, detail::fixed_string Name>
@@ -859,6 +827,7 @@ struct xdr_union_common<U, HasDefault, UnionName,
   static constexpr bool is_class = true;
   static constexpr bool has_default_case = HasDefault;
   static constexpr const char *union_name = UnionName.value;
+  static constexpr size_t num_arms = 1 + sizeof...(Arm);
   static constexpr int fieldno(tag_type t) { return FieldNo(t); }
 
   static tag_type get_tag(const union_type &u) {
@@ -866,13 +835,13 @@ struct xdr_union_common<U, HasDefault, UnionName,
   }
   static bool set_tag(union_type &u, tag_type v) {
     const int oldno = fieldno(tag(u)), newno = fieldno(v);
-    if (oldno != newno) {
-      if (oldno > 0)
-	detail::with_nth(arms, oldno, [&u](auto f) { destroy_field(f, u); });
-      if (newno > 0)
-	detail::with_nth(arms, newno, [&u](auto f) { construct_field(f, u); });
+    if (oldno == newno)
+      tag(u) = v;
+    else {
+      with_current_arm(u, [&u](auto f) { destroy_field(f, u); });
+      tag(u) = v;
+      with_current_arm(u, [&u](auto f) { construct_field(f, u); });
     }
-    tag(u) = v;
     return newno >= 0;
   }
 
@@ -881,6 +850,12 @@ struct xdr_union_common<U, HasDefault, UnionName,
     return detail::with_nth<R>(arms, n, [&](auto f){
       return std::forward<F>(fn)(f);
     });
+  }
+  template<typename F>
+  static void with_current_arm(const union_type &u, F &&fn) {
+    const int fno = fieldno(tag(u));
+    if (fno > 0)
+      detail::with_nth(arms, fno, [&](auto f){ std::forward<F>(fn)(f); });
   }
 
   template<typename S>
@@ -898,10 +873,11 @@ struct xdr_union_common<U, HasDefault, UnionName,
       if (oldno > 0)
 	detail::with_nth(arms, oldno, [&u](auto f) { destroy_field(f, u); });
       if (newno > 0)
-	with_nth(arms, newno, [&u, &r](auto f) {
+	detail::with_nth(arms, newno, [&u, &r](auto f) {
 	  construct_field(f, u, f(std::forward<S>(r)));
 	});
     }
+    return u;
   }
 
   static size_t serial_size(const union_type &u) {
@@ -931,7 +907,6 @@ protected:
 
   static constexpr field_access_t<TagField, TagName> tag{};
   static constexpr std::tuple<void_access_t, Arm...> arms{};
-  static constexpr std::size_t num_arms = 1 + sizeof...(Arm);
 
   static inline void check_tag(tag_type t) {
     if constexpr (!has_default_case)
@@ -952,16 +927,29 @@ protected:
     }
   }
 
+  template<size_t I>
+  static decltype(auto) arm(union_type &u) {
+    check_field<I>(tag(u));
+    return get<I>(arms)(u);
+  }
+  template<size_t I>
+  static decltype(auto) arm(const union_type &u) {
+    check_field<I>(tag(u));
+    return get<I>(arms)(u);
+  }
+
   static void construct_field(void_access_t, auto&&, auto&&...) {}
   static void destroy_field(void_access_t, auto&&) {}
 
   template<typename T, auto Field, detail::fixed_string Name, typename...Args>
   static void construct_field(uptr_access_t<T, Field, Name> f,
-			      T &s, Args&&...args) {
+			      typename decltype(f)::struct_type &s,
+			      Args&&...args) {
     s.*f.value = new T(std::forward<Args>(args)...);
   }
   template<typename T, auto Field, detail::fixed_string Name>
-  static void destroy_field(uptr_access_t<T, Field, Name> f, T &s) {
+  static void destroy_field(uptr_access_t<T, Field, Name> f,
+			    typename decltype(f)::struct_type &s) {
     delete static_cast<T*>(s.*f.value);
     s.*f.value = nullptr;
   }
@@ -1016,10 +1004,10 @@ operator<=>(const T &a, const T &b) noexcept
 template<xdr_union T> inline bool
 operator==(const T &a, const T &b) noexcept
 {
-  if (a._xdr_discriminant() != b._xdr_discriminant())
+  if (xdr_traits<T>::get_tag(a) != xdr_traits<T>::get_tag(b))
     return false;
   bool r = true;
-  a._xdr_with_body_accessor([&](auto body){
+  xdr_traits<T>::with_current_arm(a, [&](auto body) {
     r = body(a) == body(b);
   });
   return r;
@@ -1029,10 +1017,10 @@ template<xdr_union T>
 inline std::partial_ordering
 operator<=>(const T &a, const T &b) noexcept
 {
-  if (auto c = a._xdr_discriminant() <=> b._xdr_discriminant(); c != 0)
+  if (auto c = xdr_traits<T>::get_tag(a) <=> xdr_traits<T>::get_tag(b); c != 0)
     return c;
   auto r = std::partial_ordering::equivalent;
-  a._xdr_with_body_accessor([&](auto body){
+  xdr_traits<T>::with_current_arm(a, [&](auto body) {
     r = body(a) <=> body(b);
   });
   return r;
