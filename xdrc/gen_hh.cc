@@ -405,9 +405,9 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
   os << nl.close << "}"
      << nl.close << "}";
 
-
-  os << nl << "struct _xdr_union_traits"
-     << nl << ": xdr::xdr_union_common<" << u.id << ", "
+  // _xdr_union_traits
+  os << nl << "using _xdr_union_traits ="
+     << nl << "  xdr::xdr_union_common<" << u.id << ", "
      << (u.hasdefault ? "true" : "false")
      << ", \"" << u.id << "\","
      << nl << "    xdr::field_access_t<&" << u.id << "::" << u.tagid << "_"
@@ -416,77 +416,7 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
   for (const auto &f : u.fields)
     if (f.fieldno > 0)
       os << "," << nl << "    " << union_field_access(u, f);
-  os << "> {";
-
-  //os << nl << "struct _xdr_union_traits : xdr::xdr_union_util {";
-
-  os << nl.open << "using union_type = " << u.id << ";"
-     << nl << "using tag_type = " << map_type(u.tagtype) << ";"
-     << nl << "using case_type = typename xdr::xdr_traits<"
-     << map_type(u.tagtype) << ">::case_type;"
-     << nl << "static constexpr const char union_name[] = \"" << u.id << "\";"
-     << nl << "static constexpr bool has_default_case = "
-     << (u.hasdefault ? "true" : "false") << ";" << endl;
-
-  if (!u.hasdefault) {
-    size_t ncases = 0;
-    for (const auto &f : u.fields)
-      ncases += f.cases.size();
-    os << nl << "static constexpr std::array<tag_type, " << ncases
-       << "> cases{";
-    bool first = true;
-    for (const auto &f : u.fields)
-      for (const auto &c : f.cases) {
-	if (first)
-	  first = false;
-	else
-	  os << ", ";
-	os << map_tag(c);
-      }
-    os << "};" << endl;
-  }
-
-  os << nl << "static constexpr int fieldno(tag_type _which) {"
-     << nl.open << "switch (case_type{_which}) {";
-  ++nl;
-  for (const auto &f : u.fields) {
-    print_cases(os, f);
-    os << nl << "return " << f.fieldno << ";";
-  }
-  if (!u.hasdefault)
-    os << nl.outdent << "default:"
-       << nl << "return -1;";
-  os << nl.close << "}";
-  os << nl.close << "}" << endl;
-
-  os << nl << "template<typename R = void, typename _F>"
-     << nl << "static constexpr R with_arm_access(tag_type _which, _F &&_f) {"
-     << nl.open << "switch (case_type{_which}) {";
-  ++nl;
-  for (const auto &f : u.fields) {
-    print_cases(os, f);
-    os << nl << "return _f(" << union_field_access(u, f) << "{});";
-  }
-  if (!u.hasdefault)
-    os << nl.outdent << "default:"
-       << nl << "throw xdr::xdr_bad_discriminant(\"bad value of "
-       << u.tagid << " in " << u.id << "\");";
-  os << nl.close << "}";
-  os << nl.close << "}" << endl;
-
-  os << nl << "static " << u.tagtype << " get_tag(const "
-     << u.id << " &_u) {"
-     << " return _u." << u.tagid << "_; }";
-
-  os << nl << "static constexpr std::tuple<xdr::void_access_t";
-  for (const auto &f : u.fields)
-    if (f.fieldno > 0)
-      os << "," << nl << "    " << union_field_access(u, f);
-  os << "> arms{};";
-  os << nl << "static constexpr size_t arms_size = "
-     << u.maxfield << ";";
-
-  os << nl.close << "};";
+  os << ">;" << endl;
 }
 
 void
@@ -731,130 +661,7 @@ gen(std::ostream &os, const rpc_union &u)
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
-    << "> : xdr_traits_base {" << endl
-    << "  static constexpr const bool is_class = true;" << endl
-    << "  static constexpr const bool is_union = true;" << endl
-    << "  static constexpr const bool has_fixed_size = false;" << endl
-    << endl;
-
-  top_material
-    << "  using union_type = " << cur_scope() << ";" << endl
-    << "  using case_type = " << cur_scope() << "::_xdr_case_type;" << endl
-    << "  using discriminant_type = decltype(std::declval<union_type>()."
-    << u.tagid << "());" << endl << endl;
-
-  top_material
-    << "  static const char *union_field_name(case_type which) {" << endl
-    << "    switch (union_type::_xdr_field_number(which)) {" << endl;
-  for (const rpc_ufield &uf : u.fields) {
-    if (uf.fieldno <= 0)
-      continue;
-    if (uf.hasdefault)
-      top_material << "    default:" << endl;
-    else
-      top_material << "    case " << uf.fieldno << ":" << endl;
-    top_material << "      return \"" << uf.decl.id << "\";" << endl;
-  }
-  top_material << "    }" << endl
-	       << "    return nullptr;" << endl
-	       << "  }" << endl;
-
-  top_material
-    << "  static const char *union_field_name(const union_type &u) {" << endl
-    << "    return union_field_name(u._xdr_discriminant());" << endl
-    << "  }" << endl << endl;
-
-#if 0
-  top_material
-    << "  static const std::vector<discriminant_type> &discriminant_values() {"
-    << endl;
-  if (!namespaces.empty())
-    top_material << "    using namespace " << cur_ns() << ";" << endl;
-  top_material
-    << "    static const std::vector<discriminant_type> _xdr_disc_vec {";
-  if (u.hasdefault)
-    top_material << "};" << endl;
-  else {
-    bool first {true};
-    for (const rpc_ufield &f : u.fields) {
-      for (const string &c : f.cases) {
-	if (first)
-	  first = false;
-	else
-	  top_material << ',';
-	top_material << endl << "      " << map_tag (c);
-      }
-    }
-    top_material
-      << endl << "    };" << endl;
-  }
-  top_material
-    << "    return _xdr_disc_vec;" << endl
-    << "  }" << endl << endl;
-#endif
-
-  top_material
-    << "  static std::size_t serial_size(const " << cur_scope()
-    << " &obj) {" << endl
-    << "    std::size_t size = 0;" << endl
-    << "    if (!obj._xdr_with_body_accessor([&obj, &size](auto body) {" << endl
-    << "          size = XDR_GET_TRAITS(body(obj))::serial_size(body(obj));"
-    << endl
-    << "        }))" << endl
-    << "      throw xdr_bad_discriminant(\"bad value of " << u.tagid
-    << " in " << u.id << "\");" << endl
-    << "    return size + 4;" << endl
-    << "  }" << endl;
-  top_material
-    << "  template<typename Archive> static void" << endl
-    << "  save(Archive &ar, const "
-    << cur_scope() << " &obj) {" << endl
-    << "    xdr::archive(ar, obj." << u.tagid << "(), \""
-    << u.tagid << "\");" << endl
-    << "    if (!obj._xdr_with_body_accessor([&obj, &ar](auto body) {" << endl
-    << "          archive(ar, body(obj), union_field_name(obj));" << endl
-    << "        }))" << endl
-    << "      throw xdr_bad_discriminant(\"bad value of "
-    << u.tagid << " in " << u.id << "\");" << endl
-    << "  }" << endl;
-  top_material
-    << "  template<typename Archive> static void" << endl
-    << "  load(Archive &ar, "
-    << cur_scope() << " &obj) {" << endl
-    << "    discriminant_type which;" << endl
-    << "    xdr::archive(ar, which, \"" << u.tagid << "\");" << endl
-    << "    obj." << u.tagid << "(which);" << endl
-    << "    obj._xdr_with_body_accessor([&obj, &ar](auto body) {" << endl
-    << "      archive(ar, body(obj), union_field_name(obj));" << endl
-    << "    });" << endl
-    << "    xdr::validate(obj);" << endl
-    << "  }" << endl;
-  top_material
-    << "};";
-
-#if 0
-  os << endl
-     << nl << "bool operator==(const " << u.id << "&b) const {"
-     << nl.open << "if (!(this->" << u.tagid << "_ == b." << u.tagid << "_))"
-     << nl << "  return false;"
-     << nl << "bool r = true;"
-     << nl << "_xdr_with_body_accessor([&r, this, &b](auto body) {"
-     << nl.open << "r = body(*this) == body(b);"
-     << nl.close << "});"
-     << nl << "return r;"
-     << nl.close << "}";
-  os << nl << "std::partial_ordering operator<=>(const "
-     << u.id << "&b) const {"
-     << nl.open << "if (auto o = this->" << u.tagid << "_ <=> b."
-     << u.tagid << "_; o != 0)"
-     << nl << "  return o;"
-     << nl << "auto r = std::partial_ordering::equivalent;"
-     << nl << "_xdr_with_body_accessor([&r, this, &b](auto body) {"
-     << nl.open << "r = body(*this) <=> body(b);"
-     << nl.close << "});"
-     << nl << "return r;"
-     << nl.close << "}";
-#endif
+    << "> : " << cur_scope() << "::_xdr_union_traits {};" << endl;
 
   os << nl.close << "}";
 
