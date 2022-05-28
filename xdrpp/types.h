@@ -719,10 +719,29 @@ struct tuple_access {
   }
 };
 
+#if __clang__ && __clang_major__ < 13
+#define NO_UNEVAL_LAMBDA 1
+#endif // clang < 13
+
+#if NO_UNEVAL_LAMBDA
+template<typename TS,
+	 typename IS = std::make_index_sequence<std::tuple_size_v<TS>>>
+struct make_tuple_base;
+
+template<typename...T, size_t...I>
+struct make_tuple_base<std::tuple<T...>, std::index_sequence<I...>> {
+  using tuple_type = std::tuple<T...>;
+  using type = xdr_struct_base<tuple_type, tuple_access<tuple_type, I>...>;
+};
+#endif // NO_UNEVAL_LAMBDA
+
 } // namespace detail
 
 template<typename...Ts>
 struct xdr_traits<std::tuple<Ts...>>
+#if NO_UNEVAL_LAMBDA
+  : detail::make_tuple_base<std::tuple<Ts...>>::type
+#else // !NO_UNEVAL_LAMBDA
 // This is kind of gross, but we want to create a supertype that is
 // detail::xdr_struct_base with a sequence of tuple_access template
 // parameters from 0 to the size of the tuple.
@@ -732,6 +751,7 @@ struct xdr_traits<std::tuple<Ts...>>
 	detail::tuple_access<std::tuple<Ts...>, Is>...
 	>{};
   }(std::make_index_sequence<sizeof...(Ts)>{}))
+#endif // !NO_UNEVAL_LAMBDA
 {
   static constexpr bool xdr_defined = false;
 };
