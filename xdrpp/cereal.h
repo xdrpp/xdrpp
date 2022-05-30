@@ -51,6 +51,17 @@ load(Archive &ar, T &t)
   xdr_traits<T>::load(ar, t);
 }
 
+template<typename Archive, typename T>
+std::enable_if_t<xdr_traits<T>::is_container>
+save(Archive &ar, const T &t)
+{
+  // Do not call into xdr_traits<T>::save because it doesn't handle the size tag
+  // correctly
+  ar(cereal::make_size_tag(static_cast<cereal::size_type>(t.size())));
+  for (auto const &v : t)
+    archive(ar, v);
+}
+
 template<typename Archive> constexpr bool is_cereal_binary =
   cereal::traits::is_output_serializable<
   cereal::BinaryData<char *>,Archive>::value
