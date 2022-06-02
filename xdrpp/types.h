@@ -11,6 +11,7 @@
 #include <compare>
 #include <concepts>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <memory>
@@ -40,6 +41,25 @@ size32(size_t s)
 ////////////////////////////////////////////////////////////////
 // Exception types
 ////////////////////////////////////////////////////////////////
+
+#if __cpp_exceptions
+
+#define THROW_MACRO(expname) \
+  template<typename T> \
+  void throw_##expname (T what) \
+  { \
+    throw expname (what); \
+  }
+#else
+ #define THROW_MACRO(expname) \
+  template<typename T> \
+  void throw_##expname (T what) \
+  { \
+    std::abort(); \
+  }
+#endif
+
+#if __cpp_exceptions
 
 //! Generic class of XDR unmarshaling errors.
 struct xdr_runtime_error : std::runtime_error {
@@ -85,6 +105,18 @@ struct xdr_wrong_union : std::logic_error {
   using std::logic_error::logic_error;
 };
 
+#endif
+
+THROW_MACRO(xdr_runtime_error)
+THROW_MACRO(xdr_overflow)
+THROW_MACRO(xdr_stack_overflow)
+THROW_MACRO(xdr_bad_message_size)
+THROW_MACRO(xdr_bad_discriminant)
+THROW_MACRO(xdr_should_be_zero)
+THROW_MACRO(xdr_invariant_failed)
+THROW_MACRO(xdr_wrong_union)
+
+#undef THROW_MACRO
 
 ////////////////////////////////////////////////////////////////
 // Templates for XDR traversal and processing
@@ -356,15 +388,15 @@ template<typename T, uint32_t N> struct xarray
   static void validate() {}
   static void check_size(uint32_t i) {
     if (i != N)
-      throw xdr_overflow("invalid size in xdr::xarray");
+      throw_xdr_overflow("invalid size in xdr::xarray");
   }
   static void resize(uint32_t i) {
     if (i != N)
-      throw xdr_overflow("invalid resize in xdr::xarray");
+      throw_xdr_overflow("invalid resize in xdr::xarray");
   }
   T &extend_at(uint32_t i) {
     if (i >= N)
-      throw xdr_overflow("attempt to access invalid position in xdr::xarray");
+      throw_xdr_overflow("attempt to access invalid position in xdr::xarray");
     return (*this)[i];
   }
 };
@@ -406,7 +438,7 @@ struct xvector : std::vector<T> {
   //! Check whether a size is in bounds
   static void check_size(size_t n) {
     if (n > max_size())
-      throw xdr_overflow("xvector overflow");
+      throw_xdr_overflow("xvector overflow");
   }
 
   void append(const T *elems, size_t n) {
@@ -415,7 +447,7 @@ struct xvector : std::vector<T> {
   }
   T &extend_at(uint32_t i) {
     if (i >= N)
-      throw xdr_overflow("attempt to access invalid position in xdr::xvector");
+      throw_xdr_overflow("attempt to access invalid position in xdr::xvector");
     if (i == this->size())
       this->emplace_back();
     return (*this)[i];
@@ -458,7 +490,7 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   //! Check whether a size is in bounds
   static void check_size(size_t n) {
     if (n > max_size())
-      throw xdr_overflow("xstring overflow");
+      throw_xdr_overflow("xstring overflow");
   }
 
   //! Check that the string length is not greater than the maximum
@@ -532,7 +564,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
 
   static void check_size(uint32_t n) {
     if (n > 1)
-      throw xdr_overflow("xdr::pointer size must be 0 or 1");
+      throw_xdr_overflow("xdr::pointer size must be 0 or 1");
   }
   uint32_t size() const { return *this ? 1 : 0; }
   T *begin() { return get(); }
@@ -541,7 +573,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   const T *end() const { return begin() + size(); }
   T &extend_at(uint32_t i) {
     if (i != 0)
-      throw xdr_overflow("attempt to access position > 0 in xdr::pointer");
+      throw_xdr_overflow("attempt to access position > 0 in xdr::pointer");
     if (!size())
       this->reset(new T);
     return **this;
@@ -557,7 +589,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
       this->reset(new T);
       break;
     default:
-      throw xdr_overflow("xdr::pointer::resize: valid sizes are 0 and 1");
+      throw_xdr_overflow("xdr::pointer::resize: valid sizes are 0 and 1");
     }
   }
   T &activate() {
@@ -933,7 +965,7 @@ protected:
       if (fieldno(t) == -1) [[unlikely]] {
 	static const std::string errmsg =
 	  std::string("bad value of ") + tag.name() + " in " + union_name;
-	throw xdr_bad_discriminant(errmsg);
+	throw_xdr_bad_discriminant(errmsg);
       }
   }
 
@@ -943,7 +975,7 @@ protected:
       std::string errmsg = std::string("accessed field ") +
 	get<I>(arms).name() + " in " + union_name +
 	" when " + tag.name() + " is " + std::to_string(t);
-      throw xdr_wrong_union(errmsg);
+      throw_xdr_wrong_union(errmsg);
     }
   }
 
