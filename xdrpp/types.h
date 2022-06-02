@@ -50,10 +50,22 @@ size32(size_t s)
   { \
     throw expname (what...); \
   }
+ #define THROW_MACRO_STD(expname) \
+  template<typename... T> \
+  void throw_std_##expname (T... what) \
+  { \
+    throw std:: expname (what...); \
+  }
 #else
  #define THROW_MACRO(expname) \
   template<typename... T> \
   void throw_##expname (T... what) \
+  { \
+    std::abort(); \
+  }
+ #define THROW_MACRO_STD(expname) \
+  template<typename... T> \
+  void throw_std_##expname (T... what) \
   { \
     std::abort(); \
   }
@@ -96,18 +108,6 @@ struct xdr_invariant_failed : xdr_runtime_error {
   using xdr_runtime_error::xdr_runtime_error;
 };
 
-//! Allocation failed
-struct xdr_bad_alloc : std::bad_alloc
-{
-  using std::bad_alloc::bad_alloc;
-};
-
-//! Access out of range when marshalling
-struct xdr_out_of_range : std::out_of_range
-{
-  using std::out_of_range::out_of_range;
-};
-
 //! Attempt to access wrong field of a union.  Note that this is not
 //! an \c xdr_runtime_error, because it cannot result from
 //! unmarshalling garbage arguments.  Rather it is a logic error in
@@ -127,10 +127,12 @@ THROW_MACRO(xdr_bad_discriminant)
 THROW_MACRO(xdr_should_be_zero)
 THROW_MACRO(xdr_invariant_failed)
 THROW_MACRO(xdr_wrong_union)
-THROW_MACRO(xdr_bad_alloc)
-THROW_MACRO(xdr_out_of_range)
+THROW_MACRO_STD(bad_alloc)
+THROW_MACRO_STD(out_of_range)
+THROW_MACRO_STD(system_error)
 
 #undef THROW_MACRO
+#undef THROW_MACRO_STD
 
 ////////////////////////////////////////////////////////////////
 // Templates for XDR traversal and processing
