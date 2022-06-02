@@ -22,8 +22,13 @@ message_t::alloc(std::size_t size)
   // bit to produce a single-fragment record.
   assert(size < 0x80000000);
   void *raw = std::malloc(sizeof(message_t) + size);
-  if (!raw)
-    throw std::bad_alloc();
+  if (!raw) {
+    #if __cpp_exceptions
+      throw_std_bad_alloc();
+    #else
+      return nullptr;
+    #endif
+  }
   message_t *m = new (raw) message_t (size);
   *reinterpret_cast<std::uint32_t *>(m->raw_data()) =
     swap32le(size32(size) | 0x80000000);
@@ -34,7 +39,7 @@ void
 message_t::shrink(std::size_t newsize)
 {
   if (newsize > size_)
-    throw std::out_of_range("message_t::shrink new size bigger than old");
+    throw_std_out_of_range("message_t::shrink new size bigger than old");
   size_ = newsize;
   *reinterpret_cast<std::uint32_t *>(raw_data()) =
     swap32le(size32(newsize) | 0x80000000);
@@ -51,7 +56,7 @@ marshal_base::get_bytes(const std::uint32_t *&pr, void *buf, std::size_t len)
   while (len & 3) {
     ++len;
     if (*p++ != '\0')
-      throw xdr_should_be_zero("Non-zero padding bytes encountered");
+      throw_xdr_should_be_zero("Non-zero padding bytes encountered");
   }
   pr = reinterpret_cast<const std::uint32_t *>(p);
 }

@@ -104,7 +104,7 @@ template<typename Base> struct xdr_generic_put : Base {
   void check(size_t n) const {
     if (n > size_t(reinterpret_cast<char *>(e_)
 		   - reinterpret_cast<char *>(p_)))
-      throw xdr_overflow("insufficient buffer space in xdr_generic_put");
+      throw_xdr_overflow("insufficient buffer space in xdr_generic_put");
   }
 
   template<xdr_numlike T>
@@ -135,7 +135,7 @@ template<typename Base> struct xdr_generic_put : Base {
   template<xdr_type T> requires xdr_class<T> || xdr_container<T>
   void operator()(const T &t) {
     if (!marshal_base::stack_limit--)
-      throw xdr_stack_overflow("stack overflow in xdr_generic_put");
+      throw_xdr_stack_overflow("stack overflow in xdr_generic_put");
     xdr_traits<T>::save(*this, t);
     ++marshal_base::stack_limit;
   }
@@ -161,7 +161,7 @@ template<typename Base> struct xdr_generic_get : Base {
     // Message could be coming from untrusted source, so bad length is
     // not an assertion failure.
     if (reinterpret_cast<intptr_t>(end) & 3)
-      throw xdr_bad_message_size("xdr_generic_get: message size not"
+      throw_xdr_bad_message_size("xdr_generic_get: message size not"
                                  " multiple of 4");
     assert(p_ <= e_);
   }
@@ -171,7 +171,7 @@ template<typename Base> struct xdr_generic_get : Base {
   void check(size_t n) const {
     if (n > size_t(reinterpret_cast<const char *>(e_)
 		   - reinterpret_cast<const char *>(p_)))
-      throw xdr_overflow("insufficient buffer space in xdr_generic_get");
+      throw_xdr_overflow("insufficient buffer space in xdr_generic_get");
   }
 
   template<xdr_numlike T>
@@ -204,14 +204,14 @@ template<typename Base> struct xdr_generic_get : Base {
   template<xdr_type T> requires xdr_class<T> || xdr_container<T>
   void operator()(T &t) {
     if (!marshal_base::stack_limit--)
-      throw xdr_stack_overflow("stack overflow in xdr_generic_get");
+      throw_xdr_stack_overflow("stack overflow in xdr_generic_get");
     xdr_traits<T>::load(*this, t);
     ++marshal_base::stack_limit;
   }
 
   void done() {
     if (p_ != e_)
-      throw xdr_bad_message_size("unmarshaling did not consume whole message");
+      throw_xdr_bad_message_size("unmarshaling did not consume whole message");
   }
 };
 

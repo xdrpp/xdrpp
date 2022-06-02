@@ -98,11 +98,21 @@ msg_sock::input()
 
     if (len <= maxmsglen_) {
       // Length comes from untrusted source; don't crash if can't alloc
-      try { rdmsg_ = message_t::alloc(len); }
-      catch (const std::bad_alloc &) {
-	std::cerr << "msg_sock: allocation of " << len << "-byte message failed"
-		  << std::endl;
-      }
+      #if __cpp_exceptions
+        try { rdmsg_ = message_t::alloc(len); }
+        catch (const std::bad_alloc &) {
+  	      std::cerr << "msg_sock: allocation of " << len << "-byte message failed"
+  		      << std::endl;
+        }
+      #else
+        // error handling here is just for compiling when -fno-exceptions is on
+        rdmsg_ = message_t::alloc(len);
+        if (!rdmsg_)
+        {
+          std::cerr << "msg_sock: allocation of " << len << "-byte message failed"
+            << std::endl;
+        }
+      #endif
     }
     else {
       std::cerr << "msg_sock: rejecting " << len << "-byte message (too long)"
@@ -193,10 +203,14 @@ rpc_sock::abort_all_calls()
   decltype(calls_) calls(std::move(calls_));
   calls_.clear();
   for (auto &call : calls)
+    #if __cpp_exceptions
     try { call.second(nullptr); }
     catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;
     }
+    #else
+      call.second(nullptr);
+    #endif
 }
 
 void

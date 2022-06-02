@@ -115,18 +115,18 @@ void
 check_call_hdr(const rpc_msg &hdr)
 {
   if (hdr.body.mtype() != REPLY)
-    throw xdr_runtime_error("call received when reply expected");
+    throw_xdr_runtime_error("call received when reply expected");
   switch (hdr.body.rbody().stat()) {
   case MSG_ACCEPTED:
     if (hdr.body.rbody().areply().reply_data.stat() == SUCCESS)
       return;
-    throw xdr_call_error(hdr.body.rbody().areply().reply_data.stat());
+    throw_xdr_call_error(hdr.body.rbody().areply().reply_data.stat());
   case MSG_DENIED:
     if (hdr.body.rbody().rreply().stat() == AUTH_ERROR)
-      throw xdr_call_error(hdr.body.rbody().rreply().rj_why());
-    throw xdr_call_error(rpc_call_stat::RPCVERS_MISMATCH);
+      throw_xdr_call_error(hdr.body.rbody().rreply().rj_why());
+    throw_xdr_call_error(rpc_call_stat::RPCVERS_MISMATCH);
   default:
-    throw xdr_runtime_error("check_call_hdr: garbage reply_stat");
+    throw_xdr_runtime_error("check_call_hdr: garbage reply_stat");
   }
 }
 

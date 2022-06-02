@@ -30,7 +30,7 @@ sock_errmsg()
 void
 throw_sockerr(const char *msg)
 {
-  throw std::system_error(errno, std::system_category(), msg);
+  throw_std_system_error(errno, std::system_category(), msg);
 }
 
 ssize_t
@@ -90,7 +90,7 @@ create_selfpipe(sock_t ss[2])
 {
   int fds[2];
   if (pipe(fds) == -1)
-    throw std::system_error(errno, std::system_category(), "pipe");
+    throw_std_system_error(errno, std::system_category(), "pipe");
   ss[0] = sock_t(fds[0]);
   ss[1] = sock_t(fds[1]);
 }

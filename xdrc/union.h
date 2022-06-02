@@ -91,8 +91,12 @@ public:
   //! constructor.
   union_entry_base &operator=(const union_entry_base &ueb) {
     destroy();
-    try { ueb.copy_construct_to(this); }
-    catch(...) { new (static_cast<void *>(this)) union_entry_base; }
+    #if __cpp_exceptions
+      try { ueb.copy_construct_to(this); }
+      catch(...) { new (static_cast<void *>(this)) union_entry_base; }
+    #else
+      ueb.copy_construct_to(this);
+    #endif
     return *this;
   }
 #endif // UNION_COPY_CONSTRUCT
@@ -100,8 +104,12 @@ public:
   //! constructor.
   union_entry_base &operator=(union_entry_base &&ueb) {
     destroy();
-    try { ueb.move_construct_to(this); }
-    catch(...) { new (static_cast<void *>(this)) union_entry_base; }
+    #if __cpp_exceptions
+      try { ueb.move_construct_to(this); }
+      catch(...) { new (static_cast<void *>(this)) union_entry_base; }
+    #else
+      ueb.move_construct_to(this);
+    #endif
     return *this;
   }
   //! Never call this destructor.\ Call union_entry_base::destroy()
@@ -178,9 +186,13 @@ public:
   //! union_entry::get subsequently work.
   T &select() {
     if (!constructed()) {
-      destroy(); 
-      try { new (static_cast<void *>(this)) union_entry; }
-      catch(...) { new (static_cast<void *>(this)) union_entry_base; throw; }
+      destroy();
+      #if __cpp_exceptions
+        try { new (static_cast<void *>(this)) union_entry; }
+        catch(...) { new (static_cast<void *>(this)) union_entry_base; throw; }
+      #else
+        new (static_cast<void *>(this)) union_entry;
+      #endif
     }
     return val_;
   }
@@ -188,8 +200,12 @@ public:
   //! using the supplied constructor arguments.
   template<typename ...A> void emplace(A&&...a) {
     destroy();
-    try { new (static_cast<void *>(this)) union_entry{std::forward<A>(a)...}; }
-    catch(...) { new (static_cast<void *>(this)) union_entry_base; throw; }
+    #if __cpp_exceptions
+      try { new (static_cast<void *>(this)) union_entry{std::forward<A>(a)...}; }
+      catch(...) { new (static_cast<void *>(this)) union_entry_base; throw; }
+    #else
+      new (static_cast<void *>(this)) union_entry{std::forward<A>(a)...};
+    #endif
   }
   //! Select \c T (if necessary) and assign to it.  Uses <tt>T</tt>'s
   //! copy or move constructor if \c T is not already selected,

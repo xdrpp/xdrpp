@@ -61,7 +61,7 @@ public:
     archive(g, hdr);
     check_call_hdr(hdr);
     if (hdr.xid != xid)
-      throw xdr_runtime_error("synchronous_client: unexpected xid");
+      throw_xdr_runtime_error("synchronous_client: unexpected xid");
 
     pointer<typename P::res_wire_type> r;
     archive(g, r.activate());

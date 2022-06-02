@@ -32,24 +32,24 @@ read_message(sock_t s)
   std::uint32_t len;
   ssize_t n = fullread(s, &len, 4);
   if (n == -1)
-    throw xdr_system_error("xdr::read_message");
+    throw_xdr_system_error("xdr::read_message");
   if (n < 4)
-    throw xdr_bad_message_size("read_message: premature EOF");
+    throw_xdr_bad_message_size("read_message: premature EOF");
   if (len & 3)
-    throw xdr_bad_message_size("read_message: received size not multiple of 4");
+    throw_xdr_bad_message_size("read_message: received size not multiple of 4");
 
   len = swap32le(len);
   if (len & 0x80000000)
     len &= 0x7fffffff;
   else
-    throw xdr_bad_message_size("read_message: message fragments unimplemented");
+    throw_xdr_bad_message_size("read_message: message fragments unimplemented");
 
   msg_ptr m = message_t::alloc(len);
   n = fullread(s, m->data(), len);
   if (n == -1)
-    throw xdr_system_error("xdr::read_message");
+    throw_xdr_system_error("xdr::read_message");
   if (n != len)
-    throw xdr_bad_message_size("read_message: premature EOF");
+    throw_xdr_bad_message_size("read_message: premature EOF");
 
   return m;
 }
@@ -59,7 +59,7 @@ write_message(sock_t s, const msg_ptr &m)
 {
   ssize_t n = write(s, m->raw_data(), m->raw_size());
   if (n == -1)
-    throw xdr_system_error("xdr::write_message");
+    throw_xdr_system_error("xdr::write_message");
   // If this assertion fails, the file descriptor may have had
   // O_NONBLOCK set, which is not allowed for the synchronous
   // interface.
