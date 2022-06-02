@@ -81,12 +81,17 @@ rpc_server_base::dispatch(void *session, msg_ptr m, service_base::cb_t reply)
   xdr_get g(m);
   rpc_msg hdr;
 
+  #if __cpp_exceptions
   try { archive(g, hdr); }
   catch (const xdr_runtime_error &e) {
     std::cerr << "rpc_server_base::dispatch: ignoring malformed header: "
 	      << e.what() << std::endl;
     return;
   }
+  #else
+    archive(g, hdr);
+  #endif
+
   if (hdr.body.mtype() != CALL) {
     std::cerr << "rpc_server_base::dispatch: ignoring non-CALL" << std::endl;
     return;
@@ -106,6 +111,7 @@ rpc_server_base::dispatch(void *session, msg_ptr m, service_base::cb_t reply)
     return reply(rpc_prog_mismatch_msg(hdr.xid, low, high));
   }
 
+  #if __cpp_exceptions
   try {
     vers->second->process(session, hdr, g, reply);
     return;
@@ -113,6 +119,9 @@ rpc_server_base::dispatch(void *session, msg_ptr m, service_base::cb_t reply)
   catch (const xdr_runtime_error &e) {
     std::cerr << "rpc_server_base::dispatch: " << e.what() << std::endl;
   }
+  #else
+    vers->second->process(session, hdr, g, reply);
+  #endif
   reply(rpc_accepted_error_msg(hdr.xid, GARBAGE_ARGS));
 }
 
@@ -156,6 +165,7 @@ rpc_tcp_listener_common::receive_cb(rpc_sock *ms, void *session, msg_ptr mp)
     delete ms;
     return;
   }
+  #if __cpp_exceptions
   try {
     dispatch(session, std::move(mp), rpc_sock_reply_t(ms));
   }
@@ -164,6 +174,9 @@ rpc_tcp_listener_common::receive_cb(rpc_sock *ms, void *session, msg_ptr mp)
     session_free(session);
     delete ms;
   }
+  #else
+    dispatch(session, std::move(mp), rpc_sock_reply_t(ms));
+  #endif
 }
 
 }

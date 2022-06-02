@@ -50,6 +50,22 @@ struct rpc_call_stat {
   }
 };
 
+#if __cpp_exceptions
+#define THROW_MACRO(expname) \
+  template<typename... T> \
+  void throw_##expname (T... what) \
+  { \
+    throw expname (what...); \
+  }
+#else
+ #define THROW_MACRO(expname) \
+  template<typename... T> \
+  void throw_##expname (T... what) \
+  { \
+    std::abort(); \
+  }
+#endif
+
 //! This is the exception raised in an RPC client when it reaches the
 //! server and transmits a call, with no connection or communication
 //! errors, but the server replies with an RPC-level message header
@@ -69,6 +85,14 @@ struct xdr_system_error : xdr_runtime_error {
   xdr_system_error(const char *what, int no = errno)
     : xdr_runtime_error(std::string(what) + ": " + xdr_strerror(no)) {}
 };
+
+THROW_MACRO(xdr_call_error);
+THROW_MACRO(xdr_system_error);
+
+#undef THROW_MACRO
+
+
+
 
 }
 

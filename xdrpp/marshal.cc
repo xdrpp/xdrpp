@@ -22,8 +22,13 @@ message_t::alloc(std::size_t size)
   // bit to produce a single-fragment record.
   assert(size < 0x80000000);
   void *raw = std::malloc(sizeof(message_t) + size);
-  if (!raw)
-    throw_std_bad_alloc();
+  if (!raw) {
+    #if __cpp_exceptions
+      throw_std_bad_alloc();
+    #else
+      return nullptr;
+    #endif
+  }
   message_t *m = new (raw) message_t (size);
   *reinterpret_cast<std::uint32_t *>(m->raw_data()) =
     swap32le(size32(size) | 0x80000000);

@@ -46,32 +46,30 @@ size32(size_t s)
 
 #define THROW_MACRO(expname) \
   template<typename... T> \
-  void throw_##expname (T... what) \
+  [[noreturn]] void throw_##expname (T&&... what) \
   { \
     throw expname (what...); \
   }
  #define THROW_MACRO_STD(expname) \
   template<typename... T> \
-  void throw_std_##expname (T... what) \
+  [[noreturn]] void throw_std_##expname (T&&... what) \
   { \
     throw std:: expname (what...); \
   }
 #else
  #define THROW_MACRO(expname) \
   template<typename... T> \
-  void throw_##expname (T... what) \
+  [[noreturn]] void throw_##expname (T&&... what) \
   { \
     std::abort(); \
   }
  #define THROW_MACRO_STD(expname) \
   template<typename... T> \
-  void throw_std_##expname (T... what) \
+  [[noreturn]] void throw_std_##expname (T&&... what) \
   { \
     std::abort(); \
   }
 #endif
-
-#if __cpp_exceptions
 
 //! Generic class of XDR unmarshaling errors.
 struct xdr_runtime_error : std::runtime_error {
@@ -116,8 +114,6 @@ struct xdr_invariant_failed : xdr_runtime_error {
 struct xdr_wrong_union : std::logic_error {
   using std::logic_error::logic_error;
 };
-
-#endif
 
 THROW_MACRO(xdr_runtime_error)
 THROW_MACRO(xdr_overflow)
