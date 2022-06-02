@@ -45,15 +45,15 @@ size32(size_t s)
 #if __cpp_exceptions
 
 #define THROW_MACRO(expname) \
-  template<typename T> \
-  void throw_##expname (T what) \
+  template<typename... T> \
+  void throw_##expname (T... what) \
   { \
-    throw expname (what); \
+    throw expname (what...); \
   }
 #else
  #define THROW_MACRO(expname) \
-  template<typename T> \
-  void throw_##expname (T what) \
+  template<typename... T> \
+  void throw_##expname (T... what) \
   { \
     std::abort(); \
   }
@@ -105,7 +105,7 @@ struct xdr_bad_alloc : std::bad_alloc
 //! Access out of range when marshalling
 struct xdr_out_of_range : std::out_of_range
 {
-  using std::out_of_range::out_of_range
+  using std::out_of_range::out_of_range;
 };
 
 //! Attempt to access wrong field of a union.  Note that this is not
@@ -869,7 +869,7 @@ inline constexpr R
 with_nth(T &&t, int n, F &&f)
 {
   return with_n<std::tuple_size_v<std::remove_cvref_t<T>>, R>(n, [&](auto i) {
-    return std::forward<F>(f)(get<i>(std::forward<T>(t)));
+    return std::forward<F>(f)(std::get<i>(std::forward<T>(t)));
   });
 }
 
