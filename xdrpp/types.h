@@ -159,6 +159,9 @@ template<typename T> struct xdr_traits {
 template<typename T> using xdr_get_traits = xdr_traits<std::remove_cvref_t<T>>;
 #define XDR_GET_TRAITS(obj) xdr::xdr_get_traits<decltype(obj)>
 
+template<typename Src, typename Dst> concept can_construct =
+  std::constructible_from<Dst, Src>;
+
 #define XDR_CONCEPT(c) \
     template<typename T> concept xdr_##c = xdr_get_traits<T>::is_##c
 XDR_CONCEPT(struct);
