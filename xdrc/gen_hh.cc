@@ -40,6 +40,7 @@ namespace {
 indenter nl;
 vec<string> scope;
 vec<string> namespaces;
+// code for the ::xdr namespace instead of the local namespace
 std::ostringstream top_material;
 
 string
@@ -180,6 +181,42 @@ gen(std::ostream &os, const rpc_struct &s)
   }
   os << " {}";
   os << nl.close << "}";
+
+  top_material
+    << "template<> struct xdr_struct_fields<" << cur_scope() << "> {" << endl
+    << "  static constexpr size_t num_fields = "
+    << s.decls.size() << ";" << endl;
+  if (s.decls.size() > 0) {
+    /*
+    top_material
+      << "  template<size_t N> requires (N < num_fields) struct field;"
+      << endl;
+    */
+    top_material
+      << "  template<size_t N> requires (N < num_fields) "
+      << "static constexpr auto get();" << endl;
+  }
+  top_material
+    << "};" << endl;
+  for (size_t i = 0; i < s.decls.size(); ++i) {
+    top_material
+      << "template<> constexpr auto" << endl
+      << "xdr_struct_fields<" << cur_scope() << ">::get<" << i << ">()" << endl
+      << "{" << endl
+      << "  return field_access_t<&" << cur_scope() << "::" << s.decls[i].id
+      << ", \"" << s.decls[i].id << "\">{};" << endl
+      << "}" << endl;
+  }
+  /*
+  for (size_t i = 0; i < s.decls.size(); ++i) {
+    top_material
+      << "template<> template<>" << endl
+      << "struct xdr_struct_fields<" << cur_scope() << ">::field<" << i << ">"
+      << endl
+      << "  : field_access_t<&" << cur_scope() << "::" << s.decls[i].id
+      << ", \"" << s.decls[i].id << "\"> {};" << endl;
+  }
+  */
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()

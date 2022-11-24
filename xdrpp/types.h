@@ -651,6 +651,8 @@ struct field_access_t<F, Name> {
   }
 };
 
+template<typename T> struct xdr_struct_fields;
+
 template<typename S, typename...Field>
 requires (std::same_as<S, typename Field::struct_type> && ...)
 struct xdr_struct_base
@@ -712,13 +714,13 @@ struct tuple_access {
   static constexpr const char *name() { return index_string<value>(); }
 
   constexpr decltype(auto) operator()(struct_type &s) const {
-    return get<field_type>(s);
+    return get<value>(s);
   }
   constexpr decltype(auto) operator()(const struct_type &s) const {
-    return get<field_type>(s);
+    return get<value>(s);
   }
   constexpr decltype(auto) operator()(struct_type &&s) const {
-    return get<field_type>(std::move(s));
+    return get<value>(std::move(s));
   }
 };
 
@@ -739,6 +741,19 @@ struct make_tuple_base<std::tuple<T...>, std::index_sequence<I...>> {
 #endif // NO_UNEVAL_LAMBDA
 
 } // namespace detail
+
+template<>
+struct xdr_struct_fields<xdr_void> {
+  static constexpr size_t num_fields = 0;
+};
+
+template<typename...Ts>
+struct xdr_struct_fields<std::tuple<Ts...>> {
+  static constexpr size_t num_fields = sizeof...(Ts);
+  template<size_t N> requires (N < num_fields) static constexpr auto get() {
+    return detail::tuple_access<std::tuple<Ts...>, N>{};
+  }
+};
 
 template<typename...Ts>
 struct xdr_traits<std::tuple<Ts...>>
