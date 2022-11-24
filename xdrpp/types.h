@@ -653,14 +653,27 @@ struct field_access_t<F, Name> {
 
 template<typename T> struct xdr_struct_fields;
 
-template<typename S, typename...Field>
-requires (std::same_as<S, typename Field::struct_type> && ...)
-struct xdr_struct_base
-  : detail::xdr_fixed_size_base<typename Field::struct_type...> {
-  using struct_type = S;
-  static constexpr std::tuple<Field...> fields{};
-  static constexpr size_t num_fields = sizeof...(Field);
+namespace detail {
+template<typename T, typename F>
+decltype(auto)
+with_struct_fields(F &&f)
+{
+  using fields = xdr_struct_fields<T>;
+  if constexpr (fields::num_fields > 0)
+    return [&f]<size_t...Is>(std::index_sequence<Is...>) -> decltype(auto) {
+      return std::forward<F>(f)(fields::template get<Is>()...);
+    }(std::make_index_sequence<fields::num_fields>{});
+  else
+    return std::forward<F>(f)();
+}
+} // namespace detail
 
+template<typename S>
+struct xdr_struct_base
+  : decltype(detail::with_struct_fields<S>([]<typename...Fs>(Fs...) {
+	return detail::xdr_fixed_size_base<typename Fs::struct_type...>{};
+      })) {
+  using struct_type = S;
   static constexpr const bool is_class = true;
   static constexpr const bool is_struct = true;
 
@@ -668,18 +681,26 @@ struct xdr_struct_base
     if constexpr (xdr_struct_base::has_fixed_size)
       return xdr_struct_base::fixed_size;
     else
-      return (0 + ... + xdr_get_traits<typename Field::field_type>::
-	      serial_size(Field{}(obj)));
+      return
+	detail::with_struct_fields<struct_type>([&obj]<typename...Fs>(Fs...fs) {
+	    return (0 + ... + xdr_get_traits<typename Fs::field_type>::
+		serial_size(fs(obj)));
+
+      });
   }
 
   template<typename Archive> static void
   load(Archive &ar, struct_type &obj) {
-    (void(archive(ar, Field{}(obj), Field{}.name())), ...);
+    detail::with_struct_fields<struct_type>([&ar,&obj](auto ...fs) {
+      (void(archive(ar, fs(obj), fs.name())), ...);
+    });
     validate(obj);
   }
   template<typename Archive> static void
   save(Archive &ar, const struct_type &obj) {
-    (void(archive(ar, Field{}(obj), Field{}.name())), ...);
+    detail::with_struct_fields<struct_type>([&ar,&obj](auto ...fs) {
+      (void(archive(ar, fs(obj), fs.name())), ...);
+    });
   }
 };
 
@@ -755,24 +776,12 @@ struct xdr_struct_fields<std::tuple<Ts...>> {
   }
 };
 
-template<typename...Ts>
+template<typename ...Ts>
 struct xdr_traits<std::tuple<Ts...>>
-#if NO_UNEVAL_LAMBDA
-  : detail::make_tuple_base<std::tuple<Ts...>>::type
-#else // !NO_UNEVAL_LAMBDA
-// This is kind of gross, but we want to create a supertype that is
-// detail::xdr_struct_base with a sequence of tuple_access template
-// parameters from 0 to the size of the tuple.
-  : decltype([]<size_t...Is>(std::index_sequence<Is...>){
-      return xdr_struct_base<
-	std::tuple<Ts...>,
-	detail::tuple_access<std::tuple<Ts...>, Is>...
-	>{};
-  }(std::make_index_sequence<sizeof...(Ts)>{}))
-#endif // !NO_UNEVAL_LAMBDA
-{
+  : xdr_struct_base<std::tuple<Ts...>> {
   static constexpr bool xdr_defined = false;
 };
+
 
 ////////////////////////////////////////////////////////////////
 // XDR union types
@@ -1016,9 +1025,9 @@ template<xdr_struct T> requires xdr_traits<T>::xdr_defined
 constexpr bool
 operator==(const T &a, const T &b) noexcept
 {
-  return apply([&](auto...fields) {
-    return ((fields(a) == fields(b)) && ...);
-  }, xdr_traits<T>::fields);
+  return detail::with_struct_fields<T>([&](auto ...f) {
+    return ((f(a) == f(b)) && ...);
+  });
 }
 
 namespace detail {
@@ -1037,11 +1046,11 @@ auto
 #endif // not clang
 operator<=>(const T &a, const T &b) noexcept
 {
-  return std::apply([&a,&b]<typename...F>(F...f){
-      detail::field_cmp_res_t<typename F::field_type...> r =
-	std::strong_ordering::equal;
-      return void(((r = f(a) <=> f(b), r == 0) && ...)), r;
-    }, xdr_traits<T>::fields);
+  return detail::with_struct_fields<T>([&](auto ...f) {
+    detail::field_cmp_res_t<typename decltype(f)::field_type...> r =
+      std::strong_ordering::equal;
+    return void(((r = f(a) <=> f(b), r == 0) && ...)), r;
+  });
 }
 
 template<xdr_union T> inline bool
