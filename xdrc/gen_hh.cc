@@ -207,29 +207,12 @@ gen(std::ostream &os, const rpc_struct &s)
       << ", \"" << s.decls[i].id << "\">{};" << endl
       << "}" << endl;
   }
-  /*
-  for (size_t i = 0; i < s.decls.size(); ++i) {
-    top_material
-      << "template<> template<>" << endl
-      << "struct xdr_struct_fields<" << cur_scope() << ">::field<" << i << ">"
-      << endl
-      << "  : field_access_t<&" << cur_scope() << "::" << s.decls[i].id
-      << ", \"" << s.decls[i].id << "\"> {};" << endl;
-  }
-  */
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
     << ">" << endl;
   top_material
-    << "  : xdr_struct_base<" << cur_scope();
-  for (auto &d : s.decls)
-    top_material
-      << "," << endl << "                    "
-      << "xdr::field_access_t<&" << cur_scope() << "::" << d.id
-      << ", \"" << d.id << "\">";
-  top_material
-    << "> {};" << endl;
+    << "  : xdr_struct_base<" << cur_scope() << "> {};" << endl;
 
   scope.pop_back();
 }
