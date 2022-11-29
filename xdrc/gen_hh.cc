@@ -187,11 +187,6 @@ gen(std::ostream &os, const rpc_struct &s)
     << "  static constexpr size_t num_fields = "
     << s.decls.size() << ";" << endl;
   if (s.decls.size() > 0) {
-    /*
-    top_material
-      << "  template<size_t N> requires (N < num_fields) struct field;"
-      << endl;
-    */
     top_material
       << "  template<size_t N> requires (N < num_fields) "
       << "static constexpr auto get();" << endl;
@@ -281,16 +276,18 @@ print_cases(std::ostream &os, const rpc_ufield &f)
 }
 
 std::string
-union_field_access(const rpc_union &u, const rpc_ufield &f)
+union_field_access(const rpc_union &u, const rpc_ufield &f,
+		   bool qualified = false)
 {
+  string id = qualified ? cur_scope() : u.id;
   std::ostringstream os;
   if (f.decl.type == "void")
     os << "xdr::void_access_t";
   else if (opt_uptr)
     os << "xdr::uptr_access_t<" << decl_type(f.decl) << ", &"
-       << u.id << "::u_, \"" << f.decl.id << "\">";
+       << id << "::u_, \"" << f.decl.id << "\">";
   else
-    os << "xdr::field_access_t<&" << u.id << "::" << f.decl.id
+    os << "xdr::field_access_t<&" << id << "::" << f.decl.id
        << "_, \"" << f.decl.id << "\">";
   return os.str();
 }
@@ -298,20 +295,35 @@ union_field_access(const rpc_union &u, const rpc_ufield &f)
 void
 gen_union_traits(std::ostream &os, const rpc_union &u)
 {
-  // _xdr_case_values
   std::vector<std::string> cases;
   for (const auto &f : u.fields)
     cases.insert(cases.end(), f.cases.begin(), f.cases.end());
-  os << nl << "static constexpr std::array<" << map_tag(u.tagtype)
-     << ", " << cases.size() << "> _xdr_case_values = {";
+
+  string tag_type = map_tag(u.tagtype);
+
+  int num_fields = 0;
+  for (const auto &f : u.fields)
+    if (f.fieldno >= num_fields)
+      num_fields = f.fieldno+1;
+
+  os << nl << "struct _xdr_union_meta {"
+     << nl.open << "using tag_type = " << tag_type << ";"
+     << nl << "static constexpr const char *union_name = \"" + u.id + "\";"
+     << nl << "static constexpr size_t num_arms = " << num_fields << ";"
+     << nl << "static constexpr bool has_default_case = "
+     << (u.hasdefault ? "true" : "false") << ";"
+     << endl;
+
+  // case_values
+  os << nl << "static constexpr std::array<" << tag_type
+     << ", " << cases.size() << "> case_values = {";
   for (const auto &c : cases)
     os << nl << "  " << map_tag(c) << ",";
   os << nl << "};";
 
-  // _xdr_union_fieldno
-  os << nl << "static constexpr int _xdr_union_fieldno("
-     << map_type(u.tagtype) << " _which) {"
-     << nl.open << "switch (xdr::xdr_traits<" << u.tagtype
+  // fieldno
+  os << nl << "static constexpr int fieldno(" << tag_type << " _which) {"
+     << nl.open << "switch (xdr::xdr_traits<" << tag_type
      << ">::case_type{_which}) {";
   ++nl;
   for (const auto &f : u.fields) {
@@ -322,20 +334,25 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
     os << nl.outdent << "default:"
        << nl << "return -1;";
   os << nl.close << "}"
-     << nl.close << "}";
+     << nl.close << "}" << endl;
 
-  // _xdr_union_traits
-  os << nl << "using _xdr_union_traits ="
-     << nl << "  xdr::xdr_union_common<" << u.id << ", "
-     << (u.hasdefault ? "true" : "false")
-     << ", \"" << u.id << "\","
-     << nl << "    xdr::field_access_t<&" << u.id << "::" << u.tagid << "_"
-     << ", \"" << u.tagid << "\">,"
-     << nl << "    _xdr_union_fieldno";
+  // tag_access, arm_access
+  os << nl.outdent << "protected:"
+     << nl << "friend struct ::xdr::unionfn;";
+  os << nl << "static constexpr auto tag_access() {"
+     << nl << "  return xdr::field_access_t<&" << cur_scope()
+     << "::" << u.tagid << "_, \"" << u.tagid << "\">{};"
+     << nl << "}" << endl
+     << nl << "template<size_t I> requires (I < " << num_fields << ")"
+     << nl << "static constexpr auto arm_access() {"
+     << nl.open << "if constexpr (I == 0)"
+     << nl << "  return xdr::void_access_t{};";
   for (const auto &f : u.fields)
     if (f.fieldno > 0)
-      os << "," << nl << "    " << union_field_access(u, f);
-  os << ">;" << endl;
+      os << nl << "else if constexpr (I == " << f.fieldno << ")"
+	 << nl << "  return " << union_field_access(u, f) << "{};";
+  os << nl.close << "}";
+  os << nl.close << "};";
 }
 
 void
@@ -383,48 +400,38 @@ gen(std::ostream &os, const rpc_union &u)
   // Default constructor
   os << nl << "explicit " << u.id << "(" << map_type(u.tagtype)
      << " _which = {}) : " << u.tagid << "_(_which) {"
-     << nl.open << "_xdr_union_traits::with_current_arm(*this, [this](auto f) {"
-     << nl << "  _xdr_union_traits::construct_field(f, *this);"
-     << nl << "});"
+     << nl.open << "::xdr::unionfn::constructor(*this);"
      << nl.close << "}";
 
   // Copy/move constructor
-  os << nl << u.id << "(const " << u.id << " &source) : "
-     << u.tagid << "_(source." << u.tagid << "_) {"
-     << nl.open << "_xdr_union_traits::with_current_arm(*this, [&](auto f) {"
-     << nl << "  _xdr_union_traits::construct_field(f, *this, f(source));"
-     << nl << "});"
-     << nl.close << "}";
-  os << nl << u.id << "(const " << u.id << " &&source) : "
-     << u.tagid << "_(source." << u.tagid << "_) {"
-     << nl.open << "_xdr_union_traits::with_current_arm(*this, [&](auto f) {"
-     << nl << "  _xdr_union_traits::construct_field(f, *this, "
-     << "f(std::move(source)));"
-     << nl << "});"
+  os << nl << u.id << "(const " << u.id << " &source) {"
+     << nl.open << "::xdr::unionfn::copy_constructor(*this, source);"
+     << nl.close << "}"
+     << nl << u.id << "(" << u.id << " &&source) {"
+     << nl.open << "::xdr::unionfn::copy_constructor(*this, std::move(source));"
      << nl.close << "}";
 
   // Destructor
   os << nl << "~" << u.id << "() {"
-     << nl.open << "_xdr_union_traits::with_current_arm(*this, [this](auto f) {"
-     << nl << "  _xdr_union_traits::destroy_field(f, *this);"
-     << nl << "});"
-     << nl.close << "}" << endl;
+     << nl.open << "::xdr::unionfn::destructor(*this);"
+     << nl.close << "}";
 
   // Assignment
   os << nl << u.id << " &operator=(const " << u.id << "&s) {"
-     << nl.open << "return _xdr_union_traits::assign(*this, s);"
+     << nl.open << "return ::xdr::unionfn::assign(*this, s);"
+     << nl.close << "}"
+     << nl << u.id << " &operator=(" << u.id << "&&s) {"
+     << nl.open << "return ::xdr::unionfn::assign(*this, std::move(s));"
      << nl.close << "}";
-  os << nl << u.id << " &operator=(const " << u.id << "&&s) {"
-     << nl.open << "return _xdr_union_traits::assign(*this, std::move(s));"
-     << nl.close << "}";
+
   os << endl;
 
   // Get/set discriminant
   os << nl << u.tagtype << " " << u.tagid << "() const { return "
      << u.tagid << "_; }"
      << nl << u.id << " &" << u.tagid << "(" << u.tagtype << " _v) {"
-     << nl.open << "_xdr_union_traits::check_tag(_v);"
-     << nl << "_xdr_union_traits::set_tag(*this, _v);"
+     << nl.open << "::xdr::unionfn::check_tag<" << u.id << ">(_v);"
+     << nl << "::xdr::unionfn::set_tag(*this, _v);"
      << nl << "return *this;"
      << nl.close << "}";
 
@@ -436,14 +443,14 @@ gen(std::ostream &os, const rpc_union &u)
     for (string cnst : {"", "const "})
       os << nl << cnst << decl_type(f.decl) << " &" << f.decl.id
 	 << "() " << cnst << "{"
-	 << nl.open << "return _xdr_union_traits::arm<"
+	 << nl.open << "return ::xdr::unionfn::arm_impl<"
 	 << f.fieldno << ">(*this);"
 	 << nl.close << "}";
   }
 
   top_material
-    << "template<> struct xdr_traits<" << cur_scope()
-    << "> : " << cur_scope() << "::_xdr_union_traits {};" << endl;
+    << "template<> struct xdr_traits<" << cur_scope() << ">" << endl
+    << "  : xdr_union_base<" << cur_scope() << "> {};" << endl;
 
   os << nl.close << "}";
 

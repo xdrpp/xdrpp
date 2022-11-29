@@ -20,7 +20,8 @@ struct xdr_clear_t {
     if constexpr (xdr_numlike<T>)
       t = T{};
     else if constexpr (xdr_union<T>) {
-      if (xdr_traits<T>::set_tag(t, typename xdr_traits<T>::tag_type{}))
+      //if (unionfn::set_tag(t, typename unionfn::tag_type<T>{}))
+      if (unionfn::set_tag(t, {}))
 	xdr_traits<T>::load(*this, t);
     }
     else if constexpr (requires { t.resize(0); })
