@@ -87,6 +87,19 @@ union other_union switch (other_color oc) {
     string reder_string<>;
 };
 
+namespace ns2 {
+
+union ns_union switch (other_color oc) {
+  case RED:
+    string red_string<>;
+  case REDDER:
+    string reder_string<>;
+  case REDDEST:
+    string reddest_string<>;
+};
+
+}
+
 struct bytes {
   string s<16>;
   opaque fixed[16];
@@ -107,7 +120,7 @@ struct numerics {
   double f2;
   other_color e1;
 };
-  
+
 struct uniontest {
   int *ip;
   union switch (color arbitrary) {

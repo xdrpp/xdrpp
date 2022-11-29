@@ -77,9 +77,9 @@ struct generator_t {
 
   template<xdr_union T>
   void operator()(T &t) const {
-    const auto &vals = T::_xdr_case_values;
-    typename xdr_traits<T>::tag_type v;
-    if (!xdr_traits<T>::has_default_case) {
+    const auto &vals = T::_xdr_union_meta::case_values;
+    typename unionfn::tag_type<T> v;
+    if (!T::_xdr_union_meta::has_default_case) {
       // Just pick a random case if there's no default
       uint32_t n;
       (*this)(n);
@@ -96,8 +96,8 @@ struct generator_t {
 	v = vals[n % vals.size()];
       }
     }
-    xdr_traits<T>::set_tag(t, v);
-    xdr_traits<T>::with_current_arm(t, [this, &t](auto body) {
+    unionfn::set_tag(t, v);
+    unionfn::with_current_arm(t, [this, &t](auto body) {
       archive(*this, body(t), nullptr);
     });
   }
