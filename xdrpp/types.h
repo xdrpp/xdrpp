@@ -661,37 +661,30 @@ struct field_access_t<F, Name> {
   }
 };
 
-template<typename T> struct xdr_struct_fields;
-template<size_t I, typename T> constexpr auto
-get(xdr_struct_fields<T>)
-{
-  return T::template get<I>();
-}
-} // namespace xdr
-template<typename T> struct std::tuple_size<xdr::xdr_struct_fields<T>>
-  : std::integral_constant<size_t, xdr::xdr_struct_fields<T>::num_fields> {};
-template<std::size_t I, typename T>
-struct std::tuple_element<I, xdr::xdr_struct_fields<T>> {
-  using type = decltype(xdr::xdr_struct_fields<T>::template get<I>());
-};
-namespace xdr {
-
 namespace detail {
+
+template<typename T> struct struct_meta;
+
+template<typename T>
+requires requires { typename T::_xdr_struct_meta; }
+struct struct_meta<T> {
+  using type = typename T::_xdr_struct_meta;
+};
+
 template<typename T, typename F>
-decltype(auto)
+requires requires { typename struct_meta<T>::type; }
+inline decltype(auto)
 with_struct_fields(F &&f)
 {
-  using fields = xdr_struct_fields<T>;
-  if constexpr (fields::num_fields > 0)
-    return [&f]<size_t...Is>(std::index_sequence<Is...>) -> decltype(auto) {
-      return std::forward<F>(f)(fields::template get<Is>()...);
-    }(std::make_index_sequence<fields::num_fields>{});
-  else
-    return std::forward<F>(f)();
+  using meta = typename struct_meta<T>::type;
+  return [&f]<size_t ...I>(std::index_sequence<I...>) -> decltype(auto) {
+    return std::forward<F>(f)(meta::template field_access<I>()...);
+  }(std::make_index_sequence<meta::num_fields>{});
 }
 } // namespace detail
 
 template<typename S>
+requires requires { typename detail::struct_meta<S>::type; }
 struct xdr_struct_base
   : decltype(detail::with_struct_fields<S>([]<typename...Fs>(Fs...) {
 	return detail::xdr_fixed_size_base<typename Fs::struct_type...>{};
@@ -704,12 +697,11 @@ struct xdr_struct_base
     if constexpr (xdr_struct_base::has_fixed_size)
       return xdr_struct_base::fixed_size;
     else
-      return
-	detail::with_struct_fields<struct_type>([&obj]<typename...Fs>(Fs...fs) {
-	    return (0 + ... + xdr_get_traits<typename Fs::field_type>::
-		serial_size(fs(obj)));
-
-      });
+      return detail::with_struct_fields<struct_type>
+	([&obj]<typename...Fs>(Fs...fs) {
+	  return (0 + ... + xdr_get_traits<typename Fs::field_type>::
+		  serial_size(fs(obj)));
+	});
   }
 
   template<typename Archive> static void
@@ -768,36 +760,18 @@ struct tuple_access {
   }
 };
 
-#if __clang__ && __clang_major__ < 13
-#define NO_UNEVAL_LAMBDA 1
-#endif // clang < 13
+template<typename...T>
+struct struct_meta<std::tuple<T...>> {
+  struct type {
+    static constexpr size_t num_fields = sizeof...(T);
 
-#if NO_UNEVAL_LAMBDA
-template<typename TS,
-	 typename IS = std::make_index_sequence<std::tuple_size_v<TS>>>
-struct make_tuple_base;
-
-template<typename...T, size_t...I>
-struct make_tuple_base<std::tuple<T...>, std::index_sequence<I...>> {
-  using tuple_type = std::tuple<T...>;
-  using type = xdr_struct_base<tuple_type, tuple_access<tuple_type, I>...>;
+    template<size_t I> requires (I < num_fields)
+    static constexpr auto field_access () {
+      return tuple_access<std::tuple<T...>, I>{};
+    }
+  };
 };
-#endif // NO_UNEVAL_LAMBDA
-
 } // namespace detail
-
-template<>
-struct xdr_struct_fields<xdr_void> {
-  static constexpr size_t num_fields = 0;
-};
-
-template<typename...Ts>
-struct xdr_struct_fields<std::tuple<Ts...>> {
-  static constexpr size_t num_fields = sizeof...(Ts);
-  template<size_t N> requires (N < num_fields) static constexpr auto get() {
-    return detail::tuple_access<std::tuple<Ts...>, N>{};
-  }
-};
 
 template<typename ...Ts>
 struct xdr_traits<std::tuple<Ts...>>

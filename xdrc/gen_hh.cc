@@ -180,28 +180,23 @@ gen(std::ostream &os, const rpc_struct &s)
     os << d.id << "(std::forward<_" << d.id << "_T>(_" << d.id << "))";
   }
   os << " {}";
-  os << nl.close << "}";
 
-  top_material
-    << "template<> struct xdr_struct_fields<" << cur_scope() << "> {" << endl
-    << "  static constexpr size_t num_fields = "
-    << s.decls.size() << ";" << endl;
-  if (s.decls.size() > 0) {
-    top_material
-      << "  template<size_t N> requires (N < num_fields) "
-      << "static constexpr auto get();" << endl;
-  }
-  top_material
-    << "};" << endl;
+  os << endl
+     << nl << "struct _xdr_struct_meta {"
+     << nl.open << "static constexpr std::size_t num_fields = "
+     << s.decls.size() << ";" << endl
+     << nl << "template<size_t I> requires (I < num_fields)"
+     << nl << "static constexpr auto field_access() {";
+  ++nl;
   for (size_t i = 0; i < s.decls.size(); ++i) {
-    top_material
-      << "template<> constexpr auto" << endl
-      << "xdr_struct_fields<" << cur_scope() << ">::get<" << i << ">()" << endl
-      << "{" << endl
-      << "  return field_access_t<&" << cur_scope() << "::" << s.decls[i].id
-      << ", \"" << s.decls[i].id << "\">{};" << endl
-      << "}" << endl;
+    os << nl << "if constexpr (I == " << i << ")"
+       << nl << "  return ::xdr::field_access_t<&"
+       << cur_scope() << "::" << s.decls[i].id
+       << ", \"" << s.decls[i].id << "\">{};";
   }
+  os << nl.close << "}"
+     << nl.close << "};"
+     << nl.close << "}";
 
   top_material
     << "template<> struct xdr_traits<" << cur_scope()
