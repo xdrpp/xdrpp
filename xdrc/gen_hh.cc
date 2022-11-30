@@ -299,7 +299,7 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
   for (const auto &f : u.fields)
     cases.insert(cases.end(), f.cases.begin(), f.cases.end());
 
-  string tag_type = map_tag(u.tagtype);
+  string tag_type = map_type(u.tagtype);
 
   int num_fields = 0;
   for (const auto &f : u.fields)

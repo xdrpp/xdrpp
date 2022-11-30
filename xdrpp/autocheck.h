@@ -78,7 +78,7 @@ struct generator_t {
   template<xdr_union T>
   void operator()(T &t) const {
     const auto &vals = T::_xdr_union_meta::case_values;
-    typename unionfn::tag_type<T> v;
+    unionfn::tag_type<T> v;
     if (!T::_xdr_union_meta::has_default_case) {
       // Just pick a random case if there's no default
       uint32_t n;
