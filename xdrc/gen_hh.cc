@@ -307,11 +307,11 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
       num_fields = f.fieldno+1;
 
   os << nl << "struct _xdr_union_meta {"
-     << nl.open << "using tag_type = " << tag_type << ";"
-     << nl << "static constexpr const char *union_name = \"" + u.id + "\";"
+     << nl.open << "static constexpr const char *union_name = \"" + u.id + "\";"
      << nl << "static constexpr size_t num_arms = " << num_fields << ";"
      << nl << "static constexpr bool has_default_case = "
      << (u.hasdefault ? "true" : "false") << ";"
+    //<< nl << "using tag_type = " << tag_type << ";"
      << endl;
 
   // case_values
