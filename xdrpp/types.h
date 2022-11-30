@@ -903,7 +903,8 @@ template<typename U> concept has_union_meta =
 struct unionfn {
   template<typename U> using union_meta =
     typename std::remove_cvref_t<U>::_xdr_union_meta;
-  template<typename U> using tag_type = typename union_meta<U>::tag_type;
+  template<typename U> using tag_type =
+    typename decltype(union_meta<U>::tag_access())::field_type;
 
   template<has_union_meta U>
   static size_t fieldno(const U &u) {
