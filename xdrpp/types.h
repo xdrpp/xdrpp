@@ -380,15 +380,15 @@ template<typename T, uint32_t N> struct xarray
   static Constexpr const std::size_t container_fixed_nelem = N;
   static Constexpr std::size_t size() { return N; }
   static void validate() {}
-  static void check_size(uint32_t i) {
+  static void check_size(std::size_t i) {
     if (i != N)
       throw xdr_overflow("invalid size in xdr::xarray");
   }
-  static void resize(uint32_t i) {
+  static void resize(std::size_t i) {
     if (i != N)
       throw xdr_overflow("invalid resize in xdr::xarray");
   }
-  T &extend_at(uint32_t i) {
+  T &extend_at(std::size_t i) {
     if (i >= N)
       throw xdr_overflow("attempt to access invalid position in xdr::xarray");
     return (*this)[i];
@@ -439,14 +439,14 @@ struct xvector : std::vector<T> {
     check_size(this->size() + n);
     this->insert(this->end(), elems, elems + n);
   }
-  T &extend_at(uint32_t i) {
+  T &extend_at(std::size_t i) {
     if (i >= N)
       throw xdr_overflow("attempt to access invalid position in xdr::xvector");
     if (i == this->size())
       this->emplace_back();
     return (*this)[i];
   }
-  void resize(uint32_t n) {
+  void resize(std::size_t n) {
     check_size(n);
     vector::resize(n);
   }
@@ -556,23 +556,23 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   }
   pointer &operator=(pointer &&) = default;
 
-  static void check_size(uint32_t n) {
+  static void check_size(std::size_t n) {
     if (n > 1)
       throw xdr_overflow("xdr::pointer size must be 0 or 1");
   }
-  uint32_t size() const { return *this ? 1 : 0; }
+  std::size_t size() const { return *this ? 1 : 0; }
   T *begin() { return get(); }
   const T *begin() const { return get(); }
   T *end() { return begin() + size(); }
   const T *end() const { return begin() + size(); }
-  T &extend_at(uint32_t i) {
+  T &extend_at(std::size_t i) {
     if (i != 0)
       throw xdr_overflow("attempt to access position > 0 in xdr::pointer");
     if (!size())
       this->reset(new T);
     return **this;
   }
-  void resize(uint32_t n) {
+  void resize(std::size_t n) {
     if (n == size())
       return;
     switch(n) {
