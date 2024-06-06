@@ -5,6 +5,7 @@
 #ifndef _XDRC_TYPES_H_HEADER_INCLUDED_
 #define _XDRC_TYPES_H_HEADER_INCLUDED_ 1
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cassert>
