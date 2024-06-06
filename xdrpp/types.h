@@ -651,14 +651,11 @@ struct field_access_t<F, Name> {
 
   static constexpr const char *name() { return field_name.value; }
 
-  constexpr decltype(auto) operator()(struct_type &s) const {
-    return s.*value;
-  }
-  constexpr decltype(auto) operator()(const struct_type &s) const {
-    return s.*value;
-  }
-  constexpr decltype(auto) operator()(struct_type &&s) const {
-    return std::move(s).*value;
+  template<typename SS>
+  constexpr decltype(auto) operator()(SS &&s) const
+    requires requires { s.*value; }
+  {
+    return std::forward<SS>(s).*value;
   }
 };
 
