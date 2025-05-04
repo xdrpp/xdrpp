@@ -61,6 +61,10 @@ public:
 
   //! Allocate a new buffer.
   static msg_ptr alloc(size_t size);
+
+  // Newer C++ can optionally specify the size to global ::operator
+  // delete, so make sure that doesn't happen for this class.
+  static void operator delete(void *ptr) { ::operator delete(ptr); }
 };
 
 }
