@@ -241,8 +241,10 @@ gen(std::ostream &os, const rpc_struct &s)
     for (size_t i = 0; i < s.decls.size(); ++i)
       top_material << "    archive(ar, obj." << s.decls[i].id
 		   << ", \"" << s.decls[i].id << "\");" << endl;
-    if (round++)
-      top_material << "    xdr::validate(obj);" << endl;
+    if (round++) {
+      top_material << "    using xdr::validate;" << endl;
+      top_material << "    validate(obj);" << endl;
+    }
     top_material << "  }" << endl;
   }
   top_material << "};" << endl;
@@ -468,9 +470,9 @@ gen(std::ostream &os, const rpc_union &u)
   os << nl << "_xdr_case_type _xdr_discriminant() const { return "
      << u.tagid << "_; }";
   os << nl << "void _xdr_discriminant(_xdr_case_type which,"
-     << " bool validate = true) {"
+     << " bool validate_discriminant = true) {"
      << nl.open << "int fnum = _xdr_field_number(which);"
-     << nl << "if (fnum < 0 && validate)"
+     << nl << "if (fnum < 0 && validate_discriminant)"
      << nl << "  throw xdr::xdr_bad_discriminant(\"bad value of "
      << u.tagid << " in " << u.id << "\");"
      << nl << "if (fnum != _xdr_field_number(" << u.tagid << "_)) {"
@@ -663,7 +665,8 @@ gen(std::ostream &os, const rpc_union &u)
     << "    obj._xdr_with_mem_ptr(field_archiver, obj."
     << u.tagid << "(), ar, obj," << endl
     << "                          union_field_name(which));" << endl
-    << "    xdr::validate(obj);" << endl
+    << "    using xdr::validate;" << endl
+    << "    validate(obj);" << endl
     << "  }" << endl;
   top_material
     << "};" << endl;

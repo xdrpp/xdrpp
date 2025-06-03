@@ -86,6 +86,8 @@ struct xdr_wrong_union : std::logic_error {
 // Templates for XDR traversal and processing
 ////////////////////////////////////////////////////////////////
 
+template<typename T> struct xdr_traits;
+
 namespace detail {
 // If a class actually contains a method called validate, then the
 // validate function might as well call it.  So we use the standard
@@ -106,9 +108,9 @@ call_validate(const T &, ...)
 }
 }
 
-//! If this function template is specialized, it provides a means of
-//! placing extra restrictions on XDR data structures (beyond those of
-//! the XDR specification).  When a specialized \c xdr::validate
+//! If this function is overloaded or specialized, it provides a means
+//! of placing extra restrictions on XDR data structures (beyond those
+//! of the XDR specification).  When a specialized \c validate
 //! function detects a bad data argument, it should throw an exception
 //! of type \c xdr::xdr_invariant_failed.  Note this mechanism only
 //! works for user-defined XDR structs and unions.  It does not work
@@ -119,6 +121,39 @@ validate(const T &t)
 {
   detail::call_validate(t, 0);
 }
+
+//! If you declare a function xdr_validate_enum(T) for an XDR enum
+//! type T, then the unmarshalling code will reject values that don't
+//! have enum tags.  Note that the xdr_validate_enum will never
+//! actually be called--it's just used as a flag to enable enum
+//! validation.  The reson for doing this with function overloading
+//! rather than template specialization is that it enables you to
+//! enable or disable enum validation on a per-namespace basis using
+//! ADR.  In particular, to validate all enums in namespace myns, just
+//! declare one template function in the namespace:
+//!
+//! @code
+//!    namespace myns {
+//!    template<typename T> inline void xdr_validate_enum(T);
+//!    }
+//! @endcode
+template<typename T> struct validate_enum {
+private:
+  static_assert(xdr_traits<T>::is_enum);
+  template<typename U> static std::false_type test(...);
+
+  template<typename U> static
+  decltype(xdr_validate_enum(U{}), std::true_type{}) test(int);
+
+public:
+  static void validate(T t)
+  {
+    if constexpr (decltype(test<T>(0))::value) {
+      if (!xdr_traits<T>::enum_name(t))
+	throw xdr_invariant_failed("Invalid enum value");
+    }
+  }
+};
 
 //! This is used to apply an archive to a field.  It is designed as a
 //! template class that can be specialized to various archive formats,

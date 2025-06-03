@@ -171,7 +171,12 @@ template<typename Base> struct xdr_generic_get : Base {
 
   template<typename T> typename std::enable_if<
     std::is_same<std::uint32_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T &t) { check(4); t = xdr_traits<T>::from_uint(get32(p_)); }
+  operator()(T &t) {
+    check(4);
+    t = xdr_traits<T>::from_uint(get32(p_));
+    if constexpr (xdr_traits<T>::is_enum)
+      validate_enum<T>::validate(t);
+  }
 
   template<typename T> typename std::enable_if<
     std::is_same<std::uint64_t, typename xdr_traits<T>::uint_type>::value>::type
