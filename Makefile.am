@@ -55,7 +55,7 @@ check_PROGRAMS = tests/test-stacklim tests/test-msgsock		\
 	tests/test-listener tests/test-arpc tests/test-compare	\
 	tests/test-types tests/test-validate
 TESTS = tests/test-stacklim tests/test-msgsock tests/test-printer	\
-	tests/test-compare tests/test-types tests/test-validate
+	tests/test-compare tests/test-types tests/test-validate tests/test-marshal
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 TESTS += tests/test-cereal
