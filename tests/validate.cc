@@ -3,6 +3,12 @@
 #include <iostream>
 #include <xdrpp/marshal.h>
 #include <xdrpp/printer.h>
+
+// Forward declaration before including xdrtest.hh. This is necessary for GCC
+// to pick up our local test validate function properly.
+struct fix_4;
+void validate(const fix_4& f4);
+
 #include "tests/xdrtest.hh"
 
 using namespace std;
