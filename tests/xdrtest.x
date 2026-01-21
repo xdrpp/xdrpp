@@ -1,5 +1,5 @@
 %using xdr::operator==;
-%using xdr::operator<;
+%using xdr::operator<=>;
 
 enum senum {
   SE_NEGATIVE = -1,
@@ -65,7 +65,7 @@ union uptr switch (bool b) {
 
 namespace testns {
 %using xdr::operator==;
-%using xdr::operator<;
+%using xdr::operator<=>;
 
 enum other_color {
   RED,
