@@ -631,20 +631,12 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   friend bool operator==(const pointer &a, const pointer &b) {
     return (!a && !b) || (a && b && *a == *b);
   }
-  friend bool operator!=(const pointer &a, const pointer &b) {
-    return !(a == b);
-  }
-  friend bool operator<(const pointer &a, const pointer &b) {
-    return (!a && b) || (a && b && *a < *b);
-  }
-  friend bool operator>(const pointer &a, const pointer &b) {
-    return b < a;
-  }
-  friend bool operator<=(const pointer &a, const pointer &b) {
-    return !(b < a);
-  }
-  friend bool operator>=(const pointer &a, const pointer &b) {
-    return !(a < b);
+  friend std::partial_ordering operator<=>(const pointer &a, const pointer &b) {
+    if (!a)
+      return !b ? std::strong_ordering::equal : std::strong_ordering::less;
+    if (!b)
+      return std::strong_ordering::greater;
+    return *a <=> *b;
   }
 };
 
@@ -951,7 +943,7 @@ template<typename T> struct struct_equal_helper<T, xdr_struct_base<>> {
   static bool equal(const T &, const T &) { return true; }
 };
 
-template<typename T, typename F> struct struct_lt_helper;
+template<typename T, typename F> struct struct_comp_helper;
 } // namespace detail
 
 
@@ -972,45 +964,13 @@ operator==(const T &a, const T &b)
   return detail::struct_equal_helper<T, xdr_traits<T>>::equal(a, b);
 }
 
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       bool>::type
-operator!=(const T &a, const T &b)
-{
-  return !(a == b);
-}
-
 //! Ordering of XDR structures.  See note at \c xdr::operator==.
 template<typename T> inline typename
 std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       bool>::type
-operator<(const T &a, const T &b)
+	       std::partial_ordering>::type
+operator<=>(const T &a, const T &b)
 {
-  return detail::struct_lt_helper<T, xdr_traits<T>>::lt(a, b);
-}
-
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       bool>::type
-operator>(const T &a, const T &b)
-{
-  return b < a;
-}
-
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       bool>::type
-operator<=(const T &a, const T &b)
-{
-  return !(b < a);
-}
-
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       bool>::type
-operator>=(const T &a, const T &b)
-{
-  return !(a < b);
+  return detail::struct_comp_helper<T, xdr_traits<T>>::comp(a, b);
 }
 
 namespace detail {
@@ -1023,14 +983,15 @@ struct union_field_equal_t {
 };
 Constexpr const union_field_equal_t union_field_equal {};
 
-struct union_field_lt_t {
-  Constexpr union_field_lt_t() {}
+struct union_field_comp_t {
+  Constexpr union_field_comp_t() {}
   template<typename T, typename F>
-  void operator()(F T::*mp, const T &a, const T &b, bool &out) const {
-    out = a.*mp < b.*mp;
+  void operator()(F T::*mp, const T &a, const T &b,
+      std::partial_ordering &out) const {
+    out = a.*mp <=> b.*mp;
   }
 };
-Constexpr const union_field_lt_t union_field_lt {};
+Constexpr const union_field_comp_t union_field_comp {};
 } // namespace detail
 
 //! Equality of XDR unions.  See note at \c xdr::operator== for XDR
@@ -1050,33 +1011,36 @@ operator==(const T &a, const T &b)
 
 //! Ordering of XDR unions.  See note at \c xdr::operator==.
 template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_union, bool>::type
-operator<(const T &a, const T &b)
+std::enable_if<xdr_traits<T>::is_union, std::partial_ordering>::type
+operator<=>(const T &a, const T &b)
 {
-  if (a._xdr_discriminant() < b._xdr_discriminant())
-    return true;
-  if (b._xdr_discriminant() < a._xdr_discriminant())
-    return false;
+  if (std::partial_ordering res =
+      a._xdr_discriminant() <=> b._xdr_discriminant();
+      res != std::partial_ordering::equivalent) {
+    return res;
+  }
 
-  bool r{false};
-  a._xdr_with_mem_ptr(detail::union_field_lt,
+  std::partial_ordering r{std::partial_ordering::unordered};
+  a._xdr_with_mem_ptr(detail::union_field_comp,
 		      a._xdr_discriminant(), a, b, r);
   return r;
 }
 
 namespace detail {
-template<typename T, typename F> struct struct_lt_helper {
-  static bool lt(const T &a, const T &b) {
+template<typename T, typename F> struct struct_comp_helper {
+  static std::partial_ordering comp(const T &a, const T &b) {
     Constexpr const typename F::field_info fi {};
-    if ((fi(a) < fi(b)))
-      return true;
-    if ((fi(b) < fi(a)))
-      return false;
-    return struct_lt_helper<T, typename F::next_field>::lt(a, b);
+    if (std::partial_ordering res = fi(a) <=> fi(b);
+        res != std::partial_ordering::equivalent) {
+      return res;
+    }
+    return struct_comp_helper<T, typename F::next_field>::comp(a, b);
   }
 };
-template<typename T> struct struct_lt_helper<T, xdr_struct_base<>> {
-  static bool lt(const T &, const T &) { return false; }
+template<typename T> struct struct_comp_helper<T, xdr_struct_base<>> {
+  static std::partial_ordering comp(const T &, const T &) {
+    return std::partial_ordering::unordered;
+}
 };
 } // namespace detail
 
