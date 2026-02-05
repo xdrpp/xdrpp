@@ -1020,7 +1020,7 @@ operator<=>(const T &a, const T &b)
     return res;
   }
 
-  std::partial_ordering r{std::partial_ordering::unordered};
+  std::partial_ordering r{std::partial_ordering::equivalent};
   a._xdr_with_mem_ptr(detail::union_field_comp,
 		      a._xdr_discriminant(), a, b, r);
   return r;
@@ -1039,7 +1039,7 @@ template<typename T, typename F> struct struct_comp_helper {
 };
 template<typename T> struct struct_comp_helper<T, xdr_struct_base<>> {
   static std::partial_ordering comp(const T &, const T &) {
-    return std::partial_ordering::unordered;
+    return std::partial_ordering::equivalent;
 }
 };
 } // namespace detail
