@@ -102,6 +102,7 @@
       <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BrowseInformation>false</BrowseInformation>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -131,6 +132,7 @@
       <BrowseInformation>false</BrowseInformation>
       <AdditionalIncludeDirectories>..\..;..\..\xdrc;..\..\compat;..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -154,10 +156,10 @@
   <ItemGroup>
     <CustomBuild Include="..\..\xdrc\scan.ll">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">wsl flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">wsl flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">wsl flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">wsl flex --nounistd -o ../../xdrc/scan.cc ../../xdrc/scan.ll</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../../xdrc/scan.cc</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">../../xdrc/scan.cc</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">../../xdrc/scan.cc</Outputs>
@@ -175,8 +177,8 @@
   <ItemGroup>
     <CustomBuild Include="..\..\xdrc\parse.yy">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">wsl bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">wsl bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Running bison</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Running bison</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(RelativeDir)parse.hh;%(RelativeDir)parse.cc</Outputs>
@@ -185,8 +187,8 @@
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(RelativeDir)parse.yy</AdditionalInputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(RelativeDir)parse.yy</AdditionalInputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">wsl bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">wsl bison -o ../../xdrc/parse.cc --defines=../../xdrc/parse.hh ../../xdrc/parse.yy</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Running bison</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Running bison</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(RelativeDir)parse.hh;%(RelativeDir)parse.cc</Outputs>
