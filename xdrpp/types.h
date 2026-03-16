@@ -445,7 +445,7 @@ template<uint32_t N = XDR_MAX_LEN> struct opaque_array
 };
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
   static Constexpr const bool is_bytes = true;
-  static Constexpr const std::size_t has_fixed_size = true;
+  static Constexpr const bool has_fixed_size = true;
   static Constexpr const std::size_t fixed_size =
     (std::size_t(N) + std::size_t(3)) & ~std::size_t(3);
   static std::size_t serial_size(const opaque_array<N> &) { return fixed_size; }
