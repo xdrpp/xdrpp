@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cassert>
+#include <compare>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -19,10 +20,26 @@
 
 #include <xdrpp/endian.h>
 
+//! When nonzero, operator<=> returns std::strong_ordering instead of
+//! std::partial_ordering.  Changes the return type, so must be set
+//! identically program-wide.  Types with floating-point members won't
+//! compile their comparisons when set.
+#ifndef XDRPP_STRONG_ORDER
+#define XDRPP_STRONG_ORDER 0
+#endif // !XDRPP_STRONG_ORDER
+
 //! Most of the xdrpp library is encapsulated in the xdr namespace.
 namespace xdr {
 
 using std::uint32_t;
+
+namespace detail {
+#if XDRPP_STRONG_ORDER
+using ordering_t = std::strong_ordering;
+#else
+using ordering_t = std::partial_ordering;
+#endif
+} // namespace detail
 
 inline uint32_t
 size32(std::size_t s)
@@ -631,7 +648,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   friend bool operator==(const pointer &a, const pointer &b) {
     return (!a && !b) || (a && b && *a == *b);
   }
-  friend std::partial_ordering operator<=>(const pointer &a, const pointer &b) {
+  friend detail::ordering_t operator<=>(const pointer &a, const pointer &b) {
     if (!a)
       return !b ? std::strong_ordering::equal : std::strong_ordering::less;
     if (!b)
@@ -967,7 +984,7 @@ operator==(const T &a, const T &b)
 //! Ordering of XDR structures.  See note at \c xdr::operator==.
 template<typename T> inline typename
 std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       std::partial_ordering>::type
+	       detail::ordering_t>::type
 operator<=>(const T &a, const T &b)
 {
   return detail::struct_comp_helper<T, xdr_traits<T>>::comp(a, b);
@@ -987,7 +1004,7 @@ struct union_field_comp_t {
   Constexpr union_field_comp_t() {}
   template<typename T, typename F>
   void operator()(F T::*mp, const T &a, const T &b,
-      std::partial_ordering &out) const {
+      ordering_t &out) const {
     out = a.*mp <=> b.*mp;
   }
 };
@@ -1011,16 +1028,16 @@ operator==(const T &a, const T &b)
 
 //! Ordering of XDR unions.  See note at \c xdr::operator==.
 template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_union, std::partial_ordering>::type
+std::enable_if<xdr_traits<T>::is_union, detail::ordering_t>::type
 operator<=>(const T &a, const T &b)
 {
-  if (std::partial_ordering res =
+  if (detail::ordering_t res =
       a._xdr_discriminant() <=> b._xdr_discriminant();
       res != std::partial_ordering::equivalent) {
     return res;
   }
 
-  std::partial_ordering r{std::partial_ordering::equivalent};
+  detail::ordering_t r{std::strong_ordering::equal};
   a._xdr_with_mem_ptr(detail::union_field_comp,
 		      a._xdr_discriminant(), a, b, r);
   return r;
@@ -1028,9 +1045,9 @@ operator<=>(const T &a, const T &b)
 
 namespace detail {
 template<typename T, typename F> struct struct_comp_helper {
-  static std::partial_ordering comp(const T &a, const T &b) {
+  static ordering_t comp(const T &a, const T &b) {
     Constexpr const typename F::field_info fi {};
-    if (std::partial_ordering res = fi(a) <=> fi(b);
+    if (ordering_t res = fi(a) <=> fi(b);
         res != std::partial_ordering::equivalent) {
       return res;
     }
@@ -1038,8 +1055,8 @@ template<typename T, typename F> struct struct_comp_helper {
   }
 };
 template<typename T> struct struct_comp_helper<T, xdr_struct_base<>> {
-  static std::partial_ordering comp(const T &, const T &) {
-    return std::partial_ordering::equivalent;
+  static ordering_t comp(const T &, const T &) {
+    return std::strong_ordering::equal;
 }
 };
 } // namespace detail
