@@ -7,15 +7,21 @@ int
 main()
 {
 
+#if XDRPP_STRONG_ORDER
+  fix_12_int f1, f2;
+  std::int64_t fix_12_int::* second_field = &fix_12_int::h;
+#else
   fix_12 f1, f2;
+  double fix_12::* second_field = &fix_12::d;
+#endif
   f1.i = 5;
-  f1.d = 0.0;
+  f1.*second_field = 0;
   f2 = f1;
 
   assert(f2 == f1);
   assert(!(f1 < f2));
   assert(!(f2 < f1));
-  f2.d = -0.1;
+  f2.*second_field = -1;
   assert(!(f1 == f2));
   assert(!(f1 < f2));
   assert(f2 < f1);

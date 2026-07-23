@@ -41,6 +41,11 @@ struct fix_12 {
   double d;
 };
 
+struct fix_12_int {
+  int i;
+  hyper h;
+};
+
 union u_4_12 switch (int which) {
  case 4:
    fix_4 f4;
