@@ -41,6 +41,11 @@ struct fix_12 {
   double d;
 };
 
+struct fix_12_int {
+  int i;
+  hyper h;
+};
+
 struct fix_16 {
   struct {
     fix_4 f4;

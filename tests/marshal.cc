@@ -119,9 +119,9 @@ namespace xdr
 {
 template <> struct xdr_traits<TestNode> : xdr_traits_base
 {
-    static Constexpr const bool is_class = true;
-    static Constexpr const bool is_struct = true;
-    static Constexpr const bool has_fixed_size = false;
+    static constexpr const bool is_class = true;
+    static constexpr const bool is_struct = true;
+    static constexpr const bool has_fixed_size = false;
 
     template <typename Archive>
     static void
@@ -152,9 +152,9 @@ template <> struct xdr_traits<TestNode> : xdr_traits_base
 
 template <> struct xdr_traits<MultiDepthStruct> : xdr_traits_base
 {
-    static Constexpr const bool is_class = true;
-    static Constexpr const bool is_struct = true;
-    static Constexpr const bool has_fixed_size = false;
+    static constexpr const bool is_class = true;
+    static constexpr const bool is_struct = true;
+    static constexpr const bool has_fixed_size = false;
 
     template <typename Archive>
     static void

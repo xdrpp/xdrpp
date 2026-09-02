@@ -24,11 +24,27 @@
 
 #include <xdrpp/endian.h>
 
+//! When nonzero, operator<=> returns std::strong_ordering instead of
+//! std::partial_ordering.  Changes the return type, so must be set
+//! identically program-wide.  Types with floating-point members won't
+//! compile their comparisons when set.
+#ifndef XDRPP_STRONG_ORDER
+#define XDRPP_STRONG_ORDER 0
+#endif // !XDRPP_STRONG_ORDER
+
 //! Most of the xdrpp library is encapsulated in the xdr namespace.
 namespace xdr {
 
 using std::uint32_t;
 using std::size_t;
+
+namespace detail {
+#if XDRPP_STRONG_ORDER
+using ordering_t = std::strong_ordering;
+#else
+using ordering_t = std::partial_ordering;
+#endif
+} // namespace detail
 
 inline uint32_t
 size32(size_t s)
@@ -91,6 +107,8 @@ struct xdr_wrong_union : std::logic_error {
 // Templates for XDR traversal and processing
 ////////////////////////////////////////////////////////////////
 
+template<typename T> struct xdr_traits;
+
 //! If this function template is specialized, it provides a means of
 //! placing extra restrictions on XDR data structures (beyond those of
 //! the XDR specification).  When a specialized \c xdr::validate
@@ -105,6 +123,27 @@ validate(const T &t)
   if constexpr (requires { t.validate(); })
     t.validate();
 }
+
+//! If you declare a function xdr_validate_enum(T) for an XDR enum
+//! type T, then the unmarshalling code will reject values that don't
+//! have enum tags.
+template<typename T> struct validate_enum {
+private:
+  static_assert(xdr_traits<T>::is_enum);
+  template<typename U> static std::false_type test(...);
+
+  template<typename U> static
+  decltype(xdr_validate_enum(U{}), std::true_type{}) test(int);
+
+public:
+  static void validate(T t)
+  {
+    if constexpr (decltype(test<T>(0))::value) {
+      if (!xdr_traits<T>::enum_name(t))
+        throw xdr_invariant_failed("Invalid enum value");
+    }
+  }
+};
 
 //! This is used to apply an archive to a field.  It is designed as a
 //! template class that can be specialized to various archive formats,
@@ -574,8 +613,8 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   friend bool operator==(const pointer &a, const pointer &b) noexcept {
     return (!a && !b) || (a && b && *a == *b);
   }
-  friend std::partial_ordering operator<=>(const pointer &a,
-					   const pointer &b) noexcept {
+  friend detail::ordering_t operator<=>(const pointer &a,
+					const pointer &b) noexcept {
     if (!a)
       return !b ? std::strong_ordering::equal : std::strong_ordering::less;
     if (!b)
@@ -803,6 +842,7 @@ struct uptr_access_t<T, Field, Name> {
   using value_type = decltype(Field);
   static constexpr auto field_name = Name;
   static constexpr value_type value = Field;
+  static constexpr bool has_field = true;
 
   static constexpr const char *name() { return field_name.value; }
 
@@ -975,6 +1015,13 @@ struct unionfn {
       });
   }
 
+  template<has_union_meta U, typename F>
+  static void with_each_arm(F &&f) {
+    [&f]<size_t...I>(std::index_sequence<I...>) {
+      (f(union_meta<U>::template arm_access<I>()), ...);
+    }(std::make_index_sequence<union_meta<U>::num_arms>{});
+  }
+
   template<has_union_meta_strict U, typename ...Args>
   static void constructor(U &u, Args&&...args) {
     with_current_arm(u, [&](auto f) {
@@ -1057,25 +1104,17 @@ operator==(const T &a, const T &b) noexcept
   });
 }
 
-namespace detail {
-
-template<typename...T> using field_cmp_res_t =
-  std::common_comparison_category_t<std::compare_three_way_result_t<T>...>;
-
-} // namespace detail
-
 template<xdr_struct T> requires xdr_traits<T>::xdr_defined constexpr
 #if __clang__
 // work around compiler bug
-std::enable_if_t<xdr_traits<T>::is_struct, std::partial_ordering>
+std::enable_if_t<xdr_traits<T>::is_struct, detail::ordering_t>
 #else // not clang
-auto
+detail::ordering_t
 #endif // not clang
 operator<=>(const T &a, const T &b) noexcept
 {
   return detail::with_struct_fields<T>([&](auto ...f) {
-    detail::field_cmp_res_t<typename decltype(f)::field_type...> r =
-      std::strong_ordering::equal;
+    detail::ordering_t r = std::strong_ordering::equal;
     return void(((r = f(a) <=> f(b), r == 0) && ...)), r;
   });
 }
@@ -1094,15 +1133,15 @@ operator==(const T &a, const T &b) noexcept
 
 template<xdr_union T> inline
 #if __clang__
-std::enable_if_t<xdr_traits<T>::is_union, std::partial_ordering>
+std::enable_if_t<xdr_traits<T>::is_union, detail::ordering_t>
 #else // not clang
-std::partial_ordering
+detail::ordering_t
 #endif // not clang
 operator<=>(const T &a, const T &b) noexcept
 {
   if (auto c = unionfn::get_tag(a) <=> unionfn::get_tag(b); c != 0)
     return c;
-  auto r = std::partial_ordering::equivalent;
+  detail::ordering_t r = std::strong_ordering::equal;
   unionfn::with_current_arm(a, [&](auto body) {
     r = body(a) <=> body(b);
   });
