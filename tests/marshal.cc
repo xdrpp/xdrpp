@@ -507,6 +507,19 @@ main()
   u1.key.arbitrary(REDDEST);
   u1.key.big() = { 5, 4, 3, 2, 1, 0, 0, 0, 255 };
 
+    {
+        decltype(u1.key) invalid_union;
+        bool ok = false;
+        try {
+            xdr::xdr_from_opaque(xdr::xdr_to_opaque(uint32_t(-1)), invalid_union);
+        }
+        catch (const xdr::xdr_bad_discriminant &e) {
+            assert(string(e.what()).find("bad value -1") != string::npos);
+            ok = true;
+    }
+        assert(ok);
+    }
+
   {
     xdr::msg_ptr m (xdr::xdr_to_msg(u1));
     xdr::xdr_from_msg(m, u2);

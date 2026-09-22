@@ -24,10 +24,18 @@ struct xdr_clear_t {
       if (unionfn::set_tag(t, {}))
 	xdr_traits<T>::load(*this, t);
     }
-    else if constexpr (requires { t.resize(0); })
-      t.resize(0);
-    else if constexpr (xdr_bytes<T>)
-      memset(t.data(), 0, t.size());
+    else if constexpr (xdr_bytes<T>) {
+      if constexpr (xdr_traits<T>::variable_nelem)
+	t.resize(0);
+      else
+	memset(t.data(), 0, t.size());
+    }
+    else if constexpr (xdr_container<T>) {
+      if constexpr (xdr_traits<T>::variable_nelem)
+	t.resize(0);
+      else
+	xdr_traits<T>::load(*this, t);
+    }
     else
       xdr_traits<T>::load(*this, t);
   }

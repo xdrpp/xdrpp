@@ -724,7 +724,7 @@ template<typename S>
 requires requires { typename detail::struct_meta<S>::type; }
 struct xdr_struct_base
   : decltype(detail::with_struct_fields<S>([]<typename...Fs>(Fs...) {
-	return detail::xdr_fixed_size_base<typename Fs::struct_type...>{};
+	return detail::xdr_fixed_size_base<typename Fs::field_type...>{};
       })) {
   using struct_type = S;
   static constexpr const bool is_class = true;
@@ -862,7 +862,9 @@ namespace detail {
 template<xdr_enum E> inline std::string
 show_tag(E e)
 {
-  return xdr_get_traits<E>::enum_name(e);
+  if (const char *name = xdr_get_traits<E>::enum_name(e))
+    return name;
+  return std::to_string(e);
 }
 
 template<xdr_numeric N> inline std::string
@@ -1066,6 +1068,7 @@ struct xdr_union_base
   static constexpr bool is_class = true;
 
   static size_t serial_size(const union_type &u) {
+    unionfn::check_tag<union_type>(unionfn::get_tag(u));
     size_t s = 4;
     unionfn::with_current_arm(u, [&](auto f) {
       s += XDR_GET_TRAITS(f(u))::serial_size(f(u));

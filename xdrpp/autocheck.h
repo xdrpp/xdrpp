@@ -38,11 +38,16 @@ struct generator_t {
   constexpr explicit generator_t(std::size_t size, std::size_t levels = 2)
     : size_(size), levels_(levels) {}
 
+  void operator()(bool &t) const {
+    t = autocheck::generator<bool>{}(size_);
+  }
+
   // Handle char and uint8_t (which can legally be the same type for
   // some compilers), allowing variable_nelem cases to handle both
   // containers and bytes (string/opaque).
   template<typename T>
-  requires requires { T{0}; std::bit_cast<char>(T{}); }
+  requires (!std::same_as<T, bool> &&
+            requires { T{0}; std::bit_cast<char>(T{}); })
   void operator()(T &t) const {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
     t = std::bit_cast<T>(uint8_t(autocheck::generator<int>{}(0x10000)));

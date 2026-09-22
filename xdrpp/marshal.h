@@ -111,14 +111,14 @@ template<typename Base> struct xdr_generic_put : Base {
   requires std::same_as<typename xdr_traits<T>::uint_type, std::uint32_t>
   void operator()(T t) {
     check(4);
-    put32(p_, t);
+    put32(p_, xdr_traits<T>::to_uint(t));
   }
 
   template<xdr_numlike T>
   requires std::same_as<typename xdr_traits<T>::uint_type, std::uint64_t>
   void operator()(T t) {
     check(8);
-    put64(p_, t);
+    put64(p_, xdr_traits<T>::to_uint(t));
   }
 
   template<xdr_bytes T>
