@@ -40,6 +40,7 @@ namespace {
 indenter nl;
 vec<string> scope;
 vec<string> namespaces;
+vec<string> generated_unions;
 // code for the ::xdr namespace instead of the local namespace
 std::ostringstream top_material;
 
@@ -63,6 +64,16 @@ cur_scope()
     out += scope.back();
   }
   return out;
+}
+
+string
+identifier_token(string s)
+{
+  s = strip_suffix(strip_directory(std::move(s)), ".x");
+  for (char &c : s)
+    if (!isalnum(c))
+      c = '_';
+  return s;
 }
 
 inline string
@@ -281,6 +292,10 @@ union_field_access(const rpc_union &u, const rpc_ufield &f,
   else if (opt_uptr)
     os << "xdr::uptr_access_t<" << decl_type(f.decl) << ", &"
        << id << "::u_, \"" << f.decl.id << "\">";
+  else if (opt_uptr_threshold_set)
+    os << "xdr::hybrid_access_t<" << decl_type(f.decl) << ", "
+       << opt_uptr_threshold << ", &" << id << "::u_, \""
+       << f.decl.id << "\">";
   else
     os << "xdr::field_access_t<&" << id << "::" << f.decl.id
        << "_, \"" << f.decl.id << "\">";
@@ -303,6 +318,8 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
 
   os << nl << "struct _xdr_union_meta {"
      << nl.open << "static constexpr const char *union_name = \"" + u.id + "\";"
+      << nl << "static constexpr const char *qualified_name = \""
+      << cur_scope() << "\";"
      << nl << "static constexpr size_t num_arms = " << num_fields << ";"
      << nl << "static constexpr bool has_default_case = "
      << (u.hasdefault ? "true" : "false") << ";"
@@ -347,7 +364,47 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
       os << nl << "else if constexpr (I == " << f.fieldno << ")"
 	 << nl << "  return " << union_field_access(u, f) << "{};";
   os << nl.close << "}";
-  os << nl.close << "};";
+  os << nl.outdent << "public:"
+     << nl << "static constexpr size_t inline_threshold = ";
+  if (opt_uptr)
+    os << "0;";
+  else if (opt_uptr_threshold_set)
+    os << opt_uptr_threshold << ";";
+  else
+    os << "std::numeric_limits<size_t>::max();";
+  size_t void_arms = 0;
+  for (const auto &f : u.fields)
+    if (f.decl.type == "void")
+      void_arms = 1;
+  os << nl << "static constexpr size_t num_void_arms = " << void_arms << ";"
+     << nl << "static constexpr size_t num_inline_arms = 0";
+  for (const auto &f : u.fields) {
+    if (f.decl.type == "void" || opt_uptr)
+      continue;
+    if (opt_uptr_threshold_set)
+      os << nl << "  + (sizeof(" << decl_type(f.decl) << ") <= "
+         << opt_uptr_threshold << ")";
+    else
+      os << nl << "  + 1";
+  }
+  os << ";"
+     << nl << "static constexpr size_t num_indirect_arms = 0";
+  for (const auto &f : u.fields) {
+    if (f.decl.type == "void")
+      continue;
+    if (opt_uptr)
+      os << nl << "  + 1";
+    else if (opt_uptr_threshold_set)
+      os << nl << "  + (sizeof(" << decl_type(f.decl) << ") > "
+         << opt_uptr_threshold << ")";
+  }
+  os << ";";
+  os << nl << "template<size_t I> requires (I < num_arms)"
+     << nl << "static constexpr auto arm_layout() {"
+     << nl.open << "return ::xdr::unionfn::arm_layout<" << cur_scope()
+     << ", I>();"
+     << nl.close << "}"
+     << nl.close << "};";
 }
 
 void
@@ -357,6 +414,30 @@ gen(std::ostream &os, const rpc_union &u)
     scope.push_back(u.id);
   else
     scope.push_back(scope.back() + "::" + u.id);
+  generated_unions.push_back(cur_scope());
+
+  if (opt_uptr || opt_uptr_threshold_set) {
+    os << "// XDR union arm layout (resolved when this header is compiled):";
+    os << nl << "//   counts: _xdr_union_meta::{num_inline_arms,"
+       << "num_indirect_arms,num_void_arms}";
+    for (const rpc_ufield &f : u.fields) {
+      os << nl << "//   " << (f.decl.type == "void" ? "<void>" : f.decl.id)
+         << ": ";
+      if (f.decl.type == "void")
+        os << "size=0, inline";
+      else {
+        string type = decl_type(f.decl);
+        os << "size=sizeof(" << type << "), alignment=alignof(" << type
+           << "), ";
+        if (opt_uptr)
+          os << "indirect";
+        else
+          os << "inline if size <= " << opt_uptr_threshold
+             << ", indirect otherwise";
+      }
+    }
+    os << nl;
+  }
 
   os << "struct " << u.id << " {";
   ++nl;
@@ -377,6 +458,13 @@ gen(std::ostream &os, const rpc_union &u)
     if (opt_uptr)
       os << nl << "void *u_ = nullptr;"
 	 << endl;
+    else if (opt_uptr_threshold_set) {
+      os << nl << "xdr::union_storage_t<" << opt_uptr_threshold;
+      for (const rpc_ufield &f : u.fields)
+	if (f.decl.type != "void")
+	  os << ", " << decl_type(f.decl);
+      os << "> u_;" << endl;
+    }
     else {
       os << nl << "union {";
       ++nl;
@@ -553,6 +641,7 @@ gen(std::ostream &os, const rpc_program &u)
 void
 gen_hh(std::ostream &os)
 {
+  generated_unions.clear();
   os << "// -*- C++ -*-"
      << nl << "// Automatically generated from " << input_file << '.' << endl
      << "// DO NOT EDIT or your changes may be overwritten" << endl;
@@ -630,6 +719,17 @@ gen_hh(std::ostream &os)
       os << nl;
     }
   }
+
+  os << nl << "namespace xdr {"
+     << nl.open << "using xdr_union_types_" << identifier_token(input_file)
+     << " = type_list<";
+  for (size_t i = 0; i < generated_unions.size(); ++i) {
+    if (i)
+      os << ",";
+    os << nl << "  " << generated_unions[i];
+  }
+  os << nl << ">;"
+     << nl.close << "}" << nl;
 
   os << nl << "#endif // !" << gtok << nl;
 }

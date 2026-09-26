@@ -1,8 +1,11 @@
 #include <cassert>
+#include <cerrno>
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <fcntl.h>
 #include <getopt.h>
+#include <limits>
 #include <stdio.h>
 #include <xdrpp/config.h>
 #include "xdrc_internal.h"
@@ -20,6 +23,8 @@ string server_session;
 bool server_ptr;
 bool server_async;
 bool opt_uptr;
+bool opt_uptr_threshold_set;
+size_t opt_uptr_threshold;
 bool opt_pedantic;
 
 string
@@ -99,6 +104,8 @@ and OPTIONAL arguments for -server{hh,cc} can contain:
       -a[sync]      To generate arpc server scaffolding (with callbacks)
 while OPTIONAL arguments for -hh can contain:
       -uptr         To store pointers instead of objects in unions
+  -uptr-threshold N
+        To indirect union arms larger than N bytes
 )";
   exit(err);
 }
@@ -111,6 +118,7 @@ enum opttag {
   OPT_SERVERCC,
   OPT_PEDANTIC,
   OPT_UPTR,
+  OPT_UPTR_THRESHOLD,
 };
 
 static const struct option xdrc_options[] = {
@@ -124,6 +132,7 @@ static const struct option xdrc_options[] = {
   {"async", no_argument, nullptr, 'a'},
   {"pedantic", no_argument, nullptr, OPT_PEDANTIC},
   {"uptr", no_argument, nullptr, OPT_UPTR},
+  {"uptr-threshold", required_argument, nullptr, OPT_UPTR_THRESHOLD},
   {nullptr, 0, nullptr, 0}
 };
 
@@ -183,8 +192,23 @@ main(int argc, char **argv)
       opt_pedantic = true;
       break;
     case OPT_UPTR:
+      if (opt_uptr_threshold_set)
+	usage();
       opt_uptr = true;
       break;
+    case OPT_UPTR_THRESHOLD: {
+      if (opt_uptr)
+	usage();
+      char *end = nullptr;
+      errno = 0;
+      unsigned long long threshold = strtoull(optarg, &end, 10);
+      if (errno || !*optarg || *end ||
+	  threshold > std::numeric_limits<size_t>::max())
+	usage();
+      opt_uptr_threshold_set = true;
+      opt_uptr_threshold = static_cast<size_t>(threshold);
+      break;
+    }
     case 'p':
       server_ptr = true;
       break;

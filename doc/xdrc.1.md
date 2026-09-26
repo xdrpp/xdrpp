@@ -8,7 +8,8 @@ xdrc - RFC4506 XDR compiler for libxdrpp
 
 # SYNOPSIS
 
-xdrc {-hh|-serverhh|-servercc} [-o _outfile_] [-DMACRO=val...] _input_.x
+xdrc {-hh|-serverhh|-servercc} [-uptr|-uptr-threshold _bytes_]
+  [-o _outfile_] [-DMACRO=val...] _input_.x
 
 # DESCRIPTION
 
@@ -339,6 +340,18 @@ contains the following fields:
 	store only a pointer in the union, which will require more calls
 	to malloc, but potentially consume less memory.  This option does
 	not change the public interface, but may affect performance.
+
+\-uptr-threshold _bytes_
+:	Store union arms no larger than _bytes_ inline and store larger arms
+  through pointers.  The threshold uses the C++ in-memory `sizeof` the
+  arm type, not its serialized XDR size.  This option is mutually
+  exclusive with `-uptr`; `-uptr-threshold 0` is equivalent to `-uptr`
+  for non-void arms.
+
+  Headers generated with either pointer-storage option contain comments
+  for each union arm describing its size expression and storage rule.
+  They also expose compiler-resolved size, alignment, threshold, and
+  inline/indirect metadata through the union's `_xdr_union_meta` type.
 
 # EXAMPLES
 

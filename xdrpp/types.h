@@ -11,6 +11,7 @@
 #include <cassert>
 #include <compare>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -833,6 +834,99 @@ struct void_access_t {
   }
 };
 
+struct union_arm_layout_t {
+  const char *name;
+  size_t size;
+  size_t alignment;
+  bool is_indirect;
+};
+
+template<typename... T>
+struct type_list {};
+
+template<size_t Threshold, typename... ArmTypes>
+struct union_storage_t {
+  static constexpr size_t threshold = Threshold;
+  static constexpr size_t inline_size = [] {
+    size_t size = sizeof(void *);
+    ((size = sizeof(ArmTypes) <= threshold
+       ? std::max(size, sizeof(ArmTypes)) : size), ...);
+    return size;
+  }();
+  static constexpr size_t inline_alignment = [] {
+    size_t alignment = alignof(void *);
+    ((alignment = sizeof(ArmTypes) <= threshold
+       ? std::max(alignment, alignof(ArmTypes)) : alignment), ...);
+    return alignment;
+  }();
+
+  template<typename T>
+  T *inline_pointer() {
+    static_assert(sizeof(T) <= threshold);
+    return reinterpret_cast<T *>(storage_);
+  }
+  template<typename T>
+  const T *inline_pointer() const {
+    static_assert(sizeof(T) <= threshold);
+    return reinterpret_cast<const T *>(storage_);
+  }
+  void **pointer_slot() {
+    return reinterpret_cast<void **>(storage_);
+  }
+  void *const *pointer_slot() const {
+    return reinterpret_cast<void *const *>(storage_);
+  }
+
+private:
+  alignas(inline_alignment) std::byte storage_[inline_size];
+};
+
+template<typename T, size_t Threshold, auto Field, detail::fixed_string Name>
+struct hybrid_access_t;
+template<typename T, size_t Threshold, typename S, typename Storage,
+         Storage S::*Field, detail::fixed_string Name>
+struct hybrid_access_t<T, Threshold, Field, Name> {
+  using struct_type = S;
+  using field_type = T;
+  using value_type = decltype(Field);
+  static constexpr auto field_name = Name;
+  static constexpr value_type value = Field;
+  static constexpr size_t threshold = Threshold;
+  static constexpr bool has_field = true;
+  static constexpr bool is_indirect = sizeof(field_type) > threshold;
+
+  static_assert(Storage::threshold == threshold);
+
+  static constexpr const char *name() { return field_name.value; }
+
+  field_type *pointer(struct_type &s) const {
+    if constexpr (is_indirect)
+      return static_cast<field_type *>(*(s.*Field).pointer_slot());
+    else
+      return (s.*Field).template inline_pointer<field_type>();
+  }
+  const field_type *pointer(const struct_type &s) const {
+    if constexpr (is_indirect)
+      return static_cast<const field_type *>(*(s.*Field).pointer_slot());
+    else
+      return (s.*Field).template inline_pointer<field_type>();
+  }
+  void **pointer_slot(struct_type &s) const {
+    static_assert(is_indirect);
+    return (s.*Field).pointer_slot();
+  }
+
+  decltype(auto) operator()(const struct_type &s) const {
+    return *pointer(s);
+  }
+  decltype(auto) operator()(struct_type &s) const {
+    return *pointer(s);
+  }
+  decltype(auto) operator()(struct_type &&s) const {
+    return std::move(*pointer(s));
+  }
+};
+
 template<typename T, auto Field, detail::fixed_string Name>
 struct uptr_access_t;
 template<typename T, typename S, void *S::*Field, detail::fixed_string Name>
@@ -906,6 +1000,10 @@ template<typename T> concept is_uptr_access =
     std::same_as<T, uptr_access_t<typename T::field_type, T::value,
 				  T::field_name>>;
 
+template<typename T> concept is_hybrid_access =
+  std::same_as<T, hybrid_access_t<typename T::field_type, T::threshold,
+				    T::value, T::field_name>>;
+
 // XDR union types with an _xdr_union_meta inner struct.
 template<typename U> concept has_union_meta_strict =
   requires { typename U::_xdr_union_meta; };
@@ -933,6 +1031,24 @@ struct unionfn {
   template<has_union_meta U>
   static tag_type<U> get_tag(const U &u) {
     return tagref(u);
+  }
+
+  template<has_union_meta_strict U, size_t I>
+  static consteval union_arm_layout_t arm_layout() {
+    auto access = union_meta<U>::template arm_access<I>();
+    using access_type = decltype(access);
+    if constexpr (!access_type::has_field)
+      return {access.name(), 0, 0, false};
+    else if constexpr (is_uptr_access<access_type>)
+      return {access.name(), sizeof(typename access_type::field_type),
+              alignof(typename access_type::field_type), true};
+    else if constexpr (is_hybrid_access<access_type>)
+      return {access.name(), sizeof(typename access_type::field_type),
+              alignof(typename access_type::field_type),
+              access_type::is_indirect};
+    else
+      return {access.name(), sizeof(typename access_type::field_type),
+              alignof(typename access_type::field_type), false};
   }
 
   template<has_union_meta_strict U>
@@ -997,6 +1113,26 @@ struct unionfn {
   static void destroy_field(A f, typename A::struct_type &s) {
     delete &f(s);
     s.*f.value = nullptr;
+  }
+
+  template<is_hybrid_access A, typename ...Args>
+  static void construct_field(A f, typename A::struct_type &s,
+			      Args&&...args) {
+    if constexpr (A::is_indirect) {
+      auto value = new typename A::field_type(std::forward<Args>(args)...);
+      std::construct_at(f.pointer_slot(s), value);
+    }
+    else
+      std::construct_at(f.pointer(s), std::forward<Args>(args)...);
+  }
+  template<is_hybrid_access A>
+  static void destroy_field(A f, typename A::struct_type &s) {
+    if constexpr (A::is_indirect) {
+      delete &f(s);
+      std::destroy_at(f.pointer_slot(s));
+    }
+    else
+      std::destroy_at(f.pointer(s));
   }
 
   template<is_field_access A, typename...Args>

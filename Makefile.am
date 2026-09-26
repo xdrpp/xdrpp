@@ -53,9 +53,10 @@ LDADD = $(top_builddir)/xdrpp/libxdrpp.a
 check_PROGRAMS = tests/test-stacklim tests/test-msgsock		\
 	tests/test-marshal tests/test-srpc tests/test-printer	\
 	tests/test-listener tests/test-arpc tests/test-compare	\
-	tests/test-types tests/test-validate
+	tests/test-types tests/test-validate tests/test-hybrid
 TESTS = tests/test-stacklim tests/test-msgsock tests/test-printer	\
-	tests/test-compare tests/test-types tests/test-validate tests/test-marshal
+	tests/test-compare tests/test-types tests/test-validate tests/test-marshal \
+	tests/test-hybrid
 if USE_CEREAL
 check_PROGRAMS += tests/test-cereal
 TESTS += tests/test-cereal
@@ -68,6 +69,7 @@ tests_test_arpc_SOURCES = tests/arpc.cc
 tests_test_autocheck_SOURCES = tests/autocheck.cc
 tests_test_cereal_SOURCES = tests/cereal.cc
 tests_test_compare_SOURCES = tests/compare.cc
+tests_test_hybrid_SOURCES = tests/hybrid.cc
 tests_test_listener_SOURCES = tests/listener.cc
 tests_test_marshal_SOURCES = tests/marshal.cc
 tests_test_msgsock_SOURCES = tests/msgsock.cc
@@ -81,6 +83,7 @@ tests/arpc.$(OBJEXT): tests/xdrtest.hh
 tests/autocheck.$(OBJEXT): tests/xdrtest.hh
 tests/cereal.$(OBJEXT): tests/xdrtest.hh
 tests/compare.$(OBJEXT): tests/xdrtest.hh
+tests/hybrid.$(OBJEXT): tests/xdrtest-threshold.hh
 tests/listener.$(OBJEXT): tests/xdrtest.hh
 tests/marshal.$(OBJEXT): tests/xdrtest.hh
 tests/printer.$(OBJEXT): tests/xdrtest.hh
@@ -96,10 +99,14 @@ SUFFIXES = .x .hh
 .x.hh:
 	$(XDRC) -hh -o $@ $<
 $(top_builddir)/tests/xdrtest.hh: $(XDRC)
+	$(XDRC) -hh -o $@ $(srcdir)/tests/xdrtest.x
+$(top_builddir)/tests/xdrtest-threshold.hh: $(XDRC)
+	$(XDRC) -hh -uptr-threshold 8 -o $@ $(srcdir)/tests/xdrtest.x
 $(top_builddir)/xdrpp/rpc_msg.hh: $(XDRC)
 $(top_builddir)/xdrpp/rpcb_prot.hh: $(XDRC)
 
 CLEANFILES = *~ */*~ */*/*~ .gitignore~ tests/xdrtest.hh	\
+	tests/xdrtest-threshold.hh				\
 	xdrpp/rpc_msg.hh xdrpp/rpcb_prot.hh
 DISTCLEANFILES = xdrpp/config.h getopt.h
 
@@ -123,7 +130,7 @@ maintainer-clean-local:
 man_MANS = doc/xdrc.1
 EXTRA_DIST = .gitignore autogen.sh doc/xdrc.1 doc/xdrc.1.md		\
 	xdrpp/build_endian.h.in xdrpp/rpc_msg.x xdrpp/rpcb_prot.x	\
-	tests/xdrtest.x doc/rfc1833.txt doc/rfc4506.txt			\
+	tests/xdrtest.x tests/hybrid.cc doc/rfc1833.txt doc/rfc4506.txt	\
 	doc/rfc5531.txt doc/rfc5665.txt
 
 ACLOCAL_AMFLAGS = -I m4
