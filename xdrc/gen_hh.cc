@@ -82,6 +82,14 @@ id_space(const string &s)
   return s.empty() ? s : s + ' ';
 }
 
+string
+union_threshold()
+{
+  if (opt_union_threshold_set)
+    return std::to_string(opt_union_threshold);
+  return "std::numeric_limits<size_t>::max()";
+}
+
 void gen(std::ostream &os, const rpc_struct &s);
 void gen(std::ostream &os, const rpc_enum &e);
 void gen(std::ostream &os, const rpc_union &u);
@@ -289,16 +297,10 @@ union_field_access(const rpc_union &u, const rpc_ufield &f,
   std::ostringstream os;
   if (f.decl.type == "void")
     os << "xdr::void_access_t";
-  else if (opt_uptr)
-    os << "xdr::uptr_access_t<" << decl_type(f.decl) << ", &"
-       << id << "::u_, \"" << f.decl.id << "\">";
-  else if (opt_uptr_threshold_set)
-    os << "xdr::hybrid_access_t<" << decl_type(f.decl) << ", "
-       << opt_uptr_threshold << ", &" << id << "::u_, \""
-       << f.decl.id << "\">";
   else
-    os << "xdr::field_access_t<&" << id << "::" << f.decl.id
-       << "_, \"" << f.decl.id << "\">";
+    os << "xdr::union_access_t<" << decl_type(f.decl) << ", "
+       << union_threshold()
+       << ", &" << id << "::u_, \"" << f.decl.id << "\">";
   return os.str();
 }
 
@@ -351,6 +353,10 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
   // tag_access, arm_access
   os << nl.outdent << "protected:"
      << nl << "friend struct ::xdr::unionfn;";
+    os << nl << "static constexpr auto active_access() {"
+      << nl << "  return xdr::field_access_t<&" << cur_scope()
+      << "::_xdr_active_, \"\">{};"
+      << nl << "}";
   os << nl << "static constexpr auto tag_access() {"
      << nl << "  return xdr::field_access_t<&" << cur_scope()
      << "::" << u.tagid << "_, \"" << u.tagid << "\">{};"
@@ -365,13 +371,8 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
 	 << nl << "  return " << union_field_access(u, f) << "{};";
   os << nl.close << "}";
   os << nl.outdent << "public:"
-     << nl << "static constexpr size_t inline_threshold = ";
-  if (opt_uptr)
-    os << "0;";
-  else if (opt_uptr_threshold_set)
-    os << opt_uptr_threshold << ";";
-  else
-    os << "std::numeric_limits<size_t>::max();";
+     << nl << "static constexpr size_t inline_threshold = "
+     << union_threshold() << ";";
   size_t void_arms = 0;
   for (const auto &f : u.fields)
     if (f.decl.type == "void")
@@ -379,24 +380,18 @@ gen_union_traits(std::ostream &os, const rpc_union &u)
   os << nl << "static constexpr size_t num_void_arms = " << void_arms << ";"
      << nl << "static constexpr size_t num_inline_arms = 0";
   for (const auto &f : u.fields) {
-    if (f.decl.type == "void" || opt_uptr)
+    if (f.decl.type == "void")
       continue;
-    if (opt_uptr_threshold_set)
-      os << nl << "  + (sizeof(" << decl_type(f.decl) << ") <= "
-         << opt_uptr_threshold << ")";
-    else
-      os << nl << "  + 1";
+    os << nl << "  + (sizeof(" << decl_type(f.decl)
+       << ") <= inline_threshold)";
   }
   os << ";"
      << nl << "static constexpr size_t num_indirect_arms = 0";
   for (const auto &f : u.fields) {
     if (f.decl.type == "void")
       continue;
-    if (opt_uptr)
-      os << nl << "  + 1";
-    else if (opt_uptr_threshold_set)
-      os << nl << "  + (sizeof(" << decl_type(f.decl) << ") > "
-         << opt_uptr_threshold << ")";
+    os << nl << "  + (sizeof(" << decl_type(f.decl)
+       << ") > inline_threshold)";
   }
   os << ";";
   os << nl << "template<size_t I> requires (I < num_arms)"
@@ -416,7 +411,7 @@ gen(std::ostream &os, const rpc_union &u)
     scope.push_back(scope.back() + "::" + u.id);
   generated_unions.push_back(cur_scope());
 
-  if (opt_uptr || opt_uptr_threshold_set) {
+  if (opt_union_threshold_set) {
     os << "// XDR union arm layout (resolved when this header is compiled):";
     os << nl << "//   counts: _xdr_union_meta::{num_inline_arms,"
        << "num_indirect_arms,num_void_arms}";
@@ -429,11 +424,8 @@ gen(std::ostream &os, const rpc_union &u)
         string type = decl_type(f.decl);
         os << "size=sizeof(" << type << "), alignment=alignof(" << type
            << "), ";
-        if (opt_uptr)
-          os << "indirect";
-        else
-          os << "inline if size <= " << opt_uptr_threshold
-             << ", indirect otherwise";
+        os << "inline if size <= " << opt_union_threshold
+           << ", indirect otherwise";
       }
     }
     os << nl;
@@ -451,28 +443,16 @@ gen(std::ostream &os, const rpc_union &u)
 
   // Union tag field
   os << nl.outdent << "private:"
-     << nl << map_type(u.tagtype) << " " << u.tagid << "_;";
+      << nl << map_type(u.tagtype) << " " << u.tagid << "_;"
+      << nl << "bool _xdr_active_ = false;";
 
   // Union arm fields
   if (u.maxfield > 1) {		// field 0 is for void
-    if (opt_uptr)
-      os << nl << "void *u_ = nullptr;"
-	 << endl;
-    else if (opt_uptr_threshold_set) {
-      os << nl << "xdr::union_storage_t<" << opt_uptr_threshold;
-      for (const rpc_ufield &f : u.fields)
-	if (f.decl.type != "void")
-	  os << ", " << decl_type(f.decl);
-      os << "> u_;" << endl;
-    }
-    else {
-      os << nl << "union {";
-      ++nl;
-      for (const rpc_ufield &f : u.fields)
-	if (f.decl.type != "void")
-	  os << nl << decl_type(f.decl) << ' ' << f.decl.id << "_;";
-      os << nl.close << "};";
-    }
+    os << nl << "xdr::union_storage_t<" << union_threshold();
+    for (const rpc_ufield &f : u.fields)
+      if (f.decl.type != "void")
+        os << ", " << decl_type(f.decl);
+    os << "> u_;" << endl;
   }
 
   os << endl

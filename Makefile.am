@@ -92,9 +92,6 @@ tests/stacklim.$(OBJEXT): tests/xdrtest.hh
 tests/types.$(OBJEXT): tests/xdrtest.hh
 tests/validate.$(OBJEXT): tests/xdrtest.hh
 
-#tests/xdrtest.hh: tests/xdrtest.x $(XDRC)
-#	$(XDRC) -hh -uptr -o $@ $<
-
 SUFFIXES = .x .hh
 .x.hh:
 	$(XDRC) -hh -o $@ $<
@@ -130,7 +127,8 @@ maintainer-clean-local:
 man_MANS = doc/xdrc.1
 EXTRA_DIST = .gitignore autogen.sh doc/xdrc.1 doc/xdrc.1.md		\
 	xdrpp/build_endian.h.in xdrpp/rpc_msg.x xdrpp/rpcb_prot.x	\
-	tests/xdrtest.x tests/hybrid.cc doc/rfc1833.txt doc/rfc4506.txt	\
+	tests/xdrtest.x tests/hybrid.cc tests/throwing_arm.h		\
+	doc/rfc1833.txt doc/rfc4506.txt				\
 	doc/rfc5531.txt doc/rfc5665.txt
 
 ACLOCAL_AMFLAGS = -I m4

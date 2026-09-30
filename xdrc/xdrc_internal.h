@@ -255,9 +255,8 @@ extern string file_prefix;
 extern string server_session;
 extern bool server_ptr;
 extern bool server_async;
-extern bool opt_uptr;
-extern bool opt_uptr_threshold_set;
-extern size_t opt_uptr_threshold;
+extern bool opt_union_threshold_set;
+extern size_t opt_union_threshold;
 
 template <typename T>
 struct omanip {

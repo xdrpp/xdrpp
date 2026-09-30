@@ -8,7 +8,7 @@ xdrc - RFC4506 XDR compiler for libxdrpp
 
 # SYNOPSIS
 
-xdrc {-hh|-serverhh|-servercc} [-uptr|-uptr-threshold _bytes_]
+xdrc {-hh|-serverhh|-servercc} [-uptr-threshold _bytes_]
   [-o _outfile_] [-DMACRO=val...] _input_.x
 
 # DESCRIPTION
@@ -49,6 +49,10 @@ defined in XDR.
         mt.zero() = 5;
 
         std::cout << mt.one() << std::endl; // throws xdr_wrong_union
+
+      If constructing a new union arm throws, the union remains safely
+      destructible.  Selecting a discriminant again attempts to construct
+      its arm and recovers the union when construction succeeds.
 
 * XDR `bool` is represented as a C++ `bool` (with XDR's `TRUE`
   translated to `true` and `FALSE` to `false`).
@@ -333,22 +337,13 @@ contains the following fields:
 	warnings rather than errors.  With the `-pedantic` flag, all
 	warnings become errors.
 
-\-uptr
-:	By default, unions embed their body in the active branch in the
-	structure, meaning the in-memory size of a union depends on the
-	largest possible case.  The `-uptr` flag changes this behavior to
-	store only a pointer in the union, which will require more calls
-	to malloc, but potentially consume less memory.  This option does
-	not change the public interface, but may affect performance.
-
 \-uptr-threshold _bytes_
 :	Store union arms no larger than _bytes_ inline and store larger arms
   through pointers.  The threshold uses the C++ in-memory `sizeof` the
-  arm type, not its serialized XDR size.  This option is mutually
-  exclusive with `-uptr`; `-uptr-threshold 0` is equivalent to `-uptr`
-  for non-void arms.
+  arm type, not its serialized XDR size.  By default all arms are stored
+  inline; `-uptr-threshold 0` stores all non-void arms through pointers.
 
-  Headers generated with either pointer-storage option contain comments
+  Headers generated with this option contain comments
   for each union arm describing its size expression and storage rule.
   They also expose compiler-resolved size, alignment, threshold, and
   inline/indirect metadata through the union's `_xdr_union_meta` type.

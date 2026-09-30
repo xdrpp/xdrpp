@@ -1,5 +1,6 @@
 %using xdr::operator==;
 %using xdr::operator<=>;
+%#include "tests/throwing_arm.h"
 
 enum senum {
   SE_NEGATIVE = -1,
@@ -58,6 +59,17 @@ union u_4_12 switch (int which) {
    fix_4 f4;
  case 12:
    fix_12 f12;
+};
+
+union throwing_union switch (int which) {
+ case 0:
+   void;
+ case 1:
+   int good;
+ case 2:
+   throwing_inline_arm bad_inline;
+ case 3:
+   throwing_indirect_arm bad_indirect;
 };
 
 typedef fix_12 v12<>;

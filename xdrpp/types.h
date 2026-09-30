@@ -847,14 +847,16 @@ struct type_list {};
 template<size_t Threshold, typename... ArmTypes>
 struct union_storage_t {
   static constexpr size_t threshold = Threshold;
-  static constexpr size_t inline_size = [] {
-    size_t size = sizeof(void *);
+  static constexpr bool has_indirect =
+    ((sizeof(ArmTypes) > threshold) || ...);
+  static constexpr size_t storage_size = [] {
+    size_t size = has_indirect ? sizeof(void *) : 1;
     ((size = sizeof(ArmTypes) <= threshold
        ? std::max(size, sizeof(ArmTypes)) : size), ...);
     return size;
   }();
-  static constexpr size_t inline_alignment = [] {
-    size_t alignment = alignof(void *);
+  static constexpr size_t storage_alignment = [] {
+    size_t alignment = has_indirect ? alignof(void *) : 1;
     ((alignment = sizeof(ArmTypes) <= threshold
        ? std::max(alignment, alignof(ArmTypes)) : alignment), ...);
     return alignment;
@@ -878,14 +880,14 @@ struct union_storage_t {
   }
 
 private:
-  alignas(inline_alignment) std::byte storage_[inline_size];
+  alignas(storage_alignment) std::byte storage_[storage_size];
 };
 
 template<typename T, size_t Threshold, auto Field, detail::fixed_string Name>
-struct hybrid_access_t;
+struct union_access_t;
 template<typename T, size_t Threshold, typename S, typename Storage,
          Storage S::*Field, detail::fixed_string Name>
-struct hybrid_access_t<T, Threshold, Field, Name> {
+struct union_access_t<T, Threshold, Field, Name> {
   using struct_type = S;
   using field_type = T;
   using value_type = decltype(Field);
@@ -924,30 +926,6 @@ struct hybrid_access_t<T, Threshold, Field, Name> {
   }
   decltype(auto) operator()(struct_type &&s) const {
     return std::move(*pointer(s));
-  }
-};
-
-template<typename T, auto Field, detail::fixed_string Name>
-struct uptr_access_t;
-template<typename T, typename S, void *S::*Field, detail::fixed_string Name>
-struct uptr_access_t<T, Field, Name> {
-  using struct_type = S;
-  using field_type = T;
-  using value_type = decltype(Field);
-  static constexpr auto field_name = Name;
-  static constexpr value_type value = Field;
-  static constexpr bool has_field = true;
-
-  static constexpr const char *name() { return field_name.value; }
-
-  decltype(auto) operator()(const struct_type &s) const {
-    return *static_cast<const field_type*>(s.*Field);
-  }
-  decltype(auto) operator()(struct_type &s) const {
-    return *static_cast<field_type*>(s.*Field);
-  }
-  decltype(auto) operator()(struct_type &&s) const {
-    return std::move(*static_cast<field_type*>(s.*Field));
   }
 };
 
@@ -993,16 +971,9 @@ with_n(size_t n, F &&f)
   return invoke_array.at(n)(std::forward<F>(f));
 }
 
-template<typename T> concept is_field_access =
-  std::same_as<T, field_access_t<T::value, T::field_name>>;
-
-template<typename T> concept is_uptr_access =
-    std::same_as<T, uptr_access_t<typename T::field_type, T::value,
-				  T::field_name>>;
-
-template<typename T> concept is_hybrid_access =
-  std::same_as<T, hybrid_access_t<typename T::field_type, T::threshold,
-				    T::value, T::field_name>>;
+template<typename T> concept is_union_access =
+  std::same_as<T, union_access_t<typename T::field_type, T::threshold,
+			       T::value, T::field_name>>;
 
 // XDR union types with an _xdr_union_meta inner struct.
 template<typename U> concept has_union_meta_strict =
@@ -1033,33 +1004,38 @@ struct unionfn {
     return tagref(u);
   }
 
+  template<has_union_meta U>
+  static bool valueless_by_exception(const U &u) {
+    return fieldno(u) > 0 && !activeref(u);
+  }
+
+  template<has_union_meta U>
+  static void check_value(const U &u) {
+    if (valueless_by_exception(u))
+      throw xdr_wrong_union("XDR union is valueless by exception");
+  }
+
   template<has_union_meta_strict U, size_t I>
   static consteval union_arm_layout_t arm_layout() {
     auto access = union_meta<U>::template arm_access<I>();
     using access_type = decltype(access);
     if constexpr (!access_type::has_field)
       return {access.name(), 0, 0, false};
-    else if constexpr (is_uptr_access<access_type>)
-      return {access.name(), sizeof(typename access_type::field_type),
-              alignof(typename access_type::field_type), true};
-    else if constexpr (is_hybrid_access<access_type>)
+    else
       return {access.name(), sizeof(typename access_type::field_type),
               alignof(typename access_type::field_type),
               access_type::is_indirect};
-    else
-      return {access.name(), sizeof(typename access_type::field_type),
-              alignof(typename access_type::field_type), false};
   }
 
   template<has_union_meta_strict U>
   static bool set_tag(U &u, tag_type<U> v) {
     const int oldno = fieldno(u), newno = union_meta<U>::fieldno(v);
-    if (oldno == newno)
+    if (oldno == newno && (newno <= 0 || activeref(u)))
       tagref(u) = v;
     else {
-      with_current_arm(u, [&u](auto f) { destroy_field(f, u); });
+      destructor(u);
       tagref(u) = v;
-      with_current_arm(u, [&u](auto f) { construct_field(f, u); });
+      constructor(u);
     }
     return newno >= 0;
   }
@@ -1067,7 +1043,7 @@ struct unionfn {
   template<has_union_meta_strict U, typename R>
   requires std::same_as<U, std::remove_cvref_t<R>>
   static U &assign(U &u, R &&r) {
-    if (fieldno(u) == fieldno(r)) {
+    if (fieldno(u) == fieldno(r) && activeref(u) && activeref(r)) {
       tagref(u) = tagref(r);
       with_current_arm(u, [&](auto f) { f(u) = f(std::forward<R>(r)); });
     }
@@ -1080,7 +1056,7 @@ struct unionfn {
 
   template<size_t I, typename U> requires (I < union_meta<U>::num_arms)
   static decltype(auto) arm_impl(U &&u) {
-    if (fieldno(u) == I)
+    if (fieldno(u) == I && activeref(u))
       return armref<I>(u);
     std::string errmsg = std::string("accessed field ") +
       union_meta<U>::template arm_access<I>().name() +
@@ -1105,17 +1081,7 @@ struct unionfn {
   static void construct_field(void_access_t, auto&&, auto&&...) {}
   static void destroy_field(void_access_t, auto&&) {}
 
-  template<is_uptr_access A, typename ...Args>
-  static void construct_field(A f, typename A::struct_type &s, Args&&...args) {
-    s.*f.value = new typename A::field_type(std::forward<Args>(args)...);
-  }
-  template<is_uptr_access A>
-  static void destroy_field(A f, typename A::struct_type &s) {
-    delete &f(s);
-    s.*f.value = nullptr;
-  }
-
-  template<is_hybrid_access A, typename ...Args>
+  template<is_union_access A, typename ...Args>
   static void construct_field(A f, typename A::struct_type &s,
 			      Args&&...args) {
     if constexpr (A::is_indirect) {
@@ -1125,7 +1091,7 @@ struct unionfn {
     else
       std::construct_at(f.pointer(s), std::forward<Args>(args)...);
   }
-  template<is_hybrid_access A>
+  template<is_union_access A>
   static void destroy_field(A f, typename A::struct_type &s) {
     if constexpr (A::is_indirect) {
       delete &f(s);
@@ -1135,19 +1101,9 @@ struct unionfn {
       std::destroy_at(f.pointer(s));
   }
 
-  template<is_field_access A, typename...Args>
-  static void construct_field(A f, typename A::struct_type &s, Args&&...args) {
-    // XXX - could be awkward if constructor throws
-    std::construct_at(&f(s), std::forward<Args>(args)...);
-  }
-  template<is_field_access A>
-  static void destroy_field(A f, typename A::struct_type &s) {
-    std::destroy_at(&f(s));
-  }
-
   template<has_union_meta U, typename F>
   static void with_current_arm(U &&u, F &&f) {
-    if (int n = fieldno(u); n > 0)
+    if (int n = fieldno(u); n > 0 && activeref(u))
       return with_n<union_meta<U>::num_arms>(n, [&f](auto i) {
 	std::forward<F>(f)(union_meta<U>::template arm_access<i>());
       });
@@ -1162,27 +1118,40 @@ struct unionfn {
 
   template<has_union_meta_strict U, typename ...Args>
   static void constructor(U &u, Args&&...args) {
-    with_current_arm(u, [&](auto f) {
-      construct_field(f, u, std::forward<Args>(args)...);
-    });
+    if (int n = fieldno(u); n > 0) {
+      with_n<union_meta<U>::num_arms>(n, [&](auto i) {
+	construct_field(union_meta<U>::template arm_access<i>(), u,
+			std::forward<Args>(args)...);
+      });
+      activeref(u) = true;
+    }
   }
 
   // Copy or move constructor
   template<has_union_meta_strict U, typename R>
   requires std::same_as<U, std::remove_cvref_t<R>>
   static void copy_constructor(U &u, R &&r) {
-    with_current_arm(r, [&](auto f) {
-      construct_field(f, u, f(std::forward<R>(r)));
-    });
     tagref(u) = tagref(r);
+    activeref(u) = false;
+    if (activeref(r))
+      with_current_arm(r, [&](auto f) {
+	construct_field(f, u, f(std::forward<R>(r)));
+	activeref(u) = true;
+      });
   }
 
   template<has_union_meta_strict U>
   static void destructor(U &u) {
     with_current_arm(u, [&](auto f) { destroy_field(f, u); });
+    activeref(u) = false;
   }
 
 private:
+  template<has_union_meta U>
+  static decltype(auto) activeref(U &&u) {
+    return union_meta<U>::active_access()(u);
+  }
+
   template<has_union_meta U>
   static decltype(auto) tagref(U &&u) {
     return union_meta<U>::tag_access()(u);
@@ -1205,6 +1174,7 @@ struct xdr_union_base
 
   static size_t serial_size(const union_type &u) {
     unionfn::check_tag<union_type>(unionfn::get_tag(u));
+    unionfn::check_value(u);
     size_t s = 4;
     unionfn::with_current_arm(u, [&](auto f) {
       s += XDR_GET_TRAITS(f(u))::serial_size(f(u));
@@ -1216,6 +1186,7 @@ struct xdr_union_base
   static void save(Archive &ar, const union_type &u) {
     const auto t = unionfn::get_tag(u);
     unionfn::check_tag<union_type>(t);
+    unionfn::check_value(u);
     archive(ar, t, unionfn::get_tag_name<union_type>());
     unionfn::with_current_arm(u, [&](auto f) { archive(ar, f(u), f.name()); });
   }
