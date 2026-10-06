@@ -25,6 +25,26 @@
 
 namespace xdr {
 
+namespace detail {
+
+template<typename T>
+constexpr T
+to_int8(uint8_t u)
+{
+  return u <= std::numeric_limits<T>::max()
+    ? u : u + (std::numeric_limits<T>::min() -
+               std::numeric_limits<T>::max());
+}
+
+template<>
+constexpr uint8_t
+to_int8<uint8_t>(uint8_t u)
+{
+  return u;
+}
+
+}
+
 #ifndef XDR_AUTOCHECK_FUZZY_STRINGS
 // If defined to 0, changes the behavior of the library to generate
 // strings with ASCII characters with small size parameters.  The
@@ -39,7 +59,18 @@ struct generator_t {
     : size_(size), levels_(levels) {}
 
   void operator()(bool &t) const {
-    t = autocheck::generator<bool>{}(size_);
+    // Preserve the initial branch-selection draw made when bool used the enum
+    // generator so seeded generation remains compatible with older xdrpp.
+    if (autocheck::generator<bool>{}(size_)) {
+      std::int32_t v;
+      (*this)(v);
+      t = bool(v);
+    }
+    else {
+      std::uint32_t n;
+      (*this)(n);
+      t = bool(n % 2);
+    }
   }
 
   // Handle char and uint8_t (which can legally be the same type for
@@ -50,7 +81,8 @@ struct generator_t {
             requires { T{0}; std::bit_cast<char>(T{}); })
   void operator()(T &t) const {
 #if XDR_AUTOCHECK_FUZZY_STRINGS
-    t = std::bit_cast<T>(uint8_t(autocheck::generator<int>{}(0x10000)));
+    t = detail::to_int8<T>(
+      uint8_t(autocheck::generator<int>{}(0x10000)));
 #else // !XDR_AUTOCHECK_FUZZY_STRINGS
     t = autocheck::generator<T>{}(size_);
 #endif // !XDR_AUTOCHECK_FUZZY_STRINGS
@@ -65,7 +97,7 @@ struct generator_t {
   void operator()(T &t) const {
     static_assert(!std::same_as<T, bool>);
     if(autocheck::generator<bool>{}(size_)) {
-      typename xdr_traits<T>::case_type v;
+      std::underlying_type_t<T> v;
       (*this)(v);
       t = T(v);
     }
