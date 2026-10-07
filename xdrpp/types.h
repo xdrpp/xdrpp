@@ -1213,6 +1213,7 @@ struct xdr_union_base
     unionfn::check_tag<union_type>(t);
     unionfn::set_tag(u, t);
     unionfn::with_current_arm(u, [&](auto f) { archive(ar, f(u), f.name()); });
+    validate(u);
   }
 };
 

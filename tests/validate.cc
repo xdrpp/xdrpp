@@ -8,6 +8,8 @@
 // to pick up our local test validate function properly.
 struct fix_4;
 void validate(const fix_4& f4);
+struct u_4_12;
+void validate(const u_4_12& u);
 
 #include "tests/xdrtest.hh"
 
@@ -23,6 +25,13 @@ validate(const fix_4 &f4)
 {
   if (f4.i == 0)
     throw xdr::xdr_invariant_failed("fix_4::i has value 0");
+}
+
+void
+validate(const u_4_12 &u)
+{
+  if (u.which() == 12 && u.f12().i == 0)
+    throw xdr::xdr_invariant_failed("u_4_12::f12.i has value 0");
 }
 
 int
@@ -68,6 +77,18 @@ main()
   ok = false;
   try {
     xdr_from_opaque(v, oc);
+  } catch (const xdr::xdr_invariant_failed &) {
+    ok = true;
+  }
+  assert(ok);
+
+  u_4_12 invalid_union(12);
+  invalid_union.f12().i = 0;
+  v = xdr_to_opaque(invalid_union);
+  ok = false;
+  try {
+    u_4_12 decoded;
+    xdr_from_opaque(v, decoded);
   } catch (const xdr::xdr_invariant_failed &) {
     ok = true;
   }
