@@ -33,6 +33,11 @@ struct test_recursive {
   test_recursive nextvec<>;
 };
 
+struct recursive_after_fixed {
+  int value;
+  recursive_after_fixed children<>;
+};
+
 struct fix_4 {
   int i;
 };

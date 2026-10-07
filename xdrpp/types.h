@@ -639,7 +639,7 @@ template<typename T> struct xdr_traits<pointer<T>>
 namespace detail {
 
 template<typename...Ts> concept all_have_fixed_size =
-  requires { (0 + ... + xdr_traits<Ts>::fixed_size); };
+  (has_fixed_size_t<Ts>::value && ...);
 
 template<bool Fixed, typename...Members> struct xdr_fixed_size_base_helper;
 template<typename...Members>
