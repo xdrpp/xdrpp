@@ -8,6 +8,7 @@
 void
 test_throwing_arm(int bad_tag)
 {
+  throwing_union active(bad_tag);
   throwing_union value(1);
   value.good() = 42;
   throwing_arm_state::throw_now = true;
@@ -17,6 +18,14 @@ test_throwing_arm(int bad_tag)
   }
   catch (const std::runtime_error &) {}
   assert(xdr::unionfn::valueless_by_exception(value));
+  assert(value != active);
+  assert(active != value);
+  assert(value < active);
+  assert(!(active < value));
+
+  throwing_union other_valueless(value);
+  assert(value == other_valueless);
+  assert((value <=> other_valueless) == 0);
   try {
     xdr::unionfn::check_value(value);
     assert(false);

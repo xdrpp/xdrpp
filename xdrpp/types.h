@@ -1234,6 +1234,10 @@ operator==(const T &a, const T &b) noexcept
 {
   if (unionfn::get_tag(a) != unionfn::get_tag(b))
     return false;
+  bool av = unionfn::valueless_by_exception(a);
+  bool bv = unionfn::valueless_by_exception(b);
+  if (av || bv)
+    return av == bv;
   bool r = true;
   unionfn::with_current_arm(a, [&](auto body) {
     r = body(a) == body(b);
@@ -1251,7 +1255,13 @@ operator<=>(const T &a, const T &b) noexcept
 {
   if (auto c = unionfn::get_tag(a) <=> unionfn::get_tag(b); c != 0)
     return c;
+  bool av = unionfn::valueless_by_exception(a);
+  bool bv = unionfn::valueless_by_exception(b);
+  if (av != bv)
+    return av ? std::strong_ordering::less : std::strong_ordering::greater;
   detail::ordering_t r = std::strong_ordering::equal;
+  if (av)
+    return r;
   unionfn::with_current_arm(a, [&](auto body) {
     r = body(a) <=> body(b);
   });

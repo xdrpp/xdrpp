@@ -25,6 +25,12 @@ struct throwing_arm : throwing_arm_state {
   }
   throwing_arm &operator=(const throwing_arm &) = default;
   throwing_arm &operator=(throwing_arm &&) = default;
+  bool operator==(const throwing_arm &other) const {
+    return data[0] == other.data[0];
+  }
+  auto operator<=>(const throwing_arm &other) const {
+    return data[0] <=> other.data[0];
+  }
 };
 
 using throwing_inline_arm = throwing_arm<4>;
