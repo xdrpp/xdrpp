@@ -1133,11 +1133,27 @@ struct unionfn {
   static void copy_constructor(U &u, R &&r) {
     tagref(u) = tagref(r);
     activeref(u) = false;
-    if (activeref(r))
-      with_current_arm(r, [&](auto f) {
-	construct_field(f, u, f(std::forward<R>(r)));
-	activeref(u) = true;
-      });
+    if (activeref(r)) {
+      if constexpr (std::is_rvalue_reference_v<R &&>)
+  with_current_arm(r, [&](auto f) {
+    if constexpr (is_union_access<decltype(f)>) {
+      if constexpr (decltype(f)::is_indirect) {
+        std::construct_at(f.pointer_slot(u), *f.pointer_slot(r));
+        activeref(u) = true;
+        std::destroy_at(f.pointer_slot(r));
+        activeref(r) = false;
+        return;
+      }
+    }
+    construct_field(f, u, f(std::move(r)));
+    activeref(u) = true;
+  });
+      else
+  with_current_arm(r, [&](auto f) {
+    construct_field(f, u, f(r));
+    activeref(u) = true;
+  });
+    }
   }
 
   template<has_union_meta_strict U>

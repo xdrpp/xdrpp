@@ -53,11 +53,30 @@ test_throwing_arm(int bad_tag)
   throwing_arm_state::throw_now = false;
 }
 
+void
+test_indirect_move()
+{
+  throwing_union source(3);
+  throwing_arm_state::throw_now = true;
+  throwing_union moved(std::move(source));
+  assert(!xdr::unionfn::valueless_by_exception(moved));
+  assert(xdr::unionfn::valueless_by_exception(source));
+
+  throwing_arm_state::throw_now = false;
+  throwing_union other(3);
+  throwing_arm_state::throw_now = true;
+  std::swap(moved, other);
+  assert(!xdr::unionfn::valueless_by_exception(moved));
+  assert(!xdr::unionfn::valueless_by_exception(other));
+  throwing_arm_state::throw_now = false;
+}
+
 int
 main()
 {
   test_throwing_arm(2);
   test_throwing_arm(3);
+  test_indirect_move();
 
   using throwing_meta = throwing_union::_xdr_union_meta;
   static_assert(!throwing_meta::arm_layout<2>().is_indirect);
