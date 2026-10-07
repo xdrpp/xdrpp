@@ -52,6 +52,10 @@ main()
 
   testns::hasbytes hb1, hb2;
   assert(hb1 == hb2);
+
+  test_recursive recursive1, recursive2;
+  assert(!(recursive1 < recursive2));
+  assert(!(recursive2 < recursive1));
   
   return 0;
 }

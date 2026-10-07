@@ -1230,7 +1230,7 @@ operator==(const T &a, const T &b) noexcept
   });
 }
 
-template<xdr_struct T> requires xdr_traits<T>::xdr_defined constexpr
+template<xdr_struct T> requires xdr_traits<T>::xdr_defined
 #if __clang__
 // work around compiler bug
 std::enable_if_t<xdr_traits<T>::is_struct, detail::ordering_t>
