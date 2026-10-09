@@ -325,6 +325,12 @@ template<> struct xdr_traits<bool> : xdr_traits_base {
 static constexpr const uint32_t XDR_MAX_LEN = 0xfffffffc;
 
 namespace detail {
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_overflow(const char *message)
+{
+  throw xdr_overflow(message);
+}
+
 //! Convenience supertype for traits of the three container types
 //! (xarray, xvectors, and pointer).
 template<typename T, bool variable,
@@ -400,15 +406,16 @@ template<typename T, uint32_t N> struct xarray
   static void validate() {}
   static void check_size(uint32_t i) {
     if (i != N)
-      throw xdr_overflow("invalid size in xdr::xarray");
+      detail::throw_overflow("invalid size in xdr::xarray");
   }
   static void resize(uint32_t i) {
     if (i != N)
-      throw xdr_overflow("invalid resize in xdr::xarray");
+      detail::throw_overflow("invalid resize in xdr::xarray");
   }
   T &extend_at(uint32_t i) {
     if (i >= N)
-      throw xdr_overflow("attempt to access invalid position in xdr::xarray");
+      detail::throw_overflow(
+	"attempt to access invalid position in xdr::xarray");
     return (*this)[i];
   }
 };
@@ -450,7 +457,7 @@ struct xvector : std::vector<T> {
   //! Check whether a size is in bounds
   static void check_size(size_t n) {
     if (n > max_size())
-      throw xdr_overflow("xvector overflow");
+      detail::throw_overflow("xvector overflow");
   }
 
   void append(const T *elems, size_t n) {
@@ -459,7 +466,8 @@ struct xvector : std::vector<T> {
   }
   T &extend_at(uint32_t i) {
     if (i >= N)
-      throw xdr_overflow("attempt to access invalid position in xdr::xvector");
+      detail::throw_overflow(
+	"attempt to access invalid position in xdr::xvector");
     if (i == this->size())
       this->emplace_back();
     return (*this)[i];
@@ -502,7 +510,7 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   //! Check whether a size is in bounds
   static void check_size(size_t n) {
     if (n > max_size())
-      throw xdr_overflow("xstring overflow");
+      detail::throw_overflow("xstring overflow");
   }
 
   //! Check that the string length is not greater than the maximum
@@ -576,7 +584,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
 
   static void check_size(uint32_t n) {
     if (n > 1)
-      throw xdr_overflow("xdr::pointer size must be 0 or 1");
+      detail::throw_overflow("xdr::pointer size must be 0 or 1");
   }
   uint32_t size() const { return *this ? 1 : 0; }
   T *begin() { return get(); }
@@ -585,7 +593,8 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   const T *end() const { return begin() + size(); }
   T &extend_at(uint32_t i) {
     if (i != 0)
-      throw xdr_overflow("attempt to access position > 0 in xdr::pointer");
+      detail::throw_overflow(
+	"attempt to access position > 0 in xdr::pointer");
     if (!size())
       this->reset(new T);
     return **this;
@@ -601,7 +610,8 @@ template<typename T> struct pointer : std::unique_ptr<T> {
       this->reset(new T);
       break;
     default:
-      throw xdr_overflow("xdr::pointer::resize: valid sizes are 0 and 1");
+      detail::throw_overflow(
+	"xdr::pointer::resize: valid sizes are 0 and 1");
     }
   }
   T &activate() {
@@ -931,18 +941,48 @@ struct union_access_t<T, Threshold, Field, Name> {
 
 namespace detail {
 
+[[gnu::cold, gnu::noinline]] inline std::string
+format_enum_tag(const char *name, std::int32_t value)
+{
+  if (name)
+    return name;
+  return std::to_string(value);
+}
+
 template<xdr_enum E> inline std::string
 show_tag(E e)
 {
-  if (const char *name = xdr_get_traits<E>::enum_name(e))
-    return name;
-  return std::to_string(e);
+  return format_enum_tag(xdr_get_traits<E>::enum_name(e),
+			 static_cast<std::int32_t>(e));
 }
 
 template<xdr_numeric N> inline std::string
 show_tag(N n)
 {
   return std::to_string(n);
+}
+
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_bad_discriminant(std::string tag, const char *tag_name,
+             const char *union_name)
+{
+  throw xdr_bad_discriminant(std::string("bad value ") + std::move(tag) +
+               " for " + tag_name + " in " + union_name);
+}
+
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_wrong_union(const char *field_name, const char *union_name,
+          const char *tag_name, std::string tag)
+{
+  throw xdr_wrong_union(std::string("accessed field ") + field_name + " in " +
+            union_name + " but " + tag_name + " == " +
+            std::move(tag));
+}
+
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_valueless_union()
+{
+  throw xdr_wrong_union("XDR union is valueless by exception");
 }
 
 // helper function for with_n
@@ -1012,7 +1052,7 @@ struct unionfn {
   template<has_union_meta U>
   static void check_value(const U &u) {
     if (valueless_by_exception(u))
-      throw xdr_wrong_union("XDR union is valueless by exception");
+      detail::throw_valueless_union();
   }
 
   template<has_union_meta_strict U, size_t I>
@@ -1058,23 +1098,18 @@ struct unionfn {
   static decltype(auto) arm_impl(U &&u) {
     if (fieldno(u) == I && activeref(u))
       return armref<I>(u);
-    std::string errmsg = std::string("accessed field ") +
-      union_meta<U>::template arm_access<I>().name() +
-      " in " + union_meta<U>::union_name +
-      " but " + union_meta<U>::tag_access().name()
-      + " == " + detail::show_tag(tagref(u));
-    throw xdr_wrong_union(errmsg);
+    detail::throw_wrong_union(
+      union_meta<U>::template arm_access<I>().name(), union_meta<U>::union_name,
+      union_meta<U>::tag_access().name(), detail::show_tag(tagref(u)));
   }
 
   template<has_union_meta U>
   static void check_tag(tag_type<U> t) {
     if constexpr (!union_meta<U>::has_default_case)
       if (union_meta<U>::fieldno(t) == -1) [[unlikely]] {
-	std::string errmsg =
-	  std::string("bad value ") + detail::show_tag(t) +
-	  " for " + union_meta<U>::tag_access().name() +
-	  " in " + union_meta<U>::union_name;
-	throw xdr_bad_discriminant(errmsg);
+        detail::throw_bad_discriminant(detail::show_tag(t),
+                                       union_meta<U>::tag_access().name(),
+                                       union_meta<U>::union_name);
       }
   }
 
