@@ -36,10 +36,10 @@ struct marshal_base {
   //! Copy \c len bytes to buf, then consume 0-3 bytes of padding to
   //! make the total number of bytes consumed divisible by 4.  \throws
   //! xdr_should_be_zero if the padding bytes are not zero.
-  static void get_bytes(const std::uint32_t *&pr, void *buf, std::size_t len);
+  static void get_bytes(const std::uint32_t *&pr, void *buf, size_t len);
   //! Copy \c len bytes from buf, then add 0-3 zero-valued padding
   //! bytes to make the overall marshaled length a multiple of 4.
-  static void put_bytes(std::uint32_t *&pr, const void *buf, std::size_t len);
+  static void put_bytes(std::uint32_t *&pr, const void *buf, size_t len);
 };
 
 //! Numeric marshaling mixin that does not byteswap any numeric values
@@ -101,23 +101,29 @@ template<typename Base> struct xdr_generic_put : Base {
   xdr_generic_put(msg_ptr &m)
     : xdr_generic_put(m->data(), m->end()) {}
 
-  void check(std::size_t n) const {
-    if (n > std::size_t(reinterpret_cast<char *>(e_)
-			- reinterpret_cast<char *>(p_)))
+  void check(size_t n) const {
+    if (n > size_t(reinterpret_cast<char *>(e_)
+		   - reinterpret_cast<char *>(p_)))
       throw xdr_overflow("insufficient buffer space in xdr_generic_put");
   }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint32_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T t) { check(4); put32(p_, xdr_traits<T>::to_uint(t)); }
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint32_t>
+  void operator()(T t) {
+    check(4);
+    put32(p_, xdr_traits<T>::to_uint(t));
+  }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint64_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T t) { check(8); put64(p_, xdr_traits<T>::to_uint(t)); }
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint64_t>
+  void operator()(T t) {
+    check(8);
+    put64(p_, xdr_traits<T>::to_uint(t));
+  }
 
-  template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
-  operator()(const T &t) {
-    if (xdr_traits<T>::variable_nelem) {
+  template<xdr_bytes T>
+  void operator()(const T &t) {
+    if constexpr (xdr_traits<T>::variable_nelem) {
       check(4 + t.size());
       put32(p_, size32(t.size()));
     }
@@ -126,9 +132,8 @@ template<typename Base> struct xdr_generic_put : Base {
     put_bytes(p_, t.data(), t.size());
   }
 
-  template<typename T> typename std::enable_if<
-    xdr_traits<T>::is_class || xdr_traits<T>::is_container>::type
-  operator()(const T &t) {
+  template<xdr_type T> requires xdr_class<T> || xdr_container<T>
+  void operator()(const T &t) {
     if (!marshal_base::stack_limit--)
       throw xdr_stack_overflow("stack overflow in xdr_generic_put");
     xdr_traits<T>::save(*this, t);
@@ -163,27 +168,30 @@ template<typename Base> struct xdr_generic_get : Base {
   xdr_generic_get(const msg_ptr &m)
     : xdr_generic_get(m->data(), m->end()) {}
 
-  void check(std::size_t n) const {
-    if (n > std::size_t(reinterpret_cast<const char *>(e_)
-			- reinterpret_cast<const char *>(p_)))
+  void check(size_t n) const {
+    if (n > size_t(reinterpret_cast<const char *>(e_)
+		   - reinterpret_cast<const char *>(p_)))
       throw xdr_overflow("insufficient buffer space in xdr_generic_get");
   }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint32_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T &t) {
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint32_t>
+  void operator()(T &t) {
     check(4);
     t = xdr_traits<T>::from_uint(get32(p_));
     if constexpr (xdr_traits<T>::is_enum)
       validate_enum<T>::validate(t);
   }
 
-  template<typename T> typename std::enable_if<
-    std::is_same<std::uint64_t, typename xdr_traits<T>::uint_type>::value>::type
-  operator()(T &t) { check(8); t = xdr_traits<T>::from_uint(get64(p_)); }
+  template<xdr_numlike T>
+  requires std::same_as<typename xdr_traits<T>::uint_type, std::uint64_t>
+  void operator()(T &t) {
+    check(8);
+    t = xdr_traits<T>::from_uint(get64(p_));
+  }
 
-  template<typename T> typename std::enable_if<xdr_traits<T>::is_bytes>::type
-  operator()(T &t) {
+  template<xdr_bytes T>
+  void operator()(T &t) {
     if (xdr_traits<T>::variable_nelem) {
       check(4);
       std::uint32_t size = get32(p_);
@@ -195,9 +203,8 @@ template<typename Base> struct xdr_generic_get : Base {
     get_bytes(p_, t.data(), t.size());
   }
 
-  template<typename T> typename std::enable_if<
-    xdr_traits<T>::is_class || xdr_traits<T>::is_container>::type
-  operator()(T &t) {
+  template<xdr_type T> requires xdr_class<T> || xdr_container<T>
+  void operator()(T &t) {
     if (!marshal_base::stack_limit--)
       throw xdr_stack_overflow("stack overflow in xdr_generic_get");
     xdr_traits<T>::load(*this, t);
@@ -210,24 +217,21 @@ template<typename Base> struct xdr_generic_get : Base {
   }
 };
 
-#if XDRPP_WORDS_BIGENDIAN
-using xdr_put = xdr_generic_put<marshal_noswap>;
-using xdr_get = xdr_generic_get<marshal_noswap>;
-#else // !XDRPP_WORDS_BIGENDIAN
-//! Archive for marshaling in RFC4506 big-endian order.
-using xdr_put = xdr_generic_put<marshal_swap>;
-//! Archive for unmarshaling in RFC4506 big-endian order.
-using xdr_get = xdr_generic_get<marshal_swap>;
-#endif // !XDRPP_WORDS_BIGENDIAN
+// Marshal to network byte order (big endian)
+using marshal_network =
+  std::conditional_t<is_big_endian, marshal_noswap, marshal_swap>;
 
-inline std::size_t
+using xdr_put = xdr_generic_put<marshal_network>;
+using xdr_get = xdr_generic_get<marshal_network>;
+
+inline size_t
 xdr_argpack_size()
 {
   return 0;
 }
 //! Returns the sum of bytes required to marshal all of the argument
 //! values.
-template<typename T, typename...Args> inline std::size_t
+template<typename T, typename...Args> inline size_t
 xdr_argpack_size(const T &t, const Args &...a)
 {
   return xdr_size(t) + xdr_argpack_size(a...);

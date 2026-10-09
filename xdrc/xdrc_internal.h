@@ -118,6 +118,7 @@ struct rpc_union {
   string tagtype;
   string tagid;
   vec<rpc_ufield> fields;
+  int maxfield{};
   bool hasdefault{false};
 };
 
@@ -254,6 +255,8 @@ extern string file_prefix;
 extern string server_session;
 extern bool server_ptr;
 extern bool server_async;
+extern bool opt_union_threshold_set;
+extern size_t opt_union_threshold;
 
 template <typename T>
 struct omanip {

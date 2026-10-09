@@ -10,9 +10,11 @@ main()
 #if XDRPP_STRONG_ORDER
   fix_12_int f1, f2;
   std::int64_t fix_12_int::* second_field = &fix_12_int::h;
+  static_assert(std::same_as<decltype(f1 <=> f2), std::strong_ordering>);
 #else
   fix_12 f1, f2;
   double fix_12::* second_field = &fix_12::d;
+  static_assert(std::same_as<decltype(f1 <=> f2), std::partial_ordering>);
 #endif
   f1.i = 5;
   f1.*second_field = 0;
@@ -50,6 +52,10 @@ main()
 
   testns::hasbytes hb1, hb2;
   assert(hb1 == hb2);
+
+  test_recursive recursive1, recursive2;
+  assert(!(recursive1 < recursive2));
+  assert(!(recursive2 < recursive1));
   
   return 0;
 }

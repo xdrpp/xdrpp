@@ -13,6 +13,17 @@ main()
   autocheck::generator<bool>{}(100);
 
   {
+    generator_t g(100);
+    for (size_t i = 0; i < 100; ++i) {
+      bool value;
+      g(value);
+      uint32_t encoded;
+      xdr_from_opaque(xdr_to_opaque(value), encoded);
+      assert(encoded <= 1);
+    }
+  }
+
+  {
     autocheck::generator<test_recursive> g;
     for (size_t i = 0; i < 25; i++) {
       cout << "test_recursive " << i << endl;

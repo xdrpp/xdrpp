@@ -13,7 +13,7 @@ vec<string> litq;
 inline string
 msg_yytext(const char *msg)
 {
-  return string(yytext) + " '" + yytext + "'";
+  return string(msg) + " '" + yytext + "'";
 }
 %}
 

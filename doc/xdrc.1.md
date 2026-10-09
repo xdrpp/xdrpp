@@ -8,7 +8,8 @@ xdrc - RFC4506 XDR compiler for libxdrpp
 
 # SYNOPSIS
 
-xdrc {-hh|-serverhh|-servercc} [-o _outfile_] [-DMACRO=val...] _input_.x
+xdrc {-hh|-serverhh|-servercc} [-uptr-threshold _bytes_]
+  [-o _outfile_] [-DMACRO=val...] _input_.x
 
 # DESCRIPTION
 
@@ -48,6 +49,10 @@ defined in XDR.
         mt.zero() = 5;
 
         std::cout << mt.one() << std::endl; // throws xdr_wrong_union
+
+      If constructing a new union arm throws, the union remains safely
+      destructible.  Selecting a discriminant again attempts to construct
+      its arm and recovers the union when construction succeeds.
 
 * XDR `bool` is represented as a C++ `bool` (with XDR's `TRUE`
   translated to `true` and `FALSE` to `false`).
@@ -331,6 +336,17 @@ contains the following fields:
 	leaving a comma after the last element of an enum, are treated as
 	warnings rather than errors.  With the `-pedantic` flag, all
 	warnings become errors.
+
+\-uptr-threshold _bytes_
+:	Store union arms no larger than _bytes_ inline and store larger arms
+  through pointers.  The threshold uses the C++ in-memory `sizeof` the
+  arm type, not its serialized XDR size.  By default all arms are stored
+  inline; `-uptr-threshold 0` stores all non-void arms through pointers.
+
+  Headers generated with this option contain comments
+  for each union arm describing its size expression and storage rule.
+  They also expose compiler-resolved size, alignment, threshold, and
+  inline/indirect metadata through the union's `_xdr_union_meta` type.
 
 # EXAMPLES
 

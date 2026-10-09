@@ -37,15 +37,13 @@ class XMLInputArchive;
 namespace xdr {
 
 namespace detail {
-template<typename Archive, typename T>
-std::enable_if_t<xdr_traits<T>::is_class>
+template<typename Archive, xdr_class T> void
 save(Archive &ar, const T &t)
 {
   xdr_traits<T>::save(ar, t);
 }
 
-template<typename Archive, typename T>
-std::enable_if_t<xdr_traits<T>::is_class>
+template<typename Archive, xdr_class T> void
 load(Archive &ar, T &t)
 {
   xdr_traits<T>::load(ar, t);
@@ -111,37 +109,15 @@ load(Archive &ar, T &t)
   ar(cereal::binary_data(t.data(), size));
 }
 
-// value is true iff there exists a function
-//
-// cereal_override(Archive&, T, const char *)
-//
-// or at least callable with such arguments.
-template<typename Archive, typename T> class has_cereal_override {
-  template<typename U> static std::true_type
-  test(decltype(cereal_override(std::declval<Archive&>(),
-				std::declval<U>(),
-				"")) *);
-
-  template<typename U> static std::false_type test(...);
-
-public:
-  static constexpr bool value = decltype(test<T>(0))::value;
-};
-
 template<typename Archive> struct nvp_adapter {
-  template<typename T> static
-  std::enable_if_t<!has_cereal_override<Archive, T>::value>
+  template<typename T> static void
   apply(Archive &ar, T &&t, const char *field) {
-    if (field)
+    if constexpr (requires { cereal_override(ar, std::forward<T>(t), field); })
+      cereal_override(ar, std::forward<T>(t), field);
+    else if (field)
       ar(cereal::make_nvp(field, std::forward<T>(t)));
     else
       ar(std::forward<T>(t));
-  }
-
-  template<typename T> static
-  std::enable_if_t<has_cereal_override<Archive, T>::value>
-  apply(Archive &ar, T &&t, const char *field) {
-    cereal_override(ar, std::forward<T>(t), field);
   }
 };
 } // namespace detail

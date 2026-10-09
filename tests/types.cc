@@ -9,6 +9,8 @@ using namespace xdr;
 int
 main()
 {
+  static_assert(!xdr_traits<recursive_after_fixed>::has_fixed_size);
+
   {
     uptr b(false);
     {

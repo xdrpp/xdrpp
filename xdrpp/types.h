@@ -5,11 +5,16 @@
 #ifndef _XDRC_TYPES_H_HEADER_INCLUDED_
 #define _XDRC_TYPES_H_HEADER_INCLUDED_ 1
 
+#include <algorithm>
 #include <array>
+#include <bit>
 #include <cassert>
 #include <compare>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -32,6 +37,7 @@
 namespace xdr {
 
 using std::uint32_t;
+using std::size_t;
 
 namespace detail {
 #if XDRPP_STRONG_ORDER
@@ -42,11 +48,10 @@ using ordering_t = std::partial_ordering;
 } // namespace detail
 
 inline uint32_t
-size32(std::size_t s)
+size32(size_t s)
 {
-  uint32_t r {uint32_t(s)};
-  assert(s == r);
-  return r;
+  assert(std::cmp_less_equal(s, 0xffffffff));
+  return s;
 }
 
 
@@ -105,29 +110,9 @@ struct xdr_wrong_union : std::logic_error {
 
 template<typename T> struct xdr_traits;
 
-namespace detail {
-// If a class actually contains a method called validate, then the
-// validate function might as well call it.  So we use the standard
-// gross overload resolution hack that argument 0 will match a
-// pointer-to-method argument before it will match a ... argument.
-template<typename T> inline void
-call_validate(const T &t, decltype(&T::validate))
-{
-  t.validate();
-}
-
-// Conventional wisdom holds that varargs don't inline, but, perhpas
-// because we don't actually call va_start, both gcc and clang seem
-// able to make this compile to nothing (with optimization).
-template<typename T> inline void
-call_validate(const T &, ...)
-{
-}
-}
-
-//! If this function is overloaded or specialized, it provides a means
-//! of placing extra restrictions on XDR data structures (beyond those
-//! of the XDR specification).  When a specialized \c validate
+//! If this function template is specialized, it provides a means of
+//! placing extra restrictions on XDR data structures (beyond those of
+//! the XDR specification).  When a specialized \c xdr::validate
 //! function detects a bad data argument, it should throw an exception
 //! of type \c xdr::xdr_invariant_failed.  Note this mechanism only
 //! works for user-defined XDR structs and unions.  It does not work
@@ -136,24 +121,13 @@ call_validate(const T &, ...)
 template<typename T> inline void
 validate(const T &t)
 {
-  detail::call_validate(t, 0);
+  if constexpr (requires { t.validate(); })
+    t.validate();
 }
 
 //! If you declare a function xdr_validate_enum(T) for an XDR enum
 //! type T, then the unmarshalling code will reject values that don't
-//! have enum tags.  Note that the xdr_validate_enum will never
-//! actually be called--it's just used as a flag to enable enum
-//! validation.  The reson for doing this with function overloading
-//! rather than template specialization is that it enables you to
-//! enable or disable enum validation on a per-namespace basis using
-//! ADR.  In particular, to validate all enums in namespace myns, just
-//! declare one template function in the namespace:
-//!
-//! @code
-//!    namespace myns {
-//!    template<typename T> inline void xdr_validate_enum(T);
-//!    }
-//! @endcode
+//! have enum tags.
 template<typename T> struct validate_enum {
 private:
   static_assert(xdr_traits<T>::is_enum);
@@ -167,7 +141,7 @@ public:
   {
     if constexpr (decltype(test<T>(0))::value) {
       if (!xdr_traits<T>::enum_name(t))
-	throw xdr_invariant_failed("Invalid enum value");
+        throw xdr_invariant_failed("Invalid enum value");
     }
   }
 };
@@ -202,26 +176,46 @@ archive(Archive &ar, T &&t, const char *name = nullptr)
 //! Metadata for all marshalable XDR types.
 template<typename T> struct xdr_traits {
   //! \c T is a valid XDR type that can be serialized.
-  static Constexpr const bool valid = false;
+  static constexpr bool valid = false;
   //! \c T is defined by xdrpp/xdrc (as opposed to native or std types).
-  static Constexpr const bool xdr_defined = false;
+  static constexpr bool xdr_defined = false;
   //! \c T is an \c xstring, \c opaque_array, or \c opaque_vec.
-  static Constexpr const bool is_bytes = false;
+  static constexpr bool is_bytes = false;
   //! \c T is an XDR struct.
-  static Constexpr const bool is_struct = false;
+  static constexpr bool is_struct = false;
   //! \c T is an XDR union.
-  static Constexpr const bool is_union = false;
+  static constexpr bool is_union = false;
   //! \c T is an XDR struct or union.
-  static Constexpr const bool is_class = false;
+  static constexpr bool is_class = false;
   //! \c T is an XDR enum or bool (traits have enum_name).
-  static Constexpr const bool is_enum = false;
+  static constexpr bool is_enum = false;
   //! \c T is an xdr::pointer, xdr::xarray, or xdr::xvector (with load/save).
-  static Constexpr const bool is_container = false;
+  static constexpr bool is_container = false;
   //! \c T is one of [u]int{32,64}_t, float, or double.
-  static Constexpr const bool is_numeric = false;
+  static constexpr bool is_numeric = false;
   //! \c T has a fixed size.
-  static Constexpr const bool has_fixed_size = false;
+  static constexpr bool has_fixed_size = false;
 };
+
+template<typename T> using xdr_get_traits = xdr_traits<std::remove_cvref_t<T>>;
+#define XDR_GET_TRAITS(obj) xdr::xdr_get_traits<decltype(obj)>
+
+template<typename Src, typename Dst> concept can_construct =
+  std::constructible_from<Dst, Src>;
+
+#define XDR_CONCEPT(c) \
+    template<typename T> concept xdr_##c = xdr_get_traits<T>::is_##c
+XDR_CONCEPT(struct);
+XDR_CONCEPT(union);
+XDR_CONCEPT(class);
+XDR_CONCEPT(enum);
+XDR_CONCEPT(numeric);
+XDR_CONCEPT(container);
+XDR_CONCEPT(bytes);
+#undef XDR_CONCEPT
+// Any valid XDR type
+template<typename T> concept xdr_type = xdr_get_traits<T>::valid;
+template<typename T> concept xdr_numlike = xdr_numeric<T> || xdr_enum<T>;
 
 namespace detail {
 // When a type T includes itself recursively (for instance because it
@@ -237,8 +231,8 @@ template<typename T> struct has_fixed_size_t
 }
 
 //! Return the marshaled size of an XDR data type.
-template<typename T> std::size_t
-xdr_size(const T&t)
+template<xdr_type T> inline size_t
+xdr_size(const T &t)
 {
   return xdr_traits<T>::serial_size(t);
 }
@@ -246,16 +240,16 @@ xdr_size(const T&t)
 //! Default xdr_traits values for actual XDR types, used as a
 //! supertype for most xdr::xdr_traits specializations.
 struct xdr_traits_base {
-  static Constexpr const bool valid = true;
-  static Constexpr const bool xdr_defined = true;
-  static Constexpr const bool is_bytes = false;
-  static Constexpr const bool is_class = false;
-  static Constexpr const bool is_enum = false;
-  static Constexpr const bool is_container = false;
-  static Constexpr const bool is_numeric = false;
-  static Constexpr const bool is_struct = false;
-  static Constexpr const bool is_union = false;
-  static Constexpr const bool has_fixed_size = false;
+  static constexpr const bool valid = true;
+  static constexpr const bool xdr_defined = true;
+  static constexpr const bool is_bytes = false;
+  static constexpr const bool is_class = false;
+  static constexpr const bool is_enum = false;
+  static constexpr const bool is_container = false;
+  static constexpr const bool is_numeric = false;
+  static constexpr const bool is_struct = false;
+  static constexpr const bool is_union = false;
+  static constexpr const bool has_fixed_size = false;
 };
 
 
@@ -263,83 +257,54 @@ struct xdr_traits_base {
 // Support for numeric types and bool
 ////////////////////////////////////////////////////////////////
 
-//! A reinterpret-cast like function that works between types such as
-//! floating-point and integers of the same size.  Used in marshaling,
-//! so that a single set of byteswap routines can be used on all
-//! numeric types including floating point.  Uses a union to avoid
-//! strict pointer aliasing problems.
-template<typename To, typename From> inline To
-xdr_reinterpret(From f)
-{
-  static_assert(sizeof(To) == sizeof(From),
-		"xdr_reinterpret with different sized objects");
-  union {
-    From from;
-    To to;
-  };
-  from = f;
-  return to;
-}
-
-//! Default traits for use as supertype of specializations of \c
-//! xdr_traits for integral types.
-template<typename T, typename U> struct xdr_integral_base : xdr_traits_base {
+template<typename T, typename U> struct xdr_numeric_base : xdr_traits_base {
   using type = T;
   using uint_type = U;
-  static Constexpr const bool xdr_defined = false;
-  static Constexpr const bool is_numeric = true;
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::size_t fixed_size = sizeof(uint_type);
-  static Constexpr std::size_t serial_size(type) { return fixed_size; }
-  static uint_type to_uint(type t) { return t; }
-  static type from_uint(uint_type u) {
-    return xdr_reinterpret<type>(u);
-  }
+  static_assert(sizeof(type) == sizeof(uint_type),
+		"xdr_numeric_base size mismatch");
+  static constexpr const bool xdr_defined = false;
+  static constexpr const bool is_numeric = true;
+  static constexpr const bool has_fixed_size = true;
+  static constexpr const size_t fixed_size = sizeof(uint_type);
+  static constexpr size_t serial_size(type) { return fixed_size; }
+  static uint_type to_uint(type t) { return std::bit_cast<uint_type>(t); }
+  static type from_uint(uint_type u) { return std::bit_cast<type>(u); }
 };
+
 template<> struct xdr_traits<std::int32_t>
-  : xdr_integral_base<std::int32_t, std::uint32_t> {
+  : xdr_numeric_base<std::int32_t, std::uint32_t> {
   // Numeric type for case labels in switch statements
   using case_type = std::int32_t;
 };
 template<> struct xdr_traits<std::uint32_t>
-  : xdr_integral_base<std::uint32_t, std::uint32_t> {
+  : xdr_numeric_base<std::uint32_t, std::uint32_t> {
   using case_type = std::uint32_t;
 };
 template<> struct xdr_traits<std::int64_t>
-  : xdr_integral_base<std::int64_t, std::uint64_t> {};
+  : xdr_numeric_base<std::int64_t, std::uint64_t> {};
 template<> struct xdr_traits<std::uint64_t>
-  : xdr_integral_base<std::uint64_t, std::uint64_t> {};
+  : xdr_numeric_base<std::uint64_t, std::uint64_t> {};
 
-//! Default traits for use as supertype of specializations of \c
-//! xdr_traits for floating-point types.
-template<typename T, typename U> struct xdr_fp_base : xdr_traits_base {
-  using type = T;
-  using uint_type = U;
-  static_assert(sizeof(type) == sizeof(uint_type),
-		"Cannot reinterpret between float and int of different size");
-  static Constexpr const bool xdr_defined = false;
-  static Constexpr const bool is_numeric = true;
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::size_t fixed_size = sizeof(uint_type);
-  static Constexpr std::size_t serial_size(type) { return fixed_size; }
-
-  static uint_type to_uint(type t) { return xdr_reinterpret<uint_type>(t); }
-  static type from_uint(uint_type u) { return xdr_reinterpret<type>(u); }
-};
 template<> struct xdr_traits<float>
-  : xdr_fp_base<float, std::uint32_t> {};
+  : xdr_numeric_base<float, std::uint32_t> {};
 template<> struct xdr_traits<double>
-  : xdr_fp_base<double, std::uint64_t> {};
+  : xdr_numeric_base<double, std::uint64_t> {};
 
 
-template<> struct xdr_traits<bool>
-  : xdr_integral_base<bool, std::uint32_t> {
-  using case_type = std::int32_t;
-  static Constexpr const bool xdr_defined = false;
-  static Constexpr const bool is_enum = true;
-  static Constexpr const bool is_numeric = false;
+template<> struct xdr_traits<bool> : xdr_traits_base {
+  using type = bool;
+  using uint_type = uint32_t;
+  using case_type = std::int32_t; // So compilers don't warn about switch(bool)
+  static constexpr const bool xdr_defined = false;
+  static constexpr const bool is_enum = true;
+  static constexpr const bool is_numeric = false;
+  static constexpr const bool has_fixed_size = true;
+  static constexpr const size_t fixed_size = sizeof(uint_type);
+  static constexpr size_t serial_size(type) { return fixed_size; }
+  static uint_type to_uint(bool b) { return b; }
+  // Note - could throw for u > 1, but would be slower
   static type from_uint(uint_type u) { return u != 0; }
-  static Constexpr const char *enum_name(uint32_t b) {
+  static constexpr const char *enum_name(uint32_t b) {
     return b == 0 ? "FALSE" : b == 1 ? "TRUE" : nullptr;
   }
   static const std::vector<int32_t> &enum_values() {
@@ -357,19 +322,25 @@ template<> struct xdr_traits<bool>
 //! Maximum length of vectors.  (The RFC says 0xffffffff, but out of
 //! paranoia for integer overflows we chose something that still fits
 //! in 32 bits when rounded up to a multiple of four.)
-static Constexpr const uint32_t XDR_MAX_LEN = 0xfffffffc;
+static constexpr const uint32_t XDR_MAX_LEN = 0xfffffffc;
 
 namespace detail {
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_overflow(const char *message)
+{
+  throw xdr_overflow(message);
+}
+
 //! Convenience supertype for traits of the three container types
 //! (xarray, xvectors, and pointer).
 template<typename T, bool variable,
 	 bool VFixed = detail::has_fixed_size_t<typename T::value_type>::value>
 struct xdr_container_base : xdr_traits_base {
   using value_type = typename T::value_type;
-  static Constexpr const bool is_container = true;
+  static constexpr const bool is_container = true;
   //! Container has variable number of elements
-  static Constexpr const bool variable_nelem = variable;
-  static Constexpr const bool has_fixed_size = false;
+  static constexpr const bool variable_nelem = variable;
+  static constexpr const bool has_fixed_size = false;
 
   template<typename Archive> static void save(Archive &a, const T &t) {
     if (variable)
@@ -390,8 +361,8 @@ struct xdr_container_base : xdr_traits_base {
     for (uint32_t i = 0; i < n; ++i)
       archive(a, t.extend_at(i));
   }
-  static std::size_t serial_size(const T &t) {
-    std::size_t s = variable ? 4 : 0;
+  static size_t serial_size(const T &t) {
+    size_t s = variable ? 4 : 0;
     for (const value_type &v : t)
       s += xdr_traits<value_type>::serial_size(v);
     return s;
@@ -400,24 +371,25 @@ struct xdr_container_base : xdr_traits_base {
 
 template<typename T> struct xdr_container_base<T, true, true>
   : xdr_container_base<T, true, false> {
-  static std::size_t serial_size(const T &t) {
+  static size_t serial_size(const T &t) {
     return 4 + t.size() * xdr_traits<typename T::value_type>::fixed_size;
   }
 };
 
 template<typename T> struct xdr_container_base<T, false, true>
   : xdr_container_base<T, false, false> {
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::size_t fixed_size =
+  static constexpr const bool has_fixed_size = true;
+  static constexpr const size_t fixed_size =
     T::container_fixed_nelem * xdr_traits<typename T::value_type>::fixed_size;
-  static std::size_t serial_size(const T &) { return fixed_size; }
+  static size_t serial_size(const T &) { return fixed_size; }
 };
 
 //! Placeholder type to avoid clearing array
 struct no_clear_t {
-  Constexpr no_clear_t() {}
+  constexpr no_clear_t() {}
 };
-Constexpr const no_clear_t no_clear;
+constexpr const no_clear_t no_clear;
+
 } // namespace detail
 
 //! XDR arrays are implemented using std::array as a supertype.
@@ -429,20 +401,21 @@ template<typename T, uint32_t N> struct xarray
   xarray(const xarray &) = default;
   xarray &operator=(const xarray &) = default;
 
-  static Constexpr const std::size_t container_fixed_nelem = N;
-  static Constexpr std::size_t size() { return N; }
+  static constexpr const size_t container_fixed_nelem = N;
+  static constexpr size_t size() { return N; }
   static void validate() {}
   static void check_size(uint32_t i) {
     if (i != N)
-      throw xdr_overflow("invalid size in xdr::xarray");
+      detail::throw_overflow("invalid size in xdr::xarray");
   }
   static void resize(uint32_t i) {
     if (i != N)
-      throw xdr_overflow("invalid resize in xdr::xarray");
+      detail::throw_overflow("invalid resize in xdr::xarray");
   }
   T &extend_at(uint32_t i) {
     if (i >= N)
-      throw xdr_overflow("attempt to access invalid position in xdr::xarray");
+      detail::throw_overflow(
+	"attempt to access invalid position in xdr::xarray");
     return (*this)[i];
   }
 };
@@ -461,12 +434,12 @@ template<uint32_t N = XDR_MAX_LEN> struct opaque_array
   opaque_array(detail::no_clear_t) : xarray(detail::no_clear) {}
 };
 template<uint32_t N> struct xdr_traits<opaque_array<N>> : xdr_traits_base {
-  static Constexpr const bool is_bytes = true;
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::size_t fixed_size =
-    (std::size_t(N) + std::size_t(3)) & ~std::size_t(3);
-  static std::size_t serial_size(const opaque_array<N> &) { return fixed_size; }
-  static Constexpr const bool variable_nelem = false;
+  static constexpr const bool is_bytes = true;
+  static constexpr const size_t has_fixed_size = true;
+  static constexpr const size_t fixed_size =
+    (size_t(N) + size_t(3)) & ~size_t(3);
+  static size_t serial_size(const opaque_array<N> &) { return fixed_size; }
+  static constexpr const bool variable_nelem = false;
 };
 
 
@@ -479,21 +452,22 @@ struct xvector : std::vector<T> {
   using vector::vector;
 
   //! Return the maximum size allowed by the type.
-  static Constexpr uint32_t max_size() { return N; }
+  static constexpr uint32_t max_size() { return N; }
 
   //! Check whether a size is in bounds
   static void check_size(size_t n) {
     if (n > max_size())
-      throw xdr_overflow("xvector overflow");
+      detail::throw_overflow("xvector overflow");
   }
 
-  void append(const T *elems, std::size_t n) {
+  void append(const T *elems, size_t n) {
     check_size(this->size() + n);
     this->insert(this->end(), elems, elems + n);
   }
   T &extend_at(uint32_t i) {
     if (i >= N)
-      throw xdr_overflow("attempt to access invalid position in xdr::xvector");
+      detail::throw_overflow(
+	"attempt to access invalid position in xdr::xvector");
     if (i == this->size())
       this->emplace_back();
     return (*this)[i];
@@ -515,12 +489,12 @@ template<typename T, uint32_t N> struct xdr_traits<xvector<T,N>>
 template<uint32_t N = XDR_MAX_LEN> using opaque_vec = xvector<std::uint8_t, N>;
 template<uint32_t N>
 struct xdr_traits<xvector<std::uint8_t, N>> : xdr_traits_base {
-  static Constexpr const bool is_bytes = true;
-  static Constexpr const bool has_fixed_size = false;;
-  static Constexpr std::size_t serial_size(const opaque_vec<N> &a) {
-    return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
+  static constexpr const bool is_bytes = true;
+  static constexpr const bool has_fixed_size = false;;
+  static constexpr size_t serial_size(const opaque_vec<N> &a) {
+    return (size_t(a.size()) + size_t(7)) & ~size_t(3);
   }
-  static Constexpr const bool variable_nelem = true;
+  static constexpr const bool variable_nelem = true;
 };
 
 
@@ -531,12 +505,12 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
   using string = std::string;
 
   //! Return the maximum size allowed by the type.
-  static Constexpr uint32_t max_size() { return N; }
+  static constexpr uint32_t max_size() { return N; }
 
   //! Check whether a size is in bounds
   static void check_size(size_t n) {
     if (n > max_size())
-      throw xdr_overflow("xstring overflow");
+      detail::throw_overflow("xstring overflow");
   }
 
   //! Check that the string length is not greater than the maximum
@@ -578,12 +552,12 @@ template<uint32_t N = XDR_MAX_LEN> struct xstring : std::string {
 };
 
 template<uint32_t N> struct xdr_traits<xstring<N>> : xdr_traits_base {
-  static Constexpr const bool is_bytes = true;
-  static Constexpr const bool has_fixed_size = false;;
-  static Constexpr std::size_t serial_size(const xstring<N> &a) {
-    return (std::size_t(a.size()) + std::size_t(7)) & ~std::size_t(3);
+  static constexpr const bool is_bytes = true;
+  static constexpr const bool has_fixed_size = false;;
+  static constexpr size_t serial_size(const xstring<N> &a) {
+    return (size_t(a.size()) + size_t(7)) & ~size_t(3);
   }
-  static Constexpr const bool variable_nelem = true;
+  static constexpr const bool variable_nelem = true;
 };
 
 
@@ -610,7 +584,7 @@ template<typename T> struct pointer : std::unique_ptr<T> {
 
   static void check_size(uint32_t n) {
     if (n > 1)
-      throw xdr_overflow("xdr::pointer size must be 0 or 1");
+      detail::throw_overflow("xdr::pointer size must be 0 or 1");
   }
   uint32_t size() const { return *this ? 1 : 0; }
   T *begin() { return get(); }
@@ -619,7 +593,8 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   const T *end() const { return begin() + size(); }
   T &extend_at(uint32_t i) {
     if (i != 0)
-      throw xdr_overflow("attempt to access position > 0 in xdr::pointer");
+      detail::throw_overflow(
+	"attempt to access position > 0 in xdr::pointer");
     if (!size())
       this->reset(new T);
     return **this;
@@ -635,7 +610,8 @@ template<typename T> struct pointer : std::unique_ptr<T> {
       this->reset(new T);
       break;
     default:
-      throw xdr_overflow("xdr::pointer::resize: valid sizes are 0 and 1");
+      detail::throw_overflow(
+	"xdr::pointer::resize: valid sizes are 0 and 1");
     }
   }
   T &activate() {
@@ -645,10 +621,11 @@ template<typename T> struct pointer : std::unique_ptr<T> {
   }
 
   //! Compare by value, rather than looking at the value of the pointer.
-  friend bool operator==(const pointer &a, const pointer &b) {
+  friend bool operator==(const pointer &a, const pointer &b) noexcept {
     return (!a && !b) || (a && b && *a == *b);
   }
-  friend detail::ordering_t operator<=>(const pointer &a, const pointer &b) {
+  friend detail::ordering_t operator<=>(const pointer &a,
+					const pointer &b) noexcept {
     if (!a)
       return !b ? std::strong_ordering::equal : std::strong_ordering::less;
     if (!b)
@@ -669,64 +646,125 @@ template<typename T> struct xdr_traits<pointer<T>>
 // Support for XDR struct types
 ////////////////////////////////////////////////////////////////
 
-//! Type-level representation of a pointer-to-member value.  When used
-//! as a function object, dereferences the field, and returns it as
-//! the same reference type as its argument (lvalue rference, const
-//! lvalue reference, or const rvalue reference).
-template<typename T, typename F, F T::*Ptr> struct field_ptr {
-  using class_type = T;
-  using field_type = F;
-  using value_type = F T::*;
-  //static constexpr value_type value = Ptr;
-  static Constexpr value_type value() { return Ptr; }
-  F &operator()(T &t) const { return t.*Ptr; }
-  const F &operator()(const T &t) const { return t.*Ptr; }
-  F &operator()(T &&t) const { return std::move(t.*Ptr); }
+namespace detail {
+
+template<typename...Ts> concept all_have_fixed_size =
+  (has_fixed_size_t<Ts>::value && ...);
+
+template<bool Fixed, typename...Members> struct xdr_fixed_size_base_helper;
+template<typename...Members>
+struct xdr_fixed_size_base_helper<true, Members...> : xdr_traits_base {
+  static constexpr bool has_fixed_size = true;
+  static constexpr uint32_t fixed_size =
+    (0 + ... + xdr_traits<Members>::fixed_size);
+};
+template<typename...Members>
+struct xdr_fixed_size_base_helper<false, Members...> : xdr_traits_base {
+  static constexpr bool has_fixed_size = false;
 };
 
-template<typename ...Fields> struct xdr_struct_base;
+template<typename...Members> using xdr_fixed_size_base =
+  xdr_fixed_size_base_helper<all_have_fixed_size<Members...>, Members...>;
+
+//! Compile-time string suitable as a non-type template argument.
+template<size_t N>
+struct fixed_string {
+  char value[N];
+  consteval fixed_string(const char (&str)[N]) {
+    std::copy_n(str, N, value);
+  }
+  /*
+  template<size_t M> consteval
+  bool operator==(fixed_string<M> s2) const {
+    if constexpr (N != M)
+      return false;
+    else
+      return std::equal(value, value+N, s2.value);
+  }
+  */
+};
+
+} // namespace detail
+
+template<auto F, detail::fixed_string>
+requires std::is_member_object_pointer_v<decltype(F)>
+struct field_access_t;
+
+template<typename S, typename T, T S::*F, detail::fixed_string Name>
+struct field_access_t<F, Name> {
+  using struct_type = S;
+  using field_type = T;
+  using value_type = decltype(F);
+  static constexpr auto field_name = Name;
+  static constexpr value_type value = F;
+  static constexpr bool has_field = true;
+
+  static constexpr const char *name() { return field_name.value; }
+
+  template<typename SS>
+  constexpr decltype(auto) operator()(SS &&s) const
+    requires requires { s.*value; }
+  {
+    return std::forward<SS>(s).*value;
+  }
+};
 
 namespace detail {
-//! Default traits for fixed-size structures.
-template<typename FP, typename ...Fields>
-  struct xdr_struct_base_fs : xdr_struct_base<Fields...> {
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::size_t fixed_size =
-    (xdr_traits<typename FP::field_type>::fixed_size
-     + xdr_struct_base<Fields...>::fixed_size);
-  static Constexpr std::size_t serial_size(const typename FP::class_type &) {
-    return fixed_size;
-  }
-};
-//! Default traits for variable-size structures.
-template<typename FP, typename ...Fields>
-  struct xdr_struct_base_vs : xdr_struct_base<Fields...> {
-  static Constexpr const bool has_fixed_size = false;
-  static std::size_t serial_size(const typename FP::class_type &t) {
-    return (xdr_size(t.*(FP::value()))
-	    + xdr_struct_base<Fields...>::serial_size(t));
-  }
-};
-}
 
-//! Supertype to construct XDR traits of structure objects, used in
-//! output of the \c xdrc compiler.
-template<> struct xdr_struct_base<> : xdr_traits_base {
-  static Constexpr const bool is_class = true;
-  static Constexpr const bool is_struct = true;
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::size_t fixed_size = 0;
-  template<typename T> static Constexpr std::size_t serial_size(const T&) {
-    return fixed_size;
-  }
+template<typename T> struct struct_meta;
+
+template<typename T>
+requires requires { typename T::_xdr_struct_meta; }
+struct struct_meta<T> {
+  using type = typename T::_xdr_struct_meta;
 };
-template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
-  : std::conditional<(detail::has_fixed_size_t<typename FP::field_type>::value
-		      && xdr_struct_base<Rest...>::has_fixed_size),
-    detail::xdr_struct_base_fs<FP, Rest...>,
-    detail::xdr_struct_base_vs<FP, Rest...>>::type {
-  using field_info = FP;
-  using next_field = xdr_struct_base<Rest...>;
+
+template<typename T, typename F>
+requires requires { typename struct_meta<T>::type; }
+inline decltype(auto)
+with_struct_fields(F &&f)
+{
+  using meta = typename struct_meta<T>::type;
+  return [&f]<size_t ...I>(std::index_sequence<I...>) -> decltype(auto) {
+    return std::forward<F>(f)(meta::template field_access<I>()...);
+  }(std::make_index_sequence<meta::num_fields>{});
+}
+} // namespace detail
+
+template<typename S>
+requires requires { typename detail::struct_meta<S>::type; }
+struct xdr_struct_base
+  : decltype(detail::with_struct_fields<S>([]<typename...Fs>(Fs...) {
+	return detail::xdr_fixed_size_base<typename Fs::field_type...>{};
+      })) {
+  using struct_type = S;
+  static constexpr const bool is_class = true;
+  static constexpr const bool is_struct = true;
+
+  static constexpr size_t serial_size(const struct_type &obj) {
+    if constexpr (xdr_struct_base::has_fixed_size)
+      return xdr_struct_base::fixed_size;
+    else
+      return detail::with_struct_fields<struct_type>
+	([&obj]<typename...Fs>(Fs...fs) {
+	  return (0 + ... + xdr_get_traits<typename Fs::field_type>::
+		  serial_size(fs(obj)));
+	});
+  }
+
+  template<typename Archive> static void
+  load(Archive &ar, struct_type &obj) {
+    detail::with_struct_fields<struct_type>([&ar,&obj](auto ...fs) {
+      (void(archive(ar, fs(obj), fs.name())), ...);
+    });
+    validate(obj);
+  }
+  template<typename Archive> static void
+  save(Archive &ar, const struct_type &obj) {
+    detail::with_struct_fields<struct_type>([&ar,&obj](auto ...fs) {
+      (void(archive(ar, fs(obj), fs.name())), ...);
+    });
+  }
 };
 
 
@@ -734,332 +772,553 @@ template<typename FP, typename ...Rest> struct xdr_struct_base<FP, Rest...>
 // XDR-compatible representations of std::tuple and xdr_void
 ////////////////////////////////////////////////////////////////
 
-//! Placeholder type used to contain a parameter pack of tuple
-//! indices, so as to unpack a tuple in function call arguments.
-template<std::size_t...N> struct indices {
-  Constexpr indices() {}
-};
+//! Placehoder type representing void values marshaled as 0 bytes.
+using xdr_void = std::tuple<>;
 
 namespace detail {
 
-template<typename T, typename U> struct cat_indices;
-template<std::size_t...M, std::size_t...N>
-struct cat_indices<indices<M...>, indices<N...>> {
-  using type = indices<M..., N...>;
-};
+template<char...Cs> constexpr char bracketed_string[] = {'<', Cs..., '>', '\0'};
 
-template<std::size_t N> struct all_indices_helper {
-  using type = typename cat_indices<typename all_indices_helper<N-1>::type,
-				    indices<N-1>>::type;
-};
-template<> struct all_indices_helper<0> {
-  using type = indices<>;
-};
-
-//! A type representing all tuple indices from 0 to N-1.
-template<std::size_t N> using all_indices =
-  typename all_indices_helper<N>::type;
-
-template<std::size_t N, typename T> struct tuple_base;
-
-template<std::size_t N, typename T> struct tuple_base_fs;
-template<std::size_t N, typename...T>
-struct tuple_base_fs<N, std::tuple<T...>> : xdr_traits_base {
-  using type = std::tuple<T...>;
-  using elem_type = typename std::remove_cv<
-    typename std::remove_reference<
-      typename std::tuple_element<N-1, type>::type>::type>::type;
-  using next = tuple_base<N-1, type>;
-  static Constexpr const bool xdr_defined = false;
-  static Constexpr const bool is_class = true;
-  static Constexpr const bool is_struct = true;
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::uint32_t fixed_size =
-    xdr_traits<elem_type>::fixed_size + next::fixed_size;
-  static Constexpr std::size_t serial_size(const type &) { return fixed_size; }
-};
-
-template<std::size_t N, typename T> struct tuple_base_vs;
-template<std::size_t N, typename...T>
-struct tuple_base_vs<N, std::tuple<T...>> : xdr_traits_base {
-  using type = std::tuple<T...>;
-  using elem_type = typename std::remove_cv<
-    typename std::remove_reference<
-      typename std::tuple_element<N-1, type>::type>::type>::type;
-  using next = tuple_base<N-1, type>;
-  static Constexpr const bool xdr_defined = false;
-  static Constexpr const bool is_class = true;
-  static Constexpr const bool is_struct = true;
-  static Constexpr const bool has_fixed_size = false;
-  static std::size_t serial_size(const type &t) {
-    return (xdr_traits<elem_type>::serial_size(std::get<N-1>(t))
-	    + next::serial_size(t));
-  }
-};
-
-template<typename...T> struct tuple_base<0, std::tuple<T...>>
-  : xdr_traits_base {
-  using type = std::tuple<T...>;
-  static Constexpr const bool xdr_defined = false;
-  static Constexpr const bool is_class = true;
-  static Constexpr const bool is_struct = true;
-  static Constexpr const bool has_fixed_size = true;
-  static Constexpr const std::size_t fixed_size = 0;
-  static Constexpr std::size_t serial_size(const type &) { return fixed_size; }
-
-  template<typename Archive> static void save(Archive &, const type &) {}
-  template<typename Archive> static void load(Archive &, type &) {}
-};
-
-template<std::size_t N, typename...T> struct tuple_suffix_fixed_size {
-  using type = std::tuple<T...>;
-  using elem_type = typename std::tuple_element<N-1, type>::type;
-  static Constexpr const bool value =
-    xdr_traits<elem_type>::has_fixed_size
-    && tuple_suffix_fixed_size<N-1, T...>::value;
-};
-template<typename...T> struct tuple_suffix_fixed_size<0, T...> {
-  static Constexpr const bool value = true;
-};
-
-template<std::size_t N, typename...T> struct tuple_base<N, std::tuple<T...>>
-  : std::conditional<tuple_suffix_fixed_size<N, T...>::value,
-		     tuple_base_fs<N, std::tuple<T...>>,
-		     tuple_base_vs<N, std::tuple<T...>>>::type {
-  using type = std::tuple<T...>;
-
-  static const char *name() {
-    static std::string n = "<" + std::to_string(N-1) + ">";
-    return n.c_str();
-  }
-
-  template<typename Archive> static void save(Archive &ar, const type &obj) {
-    tuple_base<N-1, type>::save(ar, obj);
-    archive(ar, std::get<N-1>(obj), name());
-  }
-  template<typename Archive> static void load(Archive &ar, type &obj) {
-    tuple_base<N-1, type>::load(ar, obj);
-    archive(ar, std::get<N-1>(obj), name());
-  }
-};
+template<size_t N, char...Cs>
+consteval const char *
+index_string(std::integral_constant<size_t, N> = {})
+{
+  if constexpr (N < 10)
+    return bracketed_string<N+'0', Cs...>;
+  else
+    return index_string<N/10, (N%10)+'0', Cs...>();
 }
 
-//! A type representing all the indices of a particuar tuple.
-template<typename T> using all_indices_of =
-  typename detail::all_indices<std::tuple_size<
-                              typename std::remove_reference<T>::type>::value>;
+template<typename T, size_t I>
+struct tuple_access {
+  using struct_type = T;
+  static constexpr size_t value = I;
+  using field_type = std::tuple_element_t<value, struct_type>;
 
-template<typename...T> struct xdr_traits<std::tuple<T...>>
-  : detail::tuple_base<sizeof...(T), std::tuple<T...>> {};
+  static constexpr const char *name() { return index_string<value>(); }
 
-//! Placehoder type representing void values marshaled as 0 bytes.
-using xdr_void = std::tuple<>;
+  constexpr decltype(auto) operator()(struct_type &s) const {
+    return get<value>(s);
+  }
+  constexpr decltype(auto) operator()(const struct_type &s) const {
+    return get<value>(s);
+  }
+  constexpr decltype(auto) operator()(struct_type &&s) const {
+    return get<value>(std::move(s));
+  }
+};
+
+template<typename...T>
+struct struct_meta<std::tuple<T...>> {
+  struct type {
+    static constexpr size_t num_fields = sizeof...(T);
+
+    template<size_t I> requires (I < num_fields)
+    static constexpr auto field_access () {
+      return tuple_access<std::tuple<T...>, I>{};
+    }
+  };
+};
+} // namespace detail
+
+template<typename ...Ts>
+struct xdr_traits<std::tuple<Ts...>>
+  : xdr_struct_base<std::tuple<Ts...>> {
+  static constexpr bool xdr_defined = false;
+};
 
 
 ////////////////////////////////////////////////////////////////
 // XDR union types
 ////////////////////////////////////////////////////////////////
 
+// Placeholder dummy type for void union branches (where non-void
+// branches take a field_access_t).
+struct void_access_t {
+  using field_type = void;
+  static constexpr bool has_field = false;
+  static constexpr const char *name() { return ""; }
+  xdr_void &operator()(auto &&) const {
+    static xdr_void dummy_void{};
+    return dummy_void;
+  }
+};
+
+struct union_arm_layout_t {
+  const char *name;
+  size_t size;
+  size_t alignment;
+  bool is_indirect;
+};
+
+template<typename... T>
+struct type_list {};
+
+template<size_t Threshold, typename... ArmTypes>
+struct union_storage_t {
+  static constexpr size_t threshold = Threshold;
+  static constexpr bool has_indirect =
+    ((sizeof(ArmTypes) > threshold) || ...);
+  static constexpr size_t storage_size = [] {
+    size_t size = has_indirect ? sizeof(void *) : 1;
+    ((size = sizeof(ArmTypes) <= threshold
+       ? std::max(size, sizeof(ArmTypes)) : size), ...);
+    return size;
+  }();
+  static constexpr size_t storage_alignment = [] {
+    size_t alignment = has_indirect ? alignof(void *) : 1;
+    ((alignment = sizeof(ArmTypes) <= threshold
+       ? std::max(alignment, alignof(ArmTypes)) : alignment), ...);
+    return alignment;
+  }();
+
+  template<typename T>
+  T *inline_pointer() {
+    static_assert(sizeof(T) <= threshold);
+    return reinterpret_cast<T *>(storage_);
+  }
+  template<typename T>
+  const T *inline_pointer() const {
+    static_assert(sizeof(T) <= threshold);
+    return reinterpret_cast<const T *>(storage_);
+  }
+  void **pointer_slot() {
+    return reinterpret_cast<void **>(storage_);
+  }
+  void *const *pointer_slot() const {
+    return reinterpret_cast<void *const *>(storage_);
+  }
+
+private:
+  alignas(storage_alignment) std::byte storage_[storage_size];
+};
+
+template<typename T, size_t Threshold, auto Field, detail::fixed_string Name>
+struct union_access_t;
+template<typename T, size_t Threshold, typename S, typename Storage,
+         Storage S::*Field, detail::fixed_string Name>
+struct union_access_t<T, Threshold, Field, Name> {
+  using struct_type = S;
+  using field_type = T;
+  using value_type = decltype(Field);
+  static constexpr auto field_name = Name;
+  static constexpr value_type value = Field;
+  static constexpr size_t threshold = Threshold;
+  static constexpr bool has_field = true;
+  static constexpr bool is_indirect = sizeof(field_type) > threshold;
+
+  static_assert(Storage::threshold == threshold);
+
+  static constexpr const char *name() { return field_name.value; }
+
+  field_type *pointer(struct_type &s) const {
+    if constexpr (is_indirect)
+      return static_cast<field_type *>(*(s.*Field).pointer_slot());
+    else
+      return (s.*Field).template inline_pointer<field_type>();
+  }
+  const field_type *pointer(const struct_type &s) const {
+    if constexpr (is_indirect)
+      return static_cast<const field_type *>(*(s.*Field).pointer_slot());
+    else
+      return (s.*Field).template inline_pointer<field_type>();
+  }
+  void **pointer_slot(struct_type &s) const {
+    static_assert(is_indirect);
+    return (s.*Field).pointer_slot();
+  }
+
+  decltype(auto) operator()(const struct_type &s) const {
+    return *pointer(s);
+  }
+  decltype(auto) operator()(struct_type &s) const {
+    return *pointer(s);
+  }
+  decltype(auto) operator()(struct_type &&s) const {
+    return std::move(*pointer(s));
+  }
+};
+
 namespace detail {
-//! Dereference a pointer to a member of type \c F of a class of type
-//! \c T, preserving reference types.  Hence applying to an lvalue
-//! reference \c T returns an lvalue reference \c F, while an rvalue
-//! reference \c T produces an rvalue reference \c F.
-template<typename T, typename F> inline F &
-member(T &t, F T::*mp)
+
+[[gnu::cold, gnu::noinline]] inline std::string
+format_enum_tag(const char *name, std::int32_t value)
 {
-  return t.*mp;
+  if (name)
+    return name;
+  return std::to_string(value);
 }
-template<typename T, typename F> inline const F &
-member(const T &t, F T::*mp)
+
+template<xdr_enum E> inline std::string
+show_tag(E e)
 {
-  return t.*mp;
+  return format_enum_tag(xdr_get_traits<E>::enum_name(e),
+			 static_cast<std::int32_t>(e));
 }
-template<typename T, typename F> inline F &&
-member(T &&t, F T::*mp)
+
+template<xdr_numeric N> inline std::string
+show_tag(N n)
 {
-  return std::move(t.*mp);
+  return std::to_string(n);
 }
-} // namespace detail
 
-struct field_constructor_t {
-  Constexpr field_constructor_t() {}
-  template<typename T, typename F> void operator()(F T::*mp, T &t) const {
-    new (&(t.*mp)) F{};
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_bad_discriminant(std::string tag, const char *tag_name,
+             const char *union_name)
+{
+  throw xdr_bad_discriminant(std::string("bad value ") + std::move(tag) +
+               " for " + tag_name + " in " + union_name);
+}
+
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_wrong_union(const char *field_name, const char *union_name,
+          const char *tag_name, std::string tag)
+{
+  throw xdr_wrong_union(std::string("accessed field ") + field_name + " in " +
+            union_name + " but " + tag_name + " == " +
+            std::move(tag));
+}
+
+[[noreturn, gnu::cold, gnu::noinline]] inline void
+throw_valueless_union()
+{
+  throw xdr_wrong_union("XDR union is valueless by exception");
+}
+
+// helper function for with_n
+template<std::size_t I, typename R, typename F>
+constexpr R
+with_integral_constant(F f)
+{
+  return std::forward<F>(f)(std::integral_constant<std::size_t, I>{});
+}
+
+} // detail
+
+// Invoke an object with a compile-time constant corresponding to the
+// runtime value of n.  Template parameter N is the bound on n, which
+// must reside in the half-open range [0,N).
+// See here for a detailed explanation of the code:
+// https://www.scs.stanford.edu/~dm/blog/param-pack.html#array-of-function-pointers
+template<std::size_t N, typename R = void, typename F>
+inline constexpr R
+with_n(size_t n, F &&f)
+{
+  constexpr auto invoke_array = []<size_t...I>(std::index_sequence<I...>) {
+      return std::array{ detail::with_integral_constant<I, R, F&&>... };
+    }(std::make_index_sequence<N>{});
+
+  return invoke_array.at(n)(std::forward<F>(f));
+}
+
+template<typename T> concept is_union_access =
+  std::same_as<T, union_access_t<typename T::field_type, T::threshold,
+			       T::value, T::field_name>>;
+
+// XDR union types with an _xdr_union_meta inner struct.
+template<typename U> concept has_union_meta_strict =
+  requires { typename U::_xdr_union_meta; };
+
+// has_union_meta_strict or const/references to has_union_meta_strict
+template<typename U> concept has_union_meta =
+  requires { typename std::remove_cvref_t<U>::_xdr_union_meta; };
+
+struct unionfn {
+  template<typename U> using union_meta =
+    typename std::remove_cvref_t<U>::_xdr_union_meta;
+  template<typename U> using tag_type =
+    typename decltype(union_meta<U>::tag_access())::field_type;
+
+  template<has_union_meta U>
+  static size_t fieldno(const U &u) {
+    return union_meta<U>::fieldno(tagref(u));
   }
-  template<typename T, typename F, typename TT> void
-  operator()(F T::*mp, T &t, TT &&tt) const {
-    new (&(t.*mp)) F (detail::member(std::forward<TT>(tt), mp));
+
+  template<has_union_meta U>
+  static consteval const char *get_tag_name() {
+    return union_meta<U>::tag_access().name();
+  }
+
+  template<has_union_meta U>
+  static tag_type<U> get_tag(const U &u) {
+    return tagref(u);
+  }
+
+  template<has_union_meta U>
+  static bool valueless_by_exception(const U &u) {
+    return fieldno(u) > 0 && !activeref(u);
+  }
+
+  template<has_union_meta U>
+  static void check_value(const U &u) {
+    if (valueless_by_exception(u))
+      detail::throw_valueless_union();
+  }
+
+  template<has_union_meta_strict U, size_t I>
+  static consteval union_arm_layout_t arm_layout() {
+    auto access = union_meta<U>::template arm_access<I>();
+    using access_type = decltype(access);
+    if constexpr (!access_type::has_field)
+      return {access.name(), 0, 0, false};
+    else
+      return {access.name(), sizeof(typename access_type::field_type),
+              alignof(typename access_type::field_type),
+              access_type::is_indirect};
+  }
+
+  template<has_union_meta_strict U>
+  static bool set_tag(U &u, tag_type<U> v) {
+    const int oldno = fieldno(u), newno = union_meta<U>::fieldno(v);
+    if (oldno == newno && (newno <= 0 || activeref(u)))
+      tagref(u) = v;
+    else {
+      destructor(u);
+      tagref(u) = v;
+      constructor(u);
+    }
+    return newno >= 0;
+  }
+
+  template<has_union_meta_strict U, typename R>
+  requires std::same_as<U, std::remove_cvref_t<R>>
+  static U &assign(U &u, R &&r) {
+    if (fieldno(u) == fieldno(r) && activeref(u) && activeref(r)) {
+      tagref(u) = tagref(r);
+      with_current_arm(u, [&](auto f) { f(u) = f(std::forward<R>(r)); });
+    }
+    else {
+      destructor(u);
+      copy_constructor(u, std::forward<R>(r));
+    }
+    return u;
+  }
+
+  template<size_t I, typename U> requires (I < union_meta<U>::num_arms)
+  static decltype(auto) arm_impl(U &&u) {
+    if (fieldno(u) == I && activeref(u))
+      return armref<I>(u);
+    detail::throw_wrong_union(
+      union_meta<U>::template arm_access<I>().name(), union_meta<U>::union_name,
+      union_meta<U>::tag_access().name(), detail::show_tag(tagref(u)));
+  }
+
+  template<has_union_meta U>
+  static void check_tag(tag_type<U> t) {
+    if constexpr (!union_meta<U>::has_default_case)
+      if (union_meta<U>::fieldno(t) == -1) [[unlikely]] {
+        detail::throw_bad_discriminant(detail::show_tag(t),
+                                       union_meta<U>::tag_access().name(),
+                                       union_meta<U>::union_name);
+      }
+  }
+
+  static void construct_field(void_access_t, auto&&, auto&&...) {}
+  static void destroy_field(void_access_t, auto&&) {}
+
+  template<is_union_access A, typename ...Args>
+  static void construct_field(A f, typename A::struct_type &s,
+			      Args&&...args) {
+    if constexpr (A::is_indirect) {
+      auto value = new typename A::field_type(std::forward<Args>(args)...);
+      std::construct_at(f.pointer_slot(s), value);
+    }
+    else
+      std::construct_at(f.pointer(s), std::forward<Args>(args)...);
+  }
+  template<is_union_access A>
+  static void destroy_field(A f, typename A::struct_type &s) {
+    if constexpr (A::is_indirect) {
+      delete &f(s);
+      std::destroy_at(f.pointer_slot(s));
+    }
+    else
+      std::destroy_at(f.pointer(s));
+  }
+
+  template<has_union_meta U, typename F>
+  static void with_current_arm(U &&u, F &&f) {
+    if (int n = fieldno(u); n > 0 && activeref(u))
+      return with_n<union_meta<U>::num_arms>(n, [&f](auto i) {
+	std::forward<F>(f)(union_meta<U>::template arm_access<i>());
+      });
+  }
+
+  template<has_union_meta U, typename F>
+  static void with_each_arm(F &&f) {
+    [&f]<size_t...I>(std::index_sequence<I...>) {
+      (f(union_meta<U>::template arm_access<I>()), ...);
+    }(std::make_index_sequence<union_meta<U>::num_arms>{});
+  }
+
+  template<has_union_meta_strict U, typename ...Args>
+  static void constructor(U &u, Args&&...args) {
+    if (int n = fieldno(u); n > 0) {
+      with_n<union_meta<U>::num_arms>(n, [&](auto i) {
+	construct_field(union_meta<U>::template arm_access<i>(), u,
+			std::forward<Args>(args)...);
+      });
+      activeref(u) = true;
+    }
+  }
+
+  // Copy or move constructor
+  template<has_union_meta_strict U, typename R>
+  requires std::same_as<U, std::remove_cvref_t<R>>
+  static void copy_constructor(U &u, R &&r) {
+    tagref(u) = tagref(r);
+    activeref(u) = false;
+    if (activeref(r)) {
+      if constexpr (std::is_rvalue_reference_v<R &&>)
+  with_current_arm(r, [&](auto f) {
+    if constexpr (is_union_access<decltype(f)>) {
+      if constexpr (decltype(f)::is_indirect) {
+        std::construct_at(f.pointer_slot(u), *f.pointer_slot(r));
+        activeref(u) = true;
+        std::destroy_at(f.pointer_slot(r));
+        activeref(r) = false;
+        return;
+      }
+    }
+    construct_field(f, u, f(std::move(r)));
+    activeref(u) = true;
+  });
+      else
+  with_current_arm(r, [&](auto f) {
+    construct_field(f, u, f(r));
+    activeref(u) = true;
+  });
+    }
+  }
+
+  template<has_union_meta_strict U>
+  static void destructor(U &u) {
+    with_current_arm(u, [&](auto f) { destroy_field(f, u); });
+    activeref(u) = false;
+  }
+
+private:
+  template<has_union_meta U>
+  static decltype(auto) activeref(U &&u) {
+    return union_meta<U>::active_access()(u);
+  }
+
+  template<has_union_meta U>
+  static decltype(auto) tagref(U &&u) {
+    return union_meta<U>::tag_access()(u);
+  }
+
+  template<size_t I, has_union_meta U>
+  static decltype(auto) armref(U &&u) {
+    return union_meta<U>::template arm_access<I>()(u);
   }
 };
-//! Passed to the auto-generated _xdr_with_mem_ptr static method to
-//! construct the active union field (or at least the union field
-//! corresponding to the second argument to _xdr_with_mem_ptr, which
-//! should be the active union field).
-Constexpr const field_constructor_t field_constructor {};
 
-struct field_destructor_t {
-  Constexpr field_destructor_t() {}
-  template<typename T, typename F> void
-  operator()(F T::*mp, T &t) const { detail::member(t, mp).~F(); }
-};
-//! Passed to _xdr_with_mem_ptr to destroy the active union field.
-Constexpr const field_destructor_t field_destructor {};
 
-struct field_assigner_t {
-  Constexpr field_assigner_t() {}
-  template<typename T, typename F, typename TT> void
-  operator()(F T::*mp, T &t, TT &&tt) const {
-    detail::member(t, mp) = detail::member(std::forward<TT>(tt), mp);
+template<typename U>
+struct xdr_union_base
+  : public xdr_traits_base {
+  using union_type = U;
+
+  static constexpr bool is_union = true;
+  static constexpr bool is_class = true;
+
+  static size_t serial_size(const union_type &u) {
+    unionfn::check_tag<union_type>(unionfn::get_tag(u));
+    unionfn::check_value(u);
+    size_t s = 4;
+    unionfn::with_current_arm(u, [&](auto f) {
+      s += XDR_GET_TRAITS(f(u))::serial_size(f(u));
+    });
+    return s;
+  }
+
+  template<typename Archive>
+  static void save(Archive &ar, const union_type &u) {
+    const auto t = unionfn::get_tag(u);
+    unionfn::check_tag<union_type>(t);
+    unionfn::check_value(u);
+    archive(ar, t, unionfn::get_tag_name<union_type>());
+    unionfn::with_current_arm(u, [&](auto f) { archive(ar, f(u), f.name()); });
+  }
+  template<typename Archive>
+  static void load(Archive &ar, union_type &u) {
+    auto t = unionfn::get_tag(u);
+    archive(ar, t, unionfn::get_tag_name<union_type>());
+    unionfn::check_tag<union_type>(t);
+    unionfn::set_tag(u, t);
+    unionfn::with_current_arm(u, [&](auto f) { archive(ar, f(u), f.name()); });
+    validate(u);
   }
 };
-//! Passed to _xdr_with_mem_ptr to assign to the active union field.
-Constexpr const field_assigner_t field_assigner {};
-
-struct field_archiver_t {
-  Constexpr field_archiver_t() {}
-
-  template<typename F, typename T, typename Archive> void
-  operator()(F T::*mp, Archive &ar, T &t, const char *name) const {
-    archive(ar, detail::member(t, mp), name);
-  }
-  template<typename F, typename T, typename Archive> void
-  operator()(F T::*mp, Archive &ar, const T &t, const char *name) const {
-    archive(ar, detail::member(t, mp), name);
-  }
-};
-//! Passed to _xdr_with_mem_ptr to archive the active union field.
-Constexpr const field_archiver_t field_archiver {};
-
-struct field_size_t {
-  Constexpr field_size_t() {}
-  template<typename F, typename T> void
-  operator()(F T::*mp, const T &t, std::size_t &size) const {
-    size = xdr_traits<F>::serial_size(detail::member(t, mp));
-  }
-};
-//! Passed to _xdr_with_mem_ptr to compute the size of the active
-//! union field.
-Constexpr const field_size_t field_size {};
 
 
 ////////////////////////////////////////////////////////////////
-// Comparison operators
+// Comparison for structs and unions
 ////////////////////////////////////////////////////////////////
 
-namespace detail {
-template<typename T, typename F> struct struct_equal_helper {
-  static bool equal(const T &a, const T &b) {
-    Constexpr const typename F::field_info fi {};
-    if (!(fi(a) == fi(b)))
-      return false;
-    return struct_equal_helper<T, typename F::next_field>::equal(a, b);
-  }
-};
-template<typename T> struct struct_equal_helper<T, xdr_struct_base<>> {
-  static bool equal(const T &, const T &) { return true; }
-};
-
-template<typename T, typename F> struct struct_comp_helper;
-} // namespace detail
-
-
-//! Equality for XDR structures.  To use this operator, you will have
-//! to include using declaration <tt>using xdr::operator==</tt> in the
-//! namespace of your XDR file.  Note that a <tt>using namespace
-//! xdr</tt> using \e directive (as opposed to \e declaration) is
-//! insufficient, because the C++ standard explicitly prevents using
-//! directives from impacting argument-dependent lookup.  A <tt>using
-//! namespace xdr</tt> directive at global scope is also insufficient,
-//! though more subtly, because standard library functions for
-//! comparing vectors will fail.
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       bool>::type
-operator==(const T &a, const T &b)
+template<xdr_struct T> requires xdr_traits<T>::xdr_defined
+constexpr bool
+operator==(const T &a, const T &b) noexcept
 {
-  return detail::struct_equal_helper<T, xdr_traits<T>>::equal(a, b);
+  return detail::with_struct_fields<T>([&](auto ...f) {
+    return ((f(a) == f(b)) && ...);
+  });
 }
 
-//! Ordering of XDR structures.  See note at \c xdr::operator==.
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_struct && xdr_traits<T>::xdr_defined,
-	       detail::ordering_t>::type
-operator<=>(const T &a, const T &b)
+template<xdr_struct T> requires xdr_traits<T>::xdr_defined
+#if __clang__
+// work around compiler bug
+std::enable_if_t<xdr_traits<T>::is_struct, detail::ordering_t>
+#else // not clang
+detail::ordering_t
+#endif // not clang
+operator<=>(const T &a, const T &b) noexcept
 {
-  return detail::struct_comp_helper<T, xdr_traits<T>>::comp(a, b);
+  return detail::with_struct_fields<T>([&](auto ...f) {
+    detail::ordering_t r = std::strong_ordering::equal;
+    return void(((r = f(a) <=> f(b), r == 0) && ...)), r;
+  });
 }
 
-namespace detail {
-struct union_field_equal_t {
-  Constexpr union_field_equal_t() {}
-  template<typename T, typename F>
-  void operator()(F T::*mp, const T &a, const T &b, bool &out) const {
-    out = a.*mp == b.*mp;
-  }
-};
-Constexpr const union_field_equal_t union_field_equal {};
-
-struct union_field_comp_t {
-  Constexpr union_field_comp_t() {}
-  template<typename T, typename F>
-  void operator()(F T::*mp, const T &a, const T &b,
-      ordering_t &out) const {
-    out = a.*mp <=> b.*mp;
-  }
-};
-Constexpr const union_field_comp_t union_field_comp {};
-} // namespace detail
-
-//! Equality of XDR unions.  See note at \c xdr::operator== for XDR
-//! structs.
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_union, bool>::type
-operator==(const T &a, const T &b)
+template<xdr_union T> inline bool
+operator==(const T &a, const T &b) noexcept
 {
-  if (a._xdr_discriminant() == b._xdr_discriminant()) {
-    bool r{true};
-    a._xdr_with_mem_ptr(detail::union_field_equal,
-			a._xdr_discriminant(), a, b, r);
-    return r;
-  }
-  return false;
-}
-
-//! Ordering of XDR unions.  See note at \c xdr::operator==.
-template<typename T> inline typename
-std::enable_if<xdr_traits<T>::is_union, detail::ordering_t>::type
-operator<=>(const T &a, const T &b)
-{
-  if (detail::ordering_t res =
-      a._xdr_discriminant() <=> b._xdr_discriminant();
-      res != std::partial_ordering::equivalent) {
-    return res;
-  }
-
-  detail::ordering_t r{std::strong_ordering::equal};
-  a._xdr_with_mem_ptr(detail::union_field_comp,
-		      a._xdr_discriminant(), a, b, r);
+  if (unionfn::get_tag(a) != unionfn::get_tag(b))
+    return false;
+  bool av = unionfn::valueless_by_exception(a);
+  bool bv = unionfn::valueless_by_exception(b);
+  if (av || bv)
+    return av == bv;
+  bool r = true;
+  unionfn::with_current_arm(a, [&](auto body) {
+    r = body(a) == body(b);
+  });
   return r;
 }
 
-namespace detail {
-template<typename T, typename F> struct struct_comp_helper {
-  static ordering_t comp(const T &a, const T &b) {
-    Constexpr const typename F::field_info fi {};
-    if (ordering_t res = fi(a) <=> fi(b);
-        res != std::partial_ordering::equivalent) {
-      return res;
-    }
-    return struct_comp_helper<T, typename F::next_field>::comp(a, b);
-  }
-};
-template<typename T> struct struct_comp_helper<T, xdr_struct_base<>> {
-  static ordering_t comp(const T &, const T &) {
-    return std::strong_ordering::equal;
+template<xdr_union T> inline
+#if __clang__
+std::enable_if_t<xdr_traits<T>::is_union, detail::ordering_t>
+#else // not clang
+detail::ordering_t
+#endif // not clang
+operator<=>(const T &a, const T &b) noexcept
+{
+  if (auto c = unionfn::get_tag(a) <=> unionfn::get_tag(b); c != 0)
+    return c;
+  bool av = unionfn::valueless_by_exception(a);
+  bool bv = unionfn::valueless_by_exception(b);
+  if (av != bv)
+    return av ? std::strong_ordering::less : std::strong_ordering::greater;
+  detail::ordering_t r = std::strong_ordering::equal;
+  if (av)
+    return r;
+  unionfn::with_current_arm(a, [&](auto body) {
+    r = body(a) <=> body(b);
+  });
+  return r;
 }
-};
-} // namespace detail
 
 } // namespace xdr
 

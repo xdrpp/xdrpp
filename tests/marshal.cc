@@ -76,22 +76,10 @@ udsb(uint32_t, double, xdr::xstring<> &, bool, std::nullptr_t)
 {
 }
 
-void
-dump_indices(xdr::indices<>)
-{
-  cout << endl;
-}
-template<std::size_t N, std::size_t...Ns> void
-dump_indices(xdr::indices<N, Ns...>)
-{
-  cout << " " << N;
-  dump_indices(xdr::indices<Ns...>{});
-}
-
 //! Apply a function [object] to elements at a set of tuple indices,
 //! with arbitrary arguments appended.
 template<typename F, typename T, std::size_t...I, typename...A> inline auto
-apply_indices(F &&f, T &&t, xdr::indices<I...>, A &&...a) ->
+apply_indices(F &&f, T &&t, std::index_sequence<I...>, A &&...a) ->
   decltype(f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...))
 {
   return f(std::get<I>(std::forward<T>(t))..., std::forward<A>(a)...);
@@ -107,8 +95,8 @@ test_tuple()
 			xdr::xstring<>("Hello world"), true);
   decltype(foo) bar;
   xdr::xdr_from_msg(xdr_to_msg(foo), bar);
-  apply_indices(udsb, foo, indices<0,1,2,3>{}, nullptr);
-  apply_indices(udsb, foo, all_indices<4>{}, nullptr);
+  apply_indices(udsb, foo, std::index_sequence<0,1,2,3>{}, nullptr);
+  apply_indices(udsb, foo, std::make_index_sequence<4>{}, nullptr);
   assert (foo == bar);
 }
 
@@ -131,9 +119,9 @@ namespace xdr
 {
 template <> struct xdr_traits<TestNode> : xdr_traits_base
 {
-    static Constexpr const bool is_class = true;
-    static Constexpr const bool is_struct = true;
-    static Constexpr const bool has_fixed_size = false;
+    static constexpr const bool is_class = true;
+    static constexpr const bool is_struct = true;
+    static constexpr const bool has_fixed_size = false;
 
     template <typename Archive>
     static void
@@ -164,9 +152,9 @@ template <> struct xdr_traits<TestNode> : xdr_traits_base
 
 template <> struct xdr_traits<MultiDepthStruct> : xdr_traits_base
 {
-    static Constexpr const bool is_class = true;
-    static Constexpr const bool is_struct = true;
-    static Constexpr const bool has_fixed_size = false;
+    static constexpr const bool is_class = true;
+    static constexpr const bool is_struct = true;
+    static constexpr const bool has_fixed_size = false;
 
     template <typename Archive>
     static void
@@ -492,7 +480,7 @@ main()
 
   {
     unique_ptr<double> dp1 (new double (3.141592653));
-    uint64_t x = xdr::xdr_reinterpret<uint64_t>(*dp1);
+    uint64_t x = std::bit_cast<uint64_t>(*dp1);
     assert (!memcmp(&x, dp1.get(), sizeof(x)));
     x = xdr::xdr_traits<double>::to_uint(*dp1);
     assert (memcmp(&x, dp1.get(), sizeof(x)) == 0);
@@ -518,6 +506,19 @@ main()
   u1.ip.activate() = 0x12349876;
   u1.key.arbitrary(REDDEST);
   u1.key.big() = { 5, 4, 3, 2, 1, 0, 0, 0, 255 };
+
+    {
+        decltype(u1.key) invalid_union;
+        bool ok = false;
+        try {
+            xdr::xdr_from_opaque(xdr::xdr_to_opaque(uint32_t(-1)), invalid_union);
+        }
+        catch (const xdr::xdr_bad_discriminant &e) {
+            assert(string(e.what()).find("bad value -1") != string::npos);
+            ok = true;
+    }
+        assert(ok);
+    }
 
   {
     xdr::msg_ptr m (xdr::xdr_to_msg(u1));

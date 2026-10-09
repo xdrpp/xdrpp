@@ -1,5 +1,6 @@
 %using xdr::operator==;
 %using xdr::operator<=>;
+%#include "tests/throwing_arm.h"
 
 enum senum {
   SE_NEGATIVE = -1,
@@ -15,7 +16,7 @@ union sunion switch (senum d) {
     void;
 };
 
-union uunion switch (unsigned d) {
+union uunion switch (unsigned int d) {
   case 1:
     bool one;
   case 2:
@@ -32,6 +33,11 @@ struct test_recursive {
   test_recursive nextvec<>;
 };
 
+struct recursive_after_fixed {
+  int value;
+  recursive_after_fixed children<>;
+};
+
 struct fix_4 {
   int i;
 };
@@ -46,6 +52,13 @@ struct fix_12_int {
   hyper h;
 };
 
+struct fix_16 {
+  struct {
+    fix_4 f4;
+    fix_12 f12;
+  } x;
+};
+
 union u_4_12 switch (int which) {
  case 4:
    fix_4 f4;
@@ -53,12 +66,23 @@ union u_4_12 switch (int which) {
    fix_12 f12;
 };
 
+union throwing_union switch (int which) {
+ case 0:
+   void;
+ case 1:
+   int good;
+ case 2:
+   throwing_inline_arm bad_inline;
+ case 3:
+   throwing_indirect_arm bad_indirect;
+};
+
 typedef fix_12 v12<>;
 
 enum color {
-  RED,
-  REDDER,
-  REDDEST
+  RED = 1,
+  REDDER = 2,
+  REDDEST = 3
 };
 
 union uptr switch (bool b) {
@@ -73,9 +97,9 @@ namespace testns {
 %using xdr::operator<=>;
 
 enum other_color {
-  RED,
-  REDDER,
-  REDDEST
+  RED = 1,
+  REDDER = 2,
+  REDDEST = 3
 };
 
 union other_union switch (other_color oc) {
@@ -84,6 +108,19 @@ union other_union switch (other_color oc) {
   case REDDER:
     string reder_string<>;
 };
+
+namespace ns2 {
+
+union ns_union switch (other_color oc) {
+  case RED:
+    string red_string<>;
+  case REDDER:
+    string reder_string<>;
+  case REDDEST:
+    string reddest_string<>;
+};
+
+}
 
 struct bytes {
   string s<16>;
@@ -98,14 +135,14 @@ struct hasbytes {
 struct numerics {
   bool b;
   int i1;
-  unsigned i2;
+  unsigned int i2;
   hyper i3;
   unsigned hyper i4;
   float f1;
   double f2;
   other_color e1;
 };
-  
+
 struct uniontest {
   int *ip;
   union switch (color arbitrary) {
@@ -140,7 +177,7 @@ union ContainsEnum switch (color c) {
  case color::RED:
    string foo<>;
  case color::REDDER:
-   enum { ONE, TWO } num;
+   enum { ONE = 1, TWO = 2 } num;
 };
 
 program xdrtest_prog {
